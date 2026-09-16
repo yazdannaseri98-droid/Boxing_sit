@@ -655,6 +655,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
               title: "\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647 \u{1F94A}",
               body: `\u062C\u0644\u0633\u0647\u200C\u06CC \xAB${nextSessionTitle}\xBB \u0645\u0646\u062A\u0638\u0631\u062A\u0647`,
               schedule: { at: target, allowWhileIdle: true },
+              smallIcon: "ic_stat_glove",
               sound: void 0
               // صدای پیش‌فرض سیستم استفاده می‌شه
             }
