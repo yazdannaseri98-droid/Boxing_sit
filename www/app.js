@@ -105,36 +105,62 @@ async function apiCheckSession(token, deviceId) {
     return true;
   }
 }
+const AppStorage = {
+  async get(key) {
+    var _a, _b, _c;
+    try {
+      const Prefs = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.Preferences;
+      if (Prefs) {
+        const { value } = await Prefs.get({ key });
+        return value != null ? value : null;
+      }
+      if (window.storage) {
+        const result = await window.storage.get(key, false);
+        return (_c = result == null ? void 0 : result.value) != null ? _c : null;
+      }
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  async set(key, value) {
+    var _a, _b;
+    try {
+      const Prefs = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.Preferences;
+      if (Prefs) return void await Prefs.set({ key, value });
+      if (window.storage) return void await window.storage.set(key, value, false);
+      localStorage.setItem(key, value);
+    } catch (e) {
+    }
+  },
+  async remove(key) {
+    var _a, _b;
+    try {
+      const Prefs = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.Preferences;
+      if (Prefs) return void await Prefs.remove({ key });
+      if (window.storage) return void await window.storage.delete(key, false);
+      localStorage.removeItem(key);
+    } catch (e) {
+    }
+  }
+};
 async function getOrCreateDeviceId() {
   const key = "device-id";
-  try {
-    const result = await window.storage.get(key, false);
-    if (result == null ? void 0 : result.value) return result.value;
-  } catch (e) {
-  }
+  const existing = await AppStorage.get(key);
+  if (existing) return existing;
   const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  try {
-    await window.storage.set(key, id, false);
-  } catch (e) {
-  }
+  await AppStorage.set(key, id);
   return id;
 }
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
 async function saveSession(token, user) {
-  try {
-    await window.storage.set(
-      "auth-session",
-      JSON.stringify({ token, user, savedAt: Date.now() }),
-      false
-    );
-  } catch (e) {
-  }
+  await AppStorage.set("auth-session", JSON.stringify({ token, user, savedAt: Date.now() }));
 }
 async function loadSession() {
+  const value = await AppStorage.get("auth-session");
+  if (!value) return null;
   try {
-    const result = await window.storage.get("auth-session", false);
-    if (!(result == null ? void 0 : result.value)) return null;
-    const parsed = JSON.parse(result.value);
+    const parsed = JSON.parse(value);
     if (!(parsed == null ? void 0 : parsed.token) || !(parsed == null ? void 0 : parsed.savedAt)) return null;
     if (Date.now() - parsed.savedAt > SESSION_TTL_MS) return null;
     return parsed;
@@ -143,10 +169,7 @@ async function loadSession() {
   }
 }
 async function clearSession() {
-  try {
-    await window.storage.delete("auth-session", false);
-  } catch (e) {
-  }
+  await AppStorage.remove("auth-session");
 }
 async function apiFetchVideos() {
   if (DEMO_MODE) return {};
@@ -2227,23 +2250,22 @@ function App() {
   }, []);
   useEffect(() => {
     (async () => {
-      try {
-        const result = await window.storage.get("completed-lessons", false);
-        if (result == null ? void 0 : result.value) setCompletedLessons(JSON.parse(result.value));
-      } catch (e) {
+      const value = await AppStorage.get("completed-lessons");
+      if (value) {
+        try {
+          setCompletedLessons(JSON.parse(value));
+        } catch (e) {
+        }
       }
     })();
   }, []);
   useEffect(() => {
     (async () => {
-      try {
-        const result = await window.storage.get("practice-seconds", false);
-        if (result == null ? void 0 : result.value) {
-          const seconds = Number(result.value) || 0;
-          setPracticeSeconds(seconds);
-          lastPersistedPracticeRef.current = seconds;
-        }
-      } catch (e) {
+      const value = await AppStorage.get("practice-seconds");
+      if (value) {
+        const seconds = Number(value) || 0;
+        setPracticeSeconds(seconds);
+        lastPersistedPracticeRef.current = seconds;
       }
     })();
   }, []);
@@ -2252,30 +2274,26 @@ function App() {
       const next = s + 1;
       if (next - lastPersistedPracticeRef.current >= 10) {
         lastPersistedPracticeRef.current = next;
-        window.storage.set("practice-seconds", String(next), false).catch(() => {
-        });
+        AppStorage.set("practice-seconds", String(next));
       }
       return next;
     });
   };
   useEffect(() => {
     (async () => {
-      try {
-        const result = await window.storage.get("profile-info", false);
-        if (result == null ? void 0 : result.value) {
-          const info = JSON.parse(result.value);
+      const value = await AppStorage.get("profile-info");
+      if (value) {
+        try {
+          const info = JSON.parse(value);
           if (info.name) setProfileName(info.name);
           if (info.image) setProfileImage(info.image);
+        } catch (e) {
         }
-      } catch (e) {
       }
     })();
   }, []);
   const saveProfileInfo = async (next) => {
-    try {
-      await window.storage.set("profile-info", JSON.stringify(next), false);
-    } catch (e) {
-    }
+    await AppStorage.set("profile-info", JSON.stringify(next));
   };
   const handleNameChange = (name) => {
     setProfileName(name);
@@ -2299,10 +2317,7 @@ function App() {
     if (!lessonKey || completedLessons[lessonKey]) return;
     const updated = __spreadProps(__spreadValues({}, completedLessons), { [lessonKey]: true });
     setCompletedLessons(updated);
-    try {
-      await window.storage.set("completed-lessons", JSON.stringify(updated), false);
-    } catch (e) {
-    }
+    await AppStorage.set("completed-lessons", JSON.stringify(updated));
   };
   const handleSendOtp = async () => {
     if (DEMO_MODE) {
