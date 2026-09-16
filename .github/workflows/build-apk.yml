@@ -41,4 +41,29 @@ jobs:
           cp resources/notification-icon.png android/app/src/main/res/drawable/ic_stat_glove.png
 
       - name: Sync web assets into Android project
-        run: npx cap sync
+        run: npx cap sync android
+
+      - name: Restore release signing key
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+
+      - name: Patch build.gradle for consistent signing + versioning
+        env:
+          BUILD_VERSION_CODE: ${{ github.run_number }}
+          BUILD_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: node scripts/configure-signing.js
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: chmod +x gradlew && ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: boxing-app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
