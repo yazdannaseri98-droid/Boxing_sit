@@ -627,19 +627,51 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
     }
     alert(body);
   };
+  const REMINDER_NOTIFICATION_ID = 1001;
   const handleSetReminder = async () => {
+    var _a, _b;
     const [hh, mm] = reminderTime.split(":").map(Number);
     if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+    const now = /* @__PURE__ */ new Date();
+    const target = /* @__PURE__ */ new Date();
+    target.setHours(hh, mm, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const LocalNotifications = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.LocalNotifications;
+    if (LocalNotifications) {
+      try {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== "granted") {
+          const req = await LocalNotifications.requestPermissions();
+          if (req.display !== "granted") {
+            alert("\u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644 \u06A9\u0631\u062F\u0646 \u06CC\u0627\u062F\u0622\u0648\u0631\u060C \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0631\u0648 \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u06AF\u0648\u0634\u06CC \u0628\u062F\u06CC\u062F.");
+            return;
+          }
+        }
+        await LocalNotifications.cancel({ notifications: [{ id: REMINDER_NOTIFICATION_ID }] });
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: REMINDER_NOTIFICATION_ID,
+              title: "\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647 \u{1F94A}",
+              body: `\u062C\u0644\u0633\u0647\u200C\u06CC \xAB${nextSessionTitle}\xBB \u0645\u0646\u062A\u0638\u0631\u062A\u0647`,
+              schedule: { at: target, allowWhileIdle: true },
+              sound: void 0
+              // صدای پیش‌فرض سیستم استفاده می‌شه
+            }
+          ]
+        });
+        setReminderStatus("set");
+        setShowTimePicker(false);
+        return;
+      } catch (e) {
+      }
+    }
     if (typeof Notification !== "undefined" && Notification.permission === "default") {
       try {
         await Notification.requestPermission();
       } catch (e) {
       }
     }
-    const now = /* @__PURE__ */ new Date();
-    const target = /* @__PURE__ */ new Date();
-    target.setHours(hh, mm, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
     const delay = target.getTime() - now.getTime();
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(fireReminder, delay);
