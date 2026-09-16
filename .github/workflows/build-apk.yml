@@ -35,6 +35,11 @@ jobs:
       - name: Generate app icon from resources/icon.png
         run: npx @capacitor/assets generate --android --iconBackgroundColor '#0B0B0D' --iconBackgroundColorDark '#0B0B0D'
 
+      - name: Install custom notification icon
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/notification-icon.png android/app/src/main/res/drawable/ic_stat_glove.png
+
       - name: Sync web assets into Android project
         run: npx cap sync android
 
