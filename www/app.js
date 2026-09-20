@@ -41,7 +41,7 @@ const MEDAL_GOLD_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAAECCA
 const FONT_LINK_ID = "boxing-app-fonts";
 const API_BASE_URL = "https://YOUR_SERVER_URL";
 const DEMO_MODE = API_BASE_URL.includes("YOUR_SERVER_URL");
-const DEMO_ADMIN_EMAILS = ["yazdannaseri98@gmail.com"];
+const DEMO_ADMIN_IDENTIFIERS = ["yazdannaseri98@gmail.com"];
 let onAuthFailure = null;
 function triggerAuthFailure() {
   onAuthFailure == null ? void 0 : onAuthFailure();
@@ -52,15 +52,28 @@ function normalizeEmail(rawInput) {
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
+function normalizeIranPhone(rawInput) {
+  const digits = rawInput.replace(/\D/g, "");
+  return digits.startsWith("0") ? digits : "0" + digits;
+}
+function isValidIranPhone(value) {
+  return /^09\d{9}$/.test(value);
+}
+function normalizeIdentifier(raw, method) {
+  return method === "phone" ? normalizeIranPhone(raw) : normalizeEmail(raw);
+}
+function isValidIdentifier(raw, method) {
+  return method === "phone" ? isValidIranPhone(raw) : isValidEmail(raw);
+}
 function sanitizeUserText(raw, maxLength) {
   return raw.replace(/[<>]/g, "").trim().slice(0, maxLength);
 }
-async function apiSendOtp(rawEmail) {
-  const email = normalizeEmail(rawEmail);
+async function apiSendOtp(rawIdentifier, method) {
+  const identifier = normalizeIdentifier(rawIdentifier, method);
   const res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ identifier })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) {
@@ -68,12 +81,12 @@ async function apiSendOtp(rawEmail) {
   }
   return data;
 }
-async function apiVerifyOtp(rawEmail, code, deviceId, force) {
-  const email = normalizeEmail(rawEmail);
+async function apiVerifyOtp(rawIdentifier, method, code, deviceId, force) {
+  const identifier = normalizeIdentifier(rawIdentifier, method);
   const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, code, deviceId, force: Boolean(force) })
+    body: JSON.stringify({ identifier, code, deviceId, force: Boolean(force) })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) {
@@ -398,10 +411,10 @@ function SplashScreen({ onStart }) {
     ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644"))
   );
 }
-function SignupScreen({ email, setEmail, onSubmit }) {
+function SignupScreen({ contact, setContact, method, setMethod, onSubmit }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const emailValid = isValidEmail(email.trim());
+  const contactValid = isValidIdentifier(contact.trim(), method);
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
@@ -412,6 +425,12 @@ function SignupScreen({ email, setEmail, onSubmit }) {
     } finally {
       setLoading(false);
     }
+  };
+  const switchMethod = (next) => {
+    if (next === method) return;
+    setMethod(next);
+    setContact("");
+    setError("");
   };
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col px-6 pt-4", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-8" }, /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-8 h-8 object-contain" }), DEMO_MODE && /* @__PURE__ */ React.createElement(
     "span",
@@ -433,28 +452,63 @@ function SignupScreen({ email, setEmail, onSubmit }) {
       className: "text-3xl font-black mb-2"
     },
     "\u0648\u0627\u0631\u062F \u0631\u06CC\u0646\u06AF \u0634\u0648."
-  ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm mb-10 leading-7" }, "\u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644\u062A \u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u06A9\u0646 \u0648 \u0628\u0631\u0646\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646\u06CC \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0628\u0648\u06A9\u0633 \u0631\u0648 \u0634\u0631\u0648\u0639 \u06A9\u0646."), /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm mb-6 leading-7" }, "\u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644 \u06CC\u0627 \u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644\u062A \u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u06A9\u0646 \u0648 \u0628\u0631\u0646\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646\u06CC \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0628\u0648\u06A9\u0633 \u0631\u0648 \u0634\u0631\u0648\u0639 \u06A9\u0646."), /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex rounded-xl p-1 mb-6",
+      style: { background: "#17161A", border: "1px solid #2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => switchMethod("email"),
+        style: {
+          fontFamily: "Vazirmatn, sans-serif",
+          background: method === "email" ? "#D91E2B" : "transparent",
+          color: method === "email" ? "#F3EEE6" : "#8A8790"
+        },
+        className: "flex-1 rounded-lg py-2.5 text-sm font-bold transition-colors"
+      },
+      "\u0627\u06CC\u0645\u06CC\u0644"
+    ),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => switchMethod("phone"),
+        style: {
+          fontFamily: "Vazirmatn, sans-serif",
+          background: method === "phone" ? "#D91E2B" : "transparent",
+          color: method === "phone" ? "#F3EEE6" : "#8A8790"
+        },
+        className: "flex-1 rounded-lg py-2.5 text-sm font-bold transition-colors"
+      },
+      "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644"
+    )
+  ), /* @__PURE__ */ React.createElement(
     "label",
     {
       style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" },
       className: "text-xs mb-2 block"
     },
-    "\u0627\u06CC\u0645\u06CC\u0644"
+    method === "email" ? "\u0627\u06CC\u0645\u06CC\u0644" : "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644"
   ), /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "flex items-center rounded-xl px-4 py-3.5 mb-2 border",
       style: { background: "#17161A", borderColor: error ? "#D91E2B" : "#2a292e" }
     },
+    method === "phone" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D" }, className: "text-sm font-semibold ml-3" }, "+98"), /* @__PURE__ */ React.createElement("div", { className: "w-px h-5 ml-3", style: { background: "#2a292e" } })),
     /* @__PURE__ */ React.createElement(
       "input",
       {
-        type: "email",
-        inputMode: "email",
-        autoComplete: "email",
-        placeholder: "example@email.com",
-        value: email,
-        onChange: (e) => setEmail(e.target.value.replace(/\s/g, "")),
+        type: method === "email" ? "email" : "tel",
+        inputMode: method === "email" ? "email" : "numeric",
+        autoComplete: method === "email" ? "email" : "tel",
+        placeholder: method === "email" ? "example@email.com" : "912 345 6789",
+        value: contact,
+        onChange: (e) => setContact(
+          method === "email" ? e.target.value.replace(/\s/g, "") : e.target.value.replace(/[^\d\s]/g, "")
+        ),
         style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" },
         className: "bg-transparent outline-none flex-1 text-base tracking-wider",
         dir: "ltr"
@@ -466,23 +520,23 @@ function SignupScreen({ email, setEmail, onSubmit }) {
       style: { fontFamily: "Vazirmatn, sans-serif", color: error ? "#D91E2B" : "#55535a" },
       className: "text-xs mb-8"
     },
-    error || (DEMO_MODE ? "\u062D\u0627\u0644\u062A \u0622\u0632\u0645\u0627\u06CC\u0634\u06CC: \u0647\u0631 \u06A9\u062F \u06F4 \u0631\u0642\u0645\u06CC \u062F\u0644\u062E\u0648\u0627\u0647 \u0631\u0648 \u0642\u0628\u0648\u0644 \u0645\u06CC\u200C\u06A9\u0646\u0647." : "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0628\u0631\u0627\u06CC \u0647\u0645\u06CC\u0646 \u0627\u06CC\u0645\u06CC\u0644 \u0627\u0631\u0633\u0627\u0644 \u0645\u06CC\u200C\u0634\u0648\u062F.")
+    error || (DEMO_MODE ? "\u062D\u0627\u0644\u062A \u0622\u0632\u0645\u0627\u06CC\u0634\u06CC: \u0647\u0631 \u06A9\u062F \u06F4 \u0631\u0642\u0645\u06CC \u062F\u0644\u062E\u0648\u0627\u0647 \u0631\u0648 \u0642\u0628\u0648\u0644 \u0645\u06CC\u200C\u06A9\u0646\u0647." : method === "email" ? "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0628\u0631\u0627\u06CC \u0647\u0645\u06CC\u0646 \u0627\u06CC\u0645\u06CC\u0644 \u0627\u0631\u0633\u0627\u0644 \u0645\u06CC\u200C\u0634\u0648\u062F." : "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0628\u0631\u0627\u06CC \u0647\u0645\u06CC\u0646 \u0634\u0645\u0627\u0631\u0647 \u067E\u06CC\u0627\u0645\u06A9 \u0645\u06CC\u200C\u0634\u0648\u062F.")
   ), /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: handleSubmit,
-      disabled: !emailValid || loading,
+      disabled: !contactValid || loading,
       style: {
         fontFamily: "Vazirmatn, sans-serif",
-        background: emailValid && !loading ? "#D91E2B" : "#3a2226",
-        color: emailValid && !loading ? "#F3EEE6" : "#7a5a5d"
+        background: contactValid && !loading ? "#D91E2B" : "#3a2226",
+        color: contactValid && !loading ? "#F3EEE6" : "#7a5a5d"
       },
       className: "w-full rounded-xl py-4 font-bold text-base transition-colors mb-4"
     },
     loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u0631\u0633\u0627\u0644\u2026" : "\u062F\u0631\u06CC\u0627\u0641\u062A \u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F"
   ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-auto mb-6" }, "\u0628\u0627 \u0627\u062F\u0627\u0645\u0647\u060C \u0634\u0631\u0627\u06CC\u0637 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0648 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0631\u0648 \u0645\u06CC\u200C\u067E\u0630\u06CC\u0631\u06CC."));
 }
-function OtpScreen({ email, onVerify, code, setCode }) {
+function OtpScreen({ contact, method, onVerify, code, setCode }) {
   const inputsRef = useRef([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -553,7 +607,7 @@ function OtpScreen({ email, onVerify, code, setCode }) {
       style: { background: "rgba(217,30,43,0.12)", border: "1px solid rgba(217,30,43,0.4)" }
     },
     /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-20 h-20 object-contain" })
-  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-2xl font-black mb-2" }, "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0631\u0648 \u0648\u0627\u0631\u062F \u06A9\u0646"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm mb-8 leading-7" }, "\u06A9\u062F \u06F4 \u0631\u0642\u0645\u06CC \u0628\u0647 \u0627\u06CC\u0645\u06CC\u0644 ", /* @__PURE__ */ React.createElement("span", { style: { color: "#E8B33D", direction: "ltr", display: "inline-block" } }, email || "example@email.com"), " \u0627\u0631\u0633\u0627\u0644 \u0634\u062F."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-3 mb-3 justify-center", dir: "ltr" }, code.map((c, i) => /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-2xl font-black mb-2" }, "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0631\u0648 \u0648\u0627\u0631\u062F \u06A9\u0646"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm mb-8 leading-7" }, "\u06A9\u062F \u06F4 \u0631\u0642\u0645\u06CC \u0628\u0647 ", method === "email" ? "\u0627\u06CC\u0645\u06CC\u0644" : "\u0634\u0645\u0627\u0631\u0647", " ", /* @__PURE__ */ React.createElement("span", { style: { color: "#E8B33D", direction: "ltr", display: "inline-block" } }, contact || "example@email.com"), " ", method === "email" ? "\u0627\u0631\u0633\u0627\u0644 \u0634\u062F." : "\u067E\u06CC\u0627\u0645\u06A9 \u0634\u062F."), /* @__PURE__ */ React.createElement("div", { className: "flex gap-3 mb-3 justify-center", dir: "ltr" }, code.map((c, i) => /* @__PURE__ */ React.createElement(
     "input",
     {
       key: i,
@@ -1961,7 +2015,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
   const handleBuy = async (planKey) => {
     setError("");
     if (!isLoggedIn) {
-      setError("\u0627\u0648\u0644 \u0628\u0627\u06CC\u062F \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644\u062A \u0648\u0627\u0631\u062F \u0628\u0634\u06CC");
+      setError("\u0627\u0648\u0644 \u0628\u0627\u06CC\u062F \u0648\u0627\u0631\u062F \u062D\u0633\u0627\u0628\u062A \u0628\u0634\u06CC");
       return;
     }
     setLoadingPlan(planKey);
@@ -2239,7 +2293,8 @@ function App() {
   useFonts();
   useDisableZoom();
   const [step, setStep] = useState("splash");
-  const [email, setEmail] = useState("");
+  const [contact, setContact] = useState("");
+  const [contactMethod, setContactMethod] = useState("email");
   const [code, setCode] = useState(["", "", "", ""]);
   const [videos, setVideos] = useState({});
   const [activeLesson, setActiveLesson] = useState(null);
@@ -2355,24 +2410,24 @@ function App() {
       setStep("otp");
       return;
     }
-    await apiSendOtp(email);
+    await apiSendOtp(contact, contactMethod);
     setStep("otp");
   };
   const handleResendOtp = async () => {
     if (DEMO_MODE) return;
-    await apiSendOtp(email);
+    await apiSendOtp(contact, contactMethod);
   };
   const handleVerifyOtp = async (typedCode, force) => {
     if (DEMO_MODE) {
-      const normalized = normalizeEmail(email);
-      const demoUser = { email: normalized, isAdmin: DEMO_ADMIN_EMAILS.includes(normalized), plan: "none" };
+      const normalized = normalizeIdentifier(contact, contactMethod);
+      const demoUser = { identifier: normalized, isAdmin: DEMO_ADMIN_IDENTIFIERS.includes(normalized), plan: "none" };
       setAuthToken("demo-token");
       setAuthUser(demoUser);
       setStep("home");
       saveSession("demo-token", demoUser);
       return;
     }
-    const data = await apiVerifyOtp(email, typedCode, deviceId, force);
+    const data = await apiVerifyOtp(contact, contactMethod, typedCode, deviceId, force);
     setAuthToken(data.token);
     setAuthUser(data.user);
     setStep("home");
@@ -2396,7 +2451,7 @@ function App() {
   const handleLogout = () => {
     setAuthToken(null);
     setAuthUser(null);
-    setEmail("");
+    setContact("");
     setCode(["", "", "", ""]);
     setStep("signup");
     clearSession();
@@ -2418,10 +2473,20 @@ function App() {
           .screen-enter {
             animation: screenPunchIn 200ms ease-out both;
           }
-        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(SignupScreen, { email, setEmail, onSubmit: handleSendOtp }), step === "otp" && /* @__PURE__ */ React.createElement(
+        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
+      SignupScreen,
+      {
+        contact,
+        setContact,
+        method: contactMethod,
+        setMethod: setContactMethod,
+        onSubmit: handleSendOtp
+      }
+    ), step === "otp" && /* @__PURE__ */ React.createElement(
       OtpScreen,
       {
-        email,
+        contact,
+        method: contactMethod,
         code,
         setCode,
         onVerify: {
