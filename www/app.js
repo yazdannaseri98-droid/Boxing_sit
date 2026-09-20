@@ -229,6 +229,73 @@ async function apiCreatePayment(token, plan) {
   }
   return data.paymentUrl;
 }
+async function apiFetchLessonTitles() {
+  if (DEMO_MODE) return {};
+  try {
+    const res = await fetch(`${API_BASE_URL}/lessons/titles`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return {};
+    return data.titles || {};
+  } catch (e) {
+    return {};
+  }
+}
+async function apiSetLessonTitle(curriculumKey, n, title, token) {
+  if (DEMO_MODE) return title;
+  const res = await fetch(`${API_BASE_URL}/lessons/titles/${curriculumKey}/${n}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ title })
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "\u062A\u063A\u06CC\u06CC\u0631 \u0639\u0646\u0648\u0627\u0646 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  }
+  return data.title;
+}
+async function apiFetchUsers(token) {
+  if (DEMO_MODE) {
+    return {
+      total: 1,
+      users: [{ identifier: "demo@example.com", isAdmin: true, plan: "none", planExpiresAt: null, createdAt: Date.now() }]
+    };
+  }
+  const res = await fetch(`${API_BASE_URL}/admin/users`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "\u062F\u0631\u06CC\u0627\u0641\u062A \u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  }
+  return { users: data.users || [], total: data.total || 0 };
+}
+async function apiFetchMemberCount() {
+  if (DEMO_MODE) return 0;
+  try {
+    const res = await fetch(`${API_BASE_URL}/settings/member-count`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return 0;
+    return data.count || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+async function apiSetMemberCount(count, token) {
+  if (DEMO_MODE) return count;
+  const res = await fetch(`${API_BASE_URL}/settings/member-count`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ count })
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "\u062A\u063A\u06CC\u06CC\u0631 \u0639\u062F\u062F \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  }
+  return data.count;
+}
 function formatExpiryDate(timestamp) {
   try {
     return new Date(timestamp).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
@@ -1320,6 +1387,68 @@ function AccordionScreen({ title, items, onBack }) {
     );
   })));
 }
+function AdminUsersScreen({ authToken, onBack }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchUsers(authToken).then(({ users: users2, total: total2 }) => {
+      if (cancelled) return;
+      setUsers(users2);
+      setTotal(total2);
+    }).catch((err) => {
+      if (!cancelled) setError(err.message || "\u062F\u0631\u06CC\u0627\u0641\u062A \u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken]);
+  const planLabel = { none: "\u0628\u062F\u0648\u0646 \u0627\u0634\u062A\u0631\u0627\u06A9", monthly: "\u0645\u0627\u0647\u0627\u0646\u0647", seasonal: "\u0641\u0635\u0644\u06CC", yearly: "\u0633\u0627\u0644\u0627\u0646\u0647" };
+  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onBack,
+      style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" },
+      className: "text-sm mb-4 rounded-lg px-3 py-1.5 font-bold inline-block"
+    },
+    "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"
+  ), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black" }, "\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646"), /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
+      className: "text-xs font-bold rounded-full px-3 py-1"
+    },
+    total.toLocaleString("fa-IR"),
+    " \u0646\u0641\u0631"
+  )), loading && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm text-center mt-10" }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC\u2026"), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-sm text-center mt-10" }, error), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, users.map((u) => /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      key: u.identifier,
+      className: "rounded-xl p-3",
+      style: { background: "#17161A", border: "1px solid #2a292e" }
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" },
+        className: "text-sm font-bold"
+      },
+      u.identifier
+    ), u.isAdmin && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
+        className: "text-[10px] font-bold rounded-full px-2 py-0.5 shrink-0"
+      },
+      "\u0627\u062F\u0645\u06CC\u0646"
+    )),
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, planLabel[u.plan] || u.plan, u.planExpiresAt ? ` \xB7 \u062A\u0627 ${formatExpiryDate(u.planExpiresAt)}` : ""), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs" }, formatExpiryDate(u.createdAt)))
+  ))));
+}
 function InfoScreen({ title, items, paragraph, onBack }) {
   const [expandedItem, setExpandedItem] = useState(null);
   if (expandedItem) {
@@ -1397,14 +1526,21 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount }) {
+  const [editingCount, setEditingCount] = useState(false);
+  const [countDraft, setCountDraft] = useState(String(memberCount));
+  const [savingCount, setSavingCount] = useState(false);
+  useEffect(() => {
+    if (!editingCount) setCountDraft(String(memberCount));
+  }, [memberCount]);
   const menuItems = [
     { key: "info-tips", label: "\u0646\u06A9\u0627\u062A \u06A9\u0644\u06CC\u062F\u06CC", icon: TipIcon },
     { key: "info-coach", label: "\u06A9\u0645\u06A9 \u0645\u0631\u0628\u06CC", icon: CoachIcon },
     { key: "info-faq", label: "\u0633\u0648\u0627\u0644\u0627\u062A \u0645\u062A\u062F\u0627\u0648\u0644", icon: QuestionIcon },
     { key: "info-gear", label: "\u0648\u0633\u0627\u06CC\u0644 \u0628\u0648\u06A9\u0633", icon: GloveIcon },
     { key: "info-rules", label: "\u0642\u0648\u0627\u0646\u06CC\u0646 \u0648 \u0645\u0642\u0631\u0631\u0627\u062A", icon: LockIcon },
-    { key: "info-about", label: "\u062F\u0631\u0628\u0627\u0631\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC Naseri", icon: InfoIcon }
+    { key: "info-about", label: "\u062F\u0631\u0628\u0627\u0631\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC Naseri", icon: InfoIcon },
+    ...isAdmin ? [{ key: "admin-users", label: "\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646", icon: UserIcon }] : []
   ];
   return /* @__PURE__ */ React.createElement("div", { className: "relative flex-1 flex flex-col overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(
     "button",
@@ -1451,6 +1587,51 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout }) {
         dir: "rtl"
       },
       /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-6" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D", letterSpacing: "0.1em" }, className: "text-xs font-semibold" }, "\u0645\u0646\u0648"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMenuOpen(false) }, /* @__PURE__ */ React.createElement(CloseIcon, { className: "w-5 h-5", style: { color: "#8A8790" } }))),
+      /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "flex items-center justify-between rounded-xl px-3 py-3 mb-4",
+          style: { background: "rgba(232,179,61,0.1)", border: "1px solid rgba(232,179,61,0.35)" }
+        },
+        editingCount ? /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 w-full" }, /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            value: countDraft,
+            onChange: (e) => setCountDraft(e.target.value.replace(/[^\d]/g, "")),
+            inputMode: "numeric",
+            autoFocus: true,
+            style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" },
+            className: "bg-transparent outline-none flex-1 text-sm"
+          }
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            disabled: savingCount,
+            onClick: async () => {
+              setSavingCount(true);
+              try {
+                await (onSetMemberCount == null ? void 0 : onSetMemberCount(Number(countDraft) || 0));
+                setEditingCount(false);
+              } catch (e) {
+              } finally {
+                setSavingCount(false);
+              }
+            },
+            style: { fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D", background: "#E8B33D" },
+            className: "rounded-lg px-2.5 py-1 text-xs font-bold shrink-0"
+          },
+          savingCount ? "..." : "\u0630\u062E\u06CC\u0631\u0647"
+        )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold" }, "\u{1F525} \u0627\u0639\u0636\u0627\u06CC \u0641\u0639\u0627\u0644 \u0627\u067E"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, Number(memberCount).toLocaleString("fa-IR")), isAdmin && /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => {
+              setCountDraft(String(memberCount));
+              setEditingCount(true);
+            }
+          },
+          /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#E8B33D" } })
+        )))
+      ),
       /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, menuItems.map((item) => {
         const Icon = item.icon;
         return /* @__PURE__ */ React.createElement(
@@ -1727,12 +1908,15 @@ function VideoPlayer({ src, onComplete, onTick }) {
     )
   );
 }
-function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUploaded, onComplete, onPracticeTick, onBack }) {
+function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
   const fileRef = useRef(null);
   const isHi = HIGHLIGHT_YELLOW.has(item.n);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(item.t);
+  const [savingTitle, setSavingTitle] = useState(false);
   const handleFile = (e) => {
     var _a;
     const file = (_a = e.target.files) == null ? void 0 : _a[0];
@@ -1804,7 +1988,62 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
       },
       item.n
     )
-  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-6" }, item.t)), videoSrc ? /* @__PURE__ */ React.createElement(VideoPlayer, { src: videoSrc, onComplete, onTick: onPracticeTick }) : uploading ? /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-6 flex-1" }, item.t), isAdmin && !editingTitle && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        setTitleDraft(item.t);
+        setEditingTitle(true);
+      },
+      className: "shrink-0 rounded-full p-1.5",
+      style: { background: "#17161A", border: "1px solid #2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#E8B33D" } })
+  )), isAdmin && editingTitle && /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex items-center gap-2 mb-4 rounded-xl px-3 py-2 border",
+      style: { background: "#17161A", borderColor: "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        value: titleDraft,
+        onChange: (e) => setTitleDraft(e.target.value),
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" },
+        className: "bg-transparent outline-none flex-1 text-sm",
+        autoFocus: true
+      }
+    ),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        disabled: savingTitle || !titleDraft.trim(),
+        onClick: async () => {
+          setSavingTitle(true);
+          try {
+            await (onRename == null ? void 0 : onRename(titleDraft.trim()));
+            setEditingTitle(false);
+          } catch (e) {
+          } finally {
+            setSavingTitle(false);
+          }
+        },
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#D91E2B" },
+        className: "rounded-lg px-3 py-1.5 text-xs font-bold shrink-0"
+      },
+      savingTitle ? "..." : "\u0630\u062E\u06CC\u0631\u0647"
+    ),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setEditingTitle(false),
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" },
+        className: "text-xs shrink-0"
+      },
+      "\u0627\u0646\u0635\u0631\u0627\u0641"
+    )
+  ), videoSrc ? /* @__PURE__ */ React.createElement(VideoPlayer, { src: videoSrc, onComplete, onTick: onPracticeTick }) : uploading ? /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "relative w-full rounded-xl flex flex-col items-center justify-center gap-3 border",
@@ -2306,6 +2545,8 @@ function App() {
   const [practiceSeconds, setPracticeSeconds] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deviceId, setDeviceId] = useState(null);
+  const [lessonTitles, setLessonTitles] = useState({});
+  const [memberCount, setMemberCount] = useState(0);
   const lastPersistedPracticeRef = useRef(0);
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
@@ -2334,6 +2575,28 @@ function App() {
   useEffect(() => {
     apiFetchVideos().then(setVideos);
   }, []);
+  useEffect(() => {
+    apiFetchLessonTitles().then(setLessonTitles);
+    apiFetchMemberCount().then(setMemberCount);
+  }, []);
+  const handleRenameLesson = async (curriculumKey, n, newTitle) => {
+    const key = `${curriculumKey}-${n}`;
+    const saved = await apiSetLessonTitle(curriculumKey, n, newTitle, authToken);
+    setLessonTitles((prev) => __spreadProps(__spreadValues({}, prev), { [key]: saved }));
+  };
+  const handleSetMemberCount = async (newCount) => {
+    const saved = await apiSetMemberCount(newCount, authToken);
+    setMemberCount(saved);
+  };
+  const curriculumBasicMerged = CURRICULUM_BASIC.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`basic-${it.n}`] || it.t
+  }));
+  const curriculumAdvancedMerged = CURRICULUM_ADVANCED.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`advanced-${it.n}`] || it.t
+  }));
+  const curriculumExtraMerged = CURRICULUM_EXTRA.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`extra-${it.n}`] || it.t
+  }));
   useEffect(() => {
     (async () => {
       const value = await AppStorage.get("completed-lessons");
@@ -2495,7 +2758,18 @@ function App() {
           back: () => setStep("signup")
         }
       }
-    ), step === "home" && /* @__PURE__ */ React.createElement(HomeScreen, { onNavigate: setStep, menuOpen, setMenuOpen, onLogout: handleLogout }), step === "info-gear" && /* @__PURE__ */ React.createElement(
+    ), step === "home" && /* @__PURE__ */ React.createElement(
+      HomeScreen,
+      {
+        onNavigate: setStep,
+        menuOpen,
+        setMenuOpen,
+        onLogout: handleLogout,
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        memberCount,
+        onSetMemberCount: handleSetMemberCount
+      }
+    ), step === "info-gear" && /* @__PURE__ */ React.createElement(
       InfoScreen,
       {
         title: "\u0648\u0633\u0627\u06CC\u0644 \u0628\u0648\u06A9\u0633",
@@ -2555,11 +2829,20 @@ function App() {
           setMenuOpen(true);
         }
       }
+    ), step === "admin-users" && /* @__PURE__ */ React.createElement(
+      AdminUsersScreen,
+      {
+        authToken,
+        onBack: () => {
+          setStep("home");
+          setMenuOpen(true);
+        }
+      }
     ), step === "curriculum-extra" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
         title: "\u0622\u0645\u0648\u0632\u0634 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
-        items: CURRICULUM_EXTRA,
+        items: curriculumExtraMerged,
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("extra", item),
         hasVideo: (n) => Boolean(videos[`extra-${n}`]),
@@ -2571,7 +2854,7 @@ function App() {
       CurriculumScreen,
       {
         title: "\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F",
-        items: CURRICULUM_BASIC,
+        items: curriculumBasicMerged,
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("basic", item),
         hasVideo: (n) => Boolean(videos[`basic-${n}`]),
@@ -2583,7 +2866,7 @@ function App() {
       CurriculumScreen,
       {
         title: "\u0622\u0645\u0648\u0632\u0634 \u0636\u0631\u0628\u0627\u062A",
-        items: CURRICULUM_ADVANCED,
+        items: curriculumAdvancedMerged,
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("advanced", item),
         hasVideo: (n) => Boolean(videos[`advanced-${n}`]),
@@ -2600,6 +2883,7 @@ function App() {
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         authToken,
         onUploaded: (url) => setVideos((v) => __spreadProps(__spreadValues({}, v), { [lessonKey]: url })),
+        onRename: (newTitle) => handleRenameLesson(activeLesson.curriculumKey, activeLesson.item.n, newTitle),
         onComplete: handleLessonComplete,
         onPracticeTick: handlePracticeTick,
         onBack: () => setStep(`curriculum-${activeLesson.curriculumKey}`)
