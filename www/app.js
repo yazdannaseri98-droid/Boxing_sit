@@ -230,7 +230,15 @@ async function apiCreatePayment(token, plan) {
   return data.paymentUrl;
 }
 async function apiFetchLessonTitles() {
-  if (DEMO_MODE) return {};
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-lesson-titles");
+    if (!stored) return {};
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      return {};
+    }
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/lessons/titles`);
     const data = await res.json().catch(() => ({}));
@@ -241,7 +249,13 @@ async function apiFetchLessonTitles() {
   }
 }
 async function apiSetLessonTitle(curriculumKey, n, title, token) {
-  if (DEMO_MODE) return title;
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-lesson-titles");
+    const titles = stored ? JSON.parse(stored) : {};
+    titles[`${curriculumKey}-${n}`] = title;
+    await AppStorage.set("demo-lesson-titles", JSON.stringify(titles));
+    return title;
+  }
   const res = await fetch(`${API_BASE_URL}/lessons/titles/${curriculumKey}/${n}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -272,7 +286,10 @@ async function apiFetchUsers(token) {
   return { users: data.users || [], total: data.total || 0 };
 }
 async function apiFetchMemberCount() {
-  if (DEMO_MODE) return 0;
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-member-count");
+    return stored ? Number(stored) || 0 : 0;
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/settings/member-count`);
     const data = await res.json().catch(() => ({}));
@@ -283,7 +300,10 @@ async function apiFetchMemberCount() {
   }
 }
 async function apiSetMemberCount(count, token) {
-  if (DEMO_MODE) return count;
+  if (DEMO_MODE) {
+    await AppStorage.set("demo-member-count", String(count));
+    return count;
+  }
   const res = await fetch(`${API_BASE_URL}/settings/member-count`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -1591,7 +1611,11 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
         "div",
         {
           className: "flex items-center justify-between rounded-xl px-3 py-3 mb-4",
-          style: { background: "rgba(232,179,61,0.1)", border: "1px solid rgba(232,179,61,0.35)" }
+          style: {
+            background: "rgba(95,211,232,0.08)",
+            border: "1px solid rgba(95,211,232,0.4)",
+            boxShadow: "0 0 22px rgba(95,211,232,0.35), inset 0 0 14px rgba(95,211,232,0.08)"
+          }
         },
         editingCount ? /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 w-full" }, /* @__PURE__ */ React.createElement(
           "input",
@@ -1617,11 +1641,17 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
                 setSavingCount(false);
               }
             },
-            style: { fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D", background: "#E8B33D" },
+            style: { fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D", background: "#5FD3E8" },
             className: "rounded-lg px-2.5 py-1 text-xs font-bold shrink-0"
           },
           savingCount ? "..." : "\u0630\u062E\u06CC\u0631\u0647"
-        )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold" }, "\u{1F525} \u0627\u0639\u0636\u0627\u06CC \u0641\u0639\u0627\u0644 \u0627\u067E"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, Number(memberCount).toLocaleString("fa-IR")), isAdmin && /* @__PURE__ */ React.createElement(
+        )) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(
+          "span",
+          {
+            className: "active-dot rounded-full shrink-0",
+            style: { width: "8px", height: "8px", background: "#22c55e" }
+          }
+        ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }, className: "text-xs font-bold" }, "\u0627\u0639\u0636\u0627\u06CC \u0641\u0639\u0627\u0644 \u0627\u067E")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, Number(memberCount).toLocaleString("fa-IR")), isAdmin && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -1629,7 +1659,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
               setEditingCount(true);
             }
           },
-          /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#E8B33D" } })
+          /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#5FD3E8" } })
         )))
       ),
       /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, menuItems.map((item) => {
@@ -2528,6 +2558,30 @@ function computeProgressPercent(completedLessons) {
   }
   return Math.min(percent, 100);
 }
+function getHardwareBackDestination(step, activeLesson) {
+  switch (step) {
+    case "otp":
+      return { type: "step", step: "signup" };
+    case "curriculum-basic":
+    case "curriculum-advanced":
+    case "curriculum-extra":
+    case "profile":
+    case "subscription":
+      return { type: "step", step: "home" };
+    case "lesson":
+      return { type: "step", step: `curriculum-${(activeLesson == null ? void 0 : activeLesson.curriculumKey) || "basic"}` };
+    case "info-gear":
+    case "info-tips":
+    case "info-about":
+    case "info-faq":
+    case "info-coach":
+    case "info-rules":
+    case "admin-users":
+      return { type: "stepAndMenu", step: "home" };
+    default:
+      return { type: "root" };
+  }
+}
 function App() {
   useFonts();
   useDisableZoom();
@@ -2547,7 +2601,43 @@ function App() {
   const [deviceId, setDeviceId] = useState(null);
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
+  const [exitHint, setExitHint] = useState(false);
   const lastPersistedPracticeRef = useRef(0);
+  const lastBackPressRef = useRef(0);
+  useEffect(() => {
+    var _a;
+    const Capacitor = window.Capacitor;
+    if (!((_a = Capacitor == null ? void 0 : Capacitor.Plugins) == null ? void 0 : _a.App)) return;
+    const handler = () => {
+      if (menuOpen) {
+        setMenuOpen(false);
+        return;
+      }
+      const dest = getHardwareBackDestination(step, activeLesson);
+      if (dest.type === "step") {
+        setStep(dest.step);
+        return;
+      }
+      if (dest.type === "stepAndMenu") {
+        setStep(dest.step);
+        setMenuOpen(true);
+        return;
+      }
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2e3) {
+        Capacitor.Plugins.App.exitApp();
+      } else {
+        lastBackPressRef.current = now;
+        setExitHint(true);
+        setTimeout(() => setExitHint(false), 2e3);
+      }
+    };
+    const listenerPromise = Capacitor.Plugins.App.addListener("backButton", handler);
+    return () => {
+      var _a2;
+      (_a2 = listenerPromise == null ? void 0 : listenerPromise.then) == null ? void 0 : _a2.call(listenerPromise, (l) => l.remove());
+    };
+  }, [step, activeLesson, menuOpen]);
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
   }, []);
@@ -2736,6 +2826,14 @@ function App() {
           .screen-enter {
             animation: screenPunchIn 200ms ease-out both;
           }
+          @keyframes activeDotPulse {
+            0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+            70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+          }
+          .active-dot {
+            animation: activeDotPulse 1.8s ease-out infinite;
+          }
         `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
       SignupScreen,
       {
@@ -2919,7 +3017,26 @@ function App() {
           });
         }
       }
-    )), (step === "home" || step === "profile" || step === "subscription") && /* @__PURE__ */ React.createElement(BottomTabs, { active: step, onNavigate: setStep })), /* @__PURE__ */ React.createElement(
+    )), (step === "home" || step === "profile" || step === "subscription") && /* @__PURE__ */ React.createElement(BottomTabs, { active: step, onNavigate: setStep }), exitHint && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "absolute left-1/2 -translate-x-1/2",
+        style: {
+          bottom: "84px",
+          background: "rgba(23,22,26,0.95)",
+          border: "1px solid #2a292e",
+          zIndex: 50
+        }
+      },
+      /* @__PURE__ */ React.createElement(
+        "p",
+        {
+          style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" },
+          className: "text-xs px-4 py-2 rounded-full whitespace-nowrap"
+        },
+        "\u0628\u0631\u0627\u06CC \u062E\u0631\u0648\u062C \u062F\u0648\u0628\u0627\u0631\u0647 \u0628\u0632\u0646\u06CC\u062F"
+      )
+    )), /* @__PURE__ */ React.createElement(
       "p",
       {
         style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" },
