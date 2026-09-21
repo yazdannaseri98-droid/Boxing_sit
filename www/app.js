@@ -316,6 +316,47 @@ async function apiSetMemberCount(count, token) {
   }
   return data.count;
 }
+const NEW_CHAPTER_KEYS = ["fight", "partner", "focus"];
+async function apiFetchChapterVisibility() {
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-chapter-visibility");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+      }
+    }
+    return { fight: false, partner: false, focus: false };
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/settings/chapters`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return { fight: false, partner: false, focus: false };
+    return data.visibility || { fight: false, partner: false, focus: false };
+  } catch (e) {
+    return { fight: false, partner: false, focus: false };
+  }
+}
+async function apiSetChapterVisibility(key, visible, token) {
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-chapter-visibility");
+    const visibility = stored ? JSON.parse(stored) : { fight: false, partner: false, focus: false };
+    visibility[key] = visible;
+    await AppStorage.set("demo-chapter-visibility", JSON.stringify(visibility));
+    return visible;
+  }
+  const res = await fetch(`${API_BASE_URL}/settings/chapters/${key}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ visible })
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "\u062A\u063A\u06CC\u06CC\u0631 \u0648\u0636\u0639\u06CC\u062A \u0641\u0635\u0644 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  }
+  return data.visible;
+}
 function formatExpiryDate(timestamp) {
   try {
     return new Date(timestamp).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
@@ -1046,16 +1087,44 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
     )))
   ));
 }
-function TrainingWindow({ title, onClick, image, locked }) {
+function ChapterVisibilityToggle({ visible, onToggle }) {
+  const [saving, setSaving] = useState(false);
+  return /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: async (e) => {
+        e.stopPropagation();
+        setSaving(true);
+        try {
+          await onToggle(!visible);
+        } finally {
+          setSaving(false);
+        }
+      },
+      disabled: saving,
+      className: "absolute top-2 left-2 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1",
+      style: {
+        fontFamily: "Vazirmatn, sans-serif",
+        background: visible ? "rgba(34,197,94,0.15)" : "rgba(217,30,43,0.15)",
+        border: `1px solid ${visible ? "rgba(34,197,94,0.5)" : "rgba(217,30,43,0.5)"}`,
+        color: visible ? "#22c55e" : "#D91E2B"
+      }
+    },
+    /* @__PURE__ */ React.createElement("span", { className: "text-[10px] font-bold" }, saving ? "..." : visible ? "\u0639\u0645\u0648\u0645\u06CC \u2713" : "\u0641\u0642\u0637 \u0627\u062F\u0645\u06CC\u0646")
+  );
+}
+function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
+  const isBlocked = locked || comingSoon;
   return /* @__PURE__ */ React.createElement("div", { className: "w-full" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-2 px-0.5" }, /* @__PURE__ */ React.createElement("h3", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, title)), /* @__PURE__ */ React.createElement(
     "button",
     {
-      onClick,
+      onClick: comingSoon ? void 0 : onClick,
       className: "relative w-full rounded-2xl overflow-hidden border block active:scale-95 transition-transform",
       style: {
         borderColor: "#2a292e",
         background: "#141317",
-        aspectRatio: "16 / 9"
+        aspectRatio: "16 / 9",
+        cursor: comingSoon ? "default" : "pointer"
       }
     },
     image ? /* @__PURE__ */ React.createElement("img", { src: image, alt: title, className: "absolute inset-0 w-full h-full object-contain" }) : /* @__PURE__ */ React.createElement(
@@ -1074,10 +1143,10 @@ function TrainingWindow({ title, onClick, image, locked }) {
         style: { background: "linear-gradient(to top, rgba(11,11,13,0.75) 0%, rgba(11,11,13,0.1) 55%, transparent 100%)" }
       }
     ),
-    locked && /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "rgba(0,0,0,0.55)" } }),
+    isBlocked && /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "rgba(0,0,0,0.55)" } }),
     /* @__PURE__ */ React.createElement("div", { className: "absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg", style: { borderColor: "#D91E2B" } }),
     /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg", style: { borderColor: "#E8B33D" } }),
-    locked && /* @__PURE__ */ React.createElement(
+    isBlocked && /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "absolute top-3 left-3 rounded-full flex items-center justify-center",
@@ -1085,7 +1154,21 @@ function TrainingWindow({ title, onClick, image, locked }) {
       },
       /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", lineHeight: 1 } }, "\u{1F512}")
     ),
-    locked ? /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center gap-1" }, /* @__PURE__ */ React.createElement(
+    comingSoon ? /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center gap-1" }, /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 1px 4px rgba(0,0,0,0.8)" },
+        className: "text-xs font-bold"
+      },
+      "\u0628\u0647\u200C\u0632\u0648\u062F\u06CC"
+    ), /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", textShadow: "0 1px 4px rgba(0,0,0,0.8)" },
+        className: "text-xs"
+      },
+      "\u062F\u0631 \u062D\u0627\u0644 \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC \u0645\u062D\u062A\u0648\u0627"
+    )) : locked ? /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center gap-1" }, /* @__PURE__ */ React.createElement(
       "span",
       {
         style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 1px 4px rgba(0,0,0,0.8)" },
@@ -1204,7 +1287,7 @@ const TIPS_ITEMS = [
   "\u062D\u062A\u0645\u0627\u064B \u0648\u06CC\u062F\u06CC\u0648\u0647\u0627\u06CC \u0645\u0633\u0627\u0628\u0642\u0627\u062A \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631 \u0648 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u0628\u0628\u06CC\u0646 \u062A\u0627 \u0630\u0647\u0646 \u067E\u0648\u06CC\u0627\u06CC\u06CC\u062A \u0641\u0639\u0627\u0644 \u0628\u0634\u0647 \u0648 \u0628\u062F\u0648\u0646\u06CC \u062F\u0627\u0631\u06CC \u0686\u06CC\u06A9\u0627\u0631 \u0645\u06CC\u200C\u06A9\u0646\u06CC",
   "\u062D\u062A\u0645\u0627\u064B \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u0647\u0648\u0627\u0632\u06CC \u0648 \u06A9\u0631\u0627\u0633\u0641\u06CC\u062A \u0631\u0648 \u0647\u0645\u0631\u0627\u0647 \u0628\u0627 \u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627 \u0647\u0641\u062A\u0647\u200C\u0627\u06CC \u062F\u0648 \u0628\u0627\u0631 \u0627\u0646\u062C\u0627\u0645 \u0628\u062F\u0647 \u062A\u0627 \u0628\u0647 \u06CC\u0647 \u0628\u0648\u06A9\u0633\u0648\u0631 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u062A\u0628\u062F\u06CC\u0644 \u0628\u0634\u06CC"
 ];
-const ABOUT_TEXT = "\u0645\u0646 \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC\u200C\u0627\u0645\u061B \u0645\u0631\u0628\u06CC \u0631\u0633\u0645\u06CC \u0641\u062F\u0631\u0627\u0633\u06CC\u0648\u0646 \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631\u060C \u06A9\u0633\u06CC \u06A9\u0647 \u0633\u0627\u0644\u200C\u0647\u0627 \u0631\u0627\u0647 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u062A\u0648\u06CC \u0686\u06CC\u0646 \u0648 \u0627\u0631\u0645\u0646\u0633\u062A\u0627\u0646 \u062F\u0646\u0628\u0627\u0644 \u06A9\u0631\u062F \u062A\u0627 \u0628\u0641\u0647\u0645\u0647 \u0627\u0648\u0646\u200C\u0637\u0631\u0641 \u062F\u0646\u06CC\u0627 \u0627\u06CC\u0646 \u0648\u0631\u0632\u0634 \u0631\u0648 \u0686\u0637\u0648\u0631 \u062C\u062F\u06CC \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646.\n\n\u0647\u0645\u0647\u200C\u06CC \u062A\u0644\u0627\u0634\u0645 \u0627\u06CC\u0646 \u0628\u0648\u062F \u06A9\u0647 \u06CC\u0647 \u062F\u0648\u0631\u0647\u200C\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0633\u0627\u0632\u0645 \u06A9\u0647 \u062F\u06CC\u06AF\u0647 \u0628\u0647\u0648\u0646\u0647\u200C\u0627\u06CC \u0628\u0631\u0627\u0634 \u0646\u0645\u0648\u0646\u0647\u061B \u0646\u0647 \u0627\u0646\u062F\u0627\u0645 \u062E\u0627\u0635 \u0645\u06CC\u200C\u062E\u0648\u0627\u062F\u060C \u0646\u0647 \u0633\u0646 \u0645\u0634\u062E\u0635\u060C \u0646\u0647 \u0642\u062F\u0631\u062A \u0628\u062F\u0646\u06CC \u0641\u0648\u0642\u200C\u0627\u0644\u0639\u0627\u062F\u0647. \u0641\u0642\u0637 \u0628\u0627\u06CC\u062F \u0645\u062B\u0644 \u06CC\u0647 \u06A9\u0644\u0627\u0633 \u062F\u0631\u0633\u060C \u0642\u062F\u0645\u200C\u0628\u0647\u200C\u0642\u062F\u0645 \u067E\u06CC\u0634 \u0628\u0631\u06CC.\n\n\u0628\u0631\u0627\u06CC \u0631\u0633\u06CC\u062F\u0646 \u0628\u0647 \u0627\u06CC\u0646 \u0646\u0642\u0637\u0647\u060C \u062F\u0647\u200C\u0647\u0627 \u0633\u0627\u0639\u062A \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0645\u0628\u0627\u0631\u0632\u0627\u062A \u0645\u0627\u06CC\u06A9 \u062A\u0627\u06CC\u0633\u0648\u0646\u060C \u0645\u062D\u0645\u062F \u0639\u0644\u06CC \u06A9\u0644\u06CC \u0648 \u062E\u06CC\u0644\u06CC \u0627\u0632 \u0628\u0648\u06A9\u0633\u0648\u0631\u0647\u0627\u06CC \u0628\u0632\u0631\u06AF \u062A\u0627\u0631\u06CC\u062E \u0631\u0648 \u062A\u062D\u0644\u06CC\u0644 \u06A9\u0631\u062F\u0645\u061B \u0647\u0631 \u0645\u0628\u0627\u0631\u0632\u0647 \u06CC\u0647 \u0646\u06A9\u062A\u0647\u200C\u06CC \u0637\u0644\u0627\u06CC\u06CC \u062F\u0627\u0634\u062A. \u0627\u06CC\u0646 \u0646\u06A9\u062A\u0647\u200C\u0647\u0627 \u0631\u0648 \u0628\u0631\u062F\u0645 \u062A\u0648\u06CC \u0628\u0627\u0634\u06AF\u0627\u0647 \u062E\u0648\u062F\u0645\u060C \u0631\u0648\u06CC \u0634\u0627\u06AF\u0631\u062F\u0627\u06CC\u06CC \u0628\u0627 \u0647\u0631 \u0633\u0646 \u0648 \u0634\u0631\u0627\u06CC\u0637\u06CC \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0631\u062F\u0645\u060C \u062A\u0627 \u0648\u0642\u062A\u06CC \u0628\u0647 \u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u0631\u0633\u06CC\u062F\u0645 \u06A9\u0647 \u0648\u0627\u0642\u0639\u0627\u064B \u062C\u0648\u0627\u0628 \u0645\u06CC\u200C\u062F\u0647.\n\n\u062D\u0627\u0644\u0627 \u0627\u06CC\u0646 \u0627\u067E \u0628\u0627 \u06F9\u06F0 \u0648\u06CC\u062F\u06CC\u0648\u060C \u0627\u0648\u0644\u06CC\u0646 \u0642\u062F\u0645 \u0631\u0633\u0645\u06CC \u062A\u0648\u06CC \u0627\u06CC\u0646 \u0645\u0633\u06CC\u0631\u0647\u061B \u062F\u0631\u0648\u0627\u0632\u0647\u200C\u06CC \u0648\u0631\u0648\u062F\u062A \u0628\u0647 \u062F\u0646\u06CC\u0627\u06CC \u0628\u0648\u06A9\u0633. \u0648\u0644\u06CC \u062A\u0627\u0632\u0647 \u0634\u0631\u0648\u0639 \u06A9\u0627\u0631\u0647 \u2014 \u062A\u0627 \u0622\u06CC\u0646\u062F\u0647\u200C\u0627\u06CC \u0646\u0632\u062F\u06CC\u06A9\u060C \u0633\u0647 \u0641\u0635\u0644 \u0645\u0647\u0645 \u0648 \u067E\u0631\u0645\u062D\u062A\u0648\u0627\u06CC \u062F\u06CC\u06AF\u0647 \u0647\u0645 \u0628\u0647 \u0647\u0645\u06CC\u0646 \u0645\u0633\u06CC\u0631 \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0647.\n\n\u0622\u0631\u0632\u0648\u06CC \u0645\u0648\u0641\u0642\u06CC\u062A \u062F\u0627\u0631\u0645 \u0628\u0631\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0647\u0645\u200C\u0648\u0637\u0646\u0627\u0645. \u0628\u06CC\u0627 \u0628\u0627 \u0647\u0645 \u0634\u0631\u0648\u0639 \u06A9\u0646\u06CC\u0645.";
+const ABOUT_TEXT = "\u0645\u0646 \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC\u200C\u0627\u0645\u061B \u0645\u0631\u0628\u06CC \u0631\u0633\u0645\u06CC \u0641\u062F\u0631\u0627\u0633\u06CC\u0648\u0646 \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631\u060C \u06A9\u0633\u06CC \u06A9\u0647 \u0633\u0627\u0644\u200C\u0647\u0627 \u0631\u0627\u0647 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u062A\u0648\u06CC \u0686\u06CC\u0646 \u0648 \u0627\u0631\u0645\u0646\u0633\u062A\u0627\u0646 \u062F\u0646\u0628\u0627\u0644 \u06A9\u0631\u062F \u062A\u0627 \u0628\u0641\u0647\u0645\u0647 \u0627\u0648\u0646\u200C\u0637\u0631\u0641 \u062F\u0646\u06CC\u0627 \u0627\u06CC\u0646 \u0648\u0631\u0632\u0634 \u0631\u0648 \u0686\u0637\u0648\u0631 \u062C\u062F\u06CC \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646.\n\n\u0647\u0645\u0647\u200C\u06CC \u062A\u0644\u0627\u0634\u0645 \u0627\u06CC\u0646 \u0628\u0648\u062F \u06A9\u0647 \u06CC\u0647 \u062F\u0648\u0631\u0647\u200C\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0633\u0627\u0632\u0645 \u06A9\u0647 \u062F\u06CC\u06AF\u0647 \u0628\u0647\u0648\u0646\u0647\u200C\u0627\u06CC \u0628\u0631\u0627\u0634 \u0646\u0645\u0648\u0646\u0647\u061B \u0646\u0647 \u0627\u0646\u062F\u0627\u0645 \u062E\u0627\u0635 \u0645\u06CC\u200C\u062E\u0648\u0627\u062F\u060C \u0646\u0647 \u0633\u0646 \u0645\u0634\u062E\u0635\u060C \u0646\u0647 \u0642\u062F\u0631\u062A \u0628\u062F\u0646\u06CC \u0641\u0648\u0642\u200C\u0627\u0644\u0639\u0627\u062F\u0647. \u0641\u0642\u0637 \u0628\u0627\u06CC\u062F \u0645\u062B\u0644 \u06CC\u0647 \u06A9\u0644\u0627\u0633 \u062F\u0631\u0633\u060C \u0642\u062F\u0645\u200C\u0628\u0647\u200C\u0642\u062F\u0645 \u067E\u06CC\u0634 \u0628\u0631\u06CC.\n\n\u0628\u0631\u0627\u06CC \u0631\u0633\u06CC\u062F\u0646 \u0628\u0647 \u0627\u06CC\u0646 \u0646\u0642\u0637\u0647\u060C \u062F\u0647\u200C\u0647\u0627 \u0633\u0627\u0639\u062A \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0645\u0628\u0627\u0631\u0632\u0627\u062A \u0645\u0627\u06CC\u06A9 \u062A\u0627\u06CC\u0633\u0648\u0646\u060C \u0645\u062D\u0645\u062F \u0639\u0644\u06CC \u06A9\u0644\u06CC \u0648 \u062E\u06CC\u0644\u06CC \u0627\u0632 \u0628\u0648\u06A9\u0633\u0648\u0631\u0647\u0627\u06CC \u0628\u0632\u0631\u06AF \u062A\u0627\u0631\u06CC\u062E \u0631\u0648 \u062A\u062D\u0644\u06CC\u0644 \u06A9\u0631\u062F\u0645\u061B \u0647\u0631 \u0645\u0628\u0627\u0631\u0632\u0647 \u06CC\u0647 \u0646\u06A9\u062A\u0647\u200C\u06CC \u0637\u0644\u0627\u06CC\u06CC \u062F\u0627\u0634\u062A. \u0627\u06CC\u0646 \u0646\u06A9\u062A\u0647\u200C\u0647\u0627 \u0631\u0648 \u0628\u0631\u062F\u0645 \u062A\u0648\u06CC \u0628\u0627\u0634\u06AF\u0627\u0647 \u062E\u0648\u062F\u0645\u060C \u0631\u0648\u06CC \u0634\u0627\u06AF\u0631\u062F\u0627\u06CC\u06CC \u0628\u0627 \u0647\u0631 \u0633\u0646 \u0648 \u0634\u0631\u0627\u06CC\u0637\u06CC \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0631\u062F\u0645\u060C \u062A\u0627 \u0648\u0642\u062A\u06CC \u0628\u0647 \u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u0631\u0633\u06CC\u062F\u0645 \u06A9\u0647 \u0648\u0627\u0642\u0639\u0627\u064B \u062C\u0648\u0627\u0628 \u0645\u06CC\u200C\u062F\u0647.\n\n\u062D\u0627\u0644\u0627 \u0627\u06CC\u0646 \u0627\u067E \u0628\u0627 \u06F6 \u0641\u0635\u0644 \u06A9\u0627\u0645\u0644 (\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC\u060C \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647\u060C \u0648 \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632 \u0648 \u0633\u0631\u0639\u062A) \u062F\u0631\u0648\u0627\u0632\u0647\u200C\u06CC \u0648\u0631\u0648\u062F\u062A \u0628\u0647 \u062F\u0646\u06CC\u0627\u06CC \u0628\u0648\u06A9\u0633\u0647 \u2014 \u0627\u0632 \u0627\u0648\u0644\u06CC\u0646 \u0642\u062F\u0645 \u062A\u0627 \u0622\u0645\u0627\u062F\u0647 \u0634\u062F\u0646 \u0628\u0631\u0627\u06CC \u0631\u06CC\u0646\u06AF.\n\n\u0622\u0631\u0632\u0648\u06CC \u0645\u0648\u0641\u0642\u06CC\u062A \u062F\u0627\u0631\u0645 \u0628\u0631\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0647\u0645\u200C\u0648\u0637\u0646\u0627\u0645. \u0628\u06CC\u0627 \u0628\u0627 \u0647\u0645 \u0634\u0631\u0648\u0639 \u06A9\u0646\u06CC\u0645.";
 const FAQ_ITEMS = [
   {
     q: "\u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627 \u0686\u0631\u0627 \u062A\u0648\u06CC \u0633\u0647 \u0641\u0635\u0644 \u0647\u0633\u062A\u0646\u061F",
@@ -1546,7 +1629,7 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -1591,7 +1674,46 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
       image: CHAPTER3_IMAGE_SRC,
       onClick: () => onNavigate("curriculum-extra")
     }
-  ), /* @__PURE__ */ React.createElement(ComingSoonBox, { title: "\u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647" }), /* @__PURE__ */ React.createElement(ComingSoonBox, { title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647" }), /* @__PURE__ */ React.createElement(ComingSoonBox, { title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632\u060C \u0633\u0631\u0639\u062A" }))), menuOpen && /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    TrainingWindow,
+    {
+      title: "\u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647",
+      onClick: () => onNavigate("curriculum-fight"),
+      comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.fight)
+    }
+  ), isAdmin && /* @__PURE__ */ React.createElement(
+    ChapterVisibilityToggle,
+    {
+      visible: Boolean(chapterVisibility == null ? void 0 : chapterVisibility.fight),
+      onToggle: (v) => onToggleChapterVisibility == null ? void 0 : onToggleChapterVisibility("fight", v)
+    }
+  )), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    TrainingWindow,
+    {
+      title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647",
+      onClick: () => onNavigate("curriculum-partner"),
+      comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.partner)
+    }
+  ), isAdmin && /* @__PURE__ */ React.createElement(
+    ChapterVisibilityToggle,
+    {
+      visible: Boolean(chapterVisibility == null ? void 0 : chapterVisibility.partner),
+      onToggle: (v) => onToggleChapterVisibility == null ? void 0 : onToggleChapterVisibility("partner", v)
+    }
+  )), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
+    TrainingWindow,
+    {
+      title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632\u060C \u0633\u0631\u0639\u062A",
+      onClick: () => onNavigate("curriculum-focus"),
+      comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.focus)
+    }
+  ), isAdmin && /* @__PURE__ */ React.createElement(
+    ChapterVisibilityToggle,
+    {
+      visible: Boolean(chapterVisibility == null ? void 0 : chapterVisibility.focus),
+      onToggle: (v) => onToggleChapterVisibility == null ? void 0 : onToggleChapterVisibility("focus", v)
+    }
+  )))), menuOpen && /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "absolute inset-0",
@@ -1764,6 +1886,18 @@ const CURRICULUM_ADVANCED = [
   { n: 30, t: "\u0645\u0628\u0627\u0631\u0632\u0647\u060C \u062A\u06A9\u0646\u06CC\u06A9 \u0627\u062E\u062A\u0644\u0627\u0644 \u062F\u0631 \u0641\u0627\u0635\u0644\u0647" }
 ];
 const CURRICULUM_EXTRA = Array.from({ length: 30 }, (_, i) => ({
+  n: i + 1,
+  t: "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627"
+}));
+const CURRICULUM_FIGHT = Array.from({ length: 30 }, (_, i) => ({
+  n: i + 1,
+  t: "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627"
+}));
+const CURRICULUM_PARTNER = Array.from({ length: 30 }, (_, i) => ({
+  n: i + 1,
+  t: "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627"
+}));
+const CURRICULUM_FOCUS = Array.from({ length: 30 }, (_, i) => ({
   n: i + 1,
   t: "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627"
 }));
@@ -2268,7 +2402,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       if (confirmed && confirmed !== "none") onPlanConfirmed == null ? void 0 : onPlanConfirmed(confirmed, expiresAt);
     });
   }, [isLoggedIn, plan, authToken]);
-  const silverChapters = CURRICULUM_BASIC.length + CURRICULUM_ADVANCED.length + CURRICULUM_EXTRA.length;
+  const silverChapters = CURRICULUM_BASIC.length + CURRICULUM_ADVANCED.length + CURRICULUM_EXTRA.length + CURRICULUM_FIGHT.length + CURRICULUM_PARTNER.length + CURRICULUM_FOCUS.length;
   const silverFeatures = [
     "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A \u0648 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
     `${silverChapters} \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0627 \u06A9\u06CC\u0641\u06CC\u062A HD`,
@@ -2565,6 +2699,9 @@ function getHardwareBackDestination(step, activeLesson) {
     case "curriculum-basic":
     case "curriculum-advanced":
     case "curriculum-extra":
+    case "curriculum-fight":
+    case "curriculum-partner":
+    case "curriculum-focus":
     case "profile":
     case "subscription":
       return { type: "step", step: "home" };
@@ -2601,19 +2738,22 @@ function App() {
   const [deviceId, setDeviceId] = useState(null);
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
+  const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
   const [exitHint, setExitHint] = useState(false);
   const lastPersistedPracticeRef = useRef(0);
   const lastBackPressRef = useRef(0);
+  const backStateRef = useRef({ step, activeLesson, menuOpen });
+  backStateRef.current = { step, activeLesson, menuOpen };
   useEffect(() => {
-    var _a;
-    const Capacitor = window.Capacitor;
-    if (!((_a = Capacitor == null ? void 0 : Capacitor.Plugins) == null ? void 0 : _a.App)) return;
-    const handler = () => {
-      if (menuOpen) {
+    var _a, _b, _c, _d;
+    const runBackAction = () => {
+      var _a2, _b2, _c2, _d2;
+      const { step: curStep, activeLesson: curLesson, menuOpen: curMenuOpen } = backStateRef.current;
+      if (curMenuOpen) {
         setMenuOpen(false);
         return;
       }
-      const dest = getHardwareBackDestination(step, activeLesson);
+      const dest = getHardwareBackDestination(curStep, curLesson);
       if (dest.type === "step") {
         setStep(dest.step);
         return;
@@ -2625,19 +2765,31 @@ function App() {
       }
       const now = Date.now();
       if (now - lastBackPressRef.current < 2e3) {
-        Capacitor.Plugins.App.exitApp();
+        (_d2 = (_c2 = (_b2 = (_a2 = window.Capacitor) == null ? void 0 : _a2.Plugins) == null ? void 0 : _b2.App) == null ? void 0 : _c2.exitApp) == null ? void 0 : _d2.call(_c2);
       } else {
         lastBackPressRef.current = now;
         setExitHint(true);
         setTimeout(() => setExitHint(false), 2e3);
       }
     };
-    const listenerPromise = Capacitor.Plugins.App.addListener("backButton", handler);
-    return () => {
+    let removeListener = null;
+    let cancelled = false;
+    Promise.resolve((_d = (_c = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.App) == null ? void 0 : _c.addListener) == null ? void 0 : _d.call(_c, "backButton", runBackAction)).then((handle) => {
       var _a2;
-      (_a2 = listenerPromise == null ? void 0 : listenerPromise.then) == null ? void 0 : _a2.call(listenerPromise, (l) => l.remove());
+      if (cancelled) (_a2 = handle == null ? void 0 : handle.remove) == null ? void 0 : _a2.call(handle);
+      else removeListener = () => {
+        var _a3;
+        return (_a3 = handle == null ? void 0 : handle.remove) == null ? void 0 : _a3.call(handle);
+      };
+    }).catch(() => {
+    });
+    document.addEventListener("backbutton", runBackAction, false);
+    return () => {
+      cancelled = true;
+      removeListener == null ? void 0 : removeListener();
+      document.removeEventListener("backbutton", runBackAction, false);
     };
-  }, [step, activeLesson, menuOpen]);
+  }, []);
   useEffect(() => {
     getOrCreateDeviceId().then(setDeviceId);
   }, []);
@@ -2668,6 +2820,7 @@ function App() {
   useEffect(() => {
     apiFetchLessonTitles().then(setLessonTitles);
     apiFetchMemberCount().then(setMemberCount);
+    apiFetchChapterVisibility().then(setChapterVisibility);
   }, []);
   const handleRenameLesson = async (curriculumKey, n, newTitle) => {
     const key = `${curriculumKey}-${n}`;
@@ -2678,6 +2831,10 @@ function App() {
     const saved = await apiSetMemberCount(newCount, authToken);
     setMemberCount(saved);
   };
+  const handleToggleChapterVisibility = async (key, visible) => {
+    const saved = await apiSetChapterVisibility(key, visible, authToken);
+    setChapterVisibility((prev) => __spreadProps(__spreadValues({}, prev), { [key]: saved }));
+  };
   const curriculumBasicMerged = CURRICULUM_BASIC.map((it) => __spreadProps(__spreadValues({}, it), {
     t: lessonTitles[`basic-${it.n}`] || it.t
   }));
@@ -2686,6 +2843,15 @@ function App() {
   }));
   const curriculumExtraMerged = CURRICULUM_EXTRA.map((it) => __spreadProps(__spreadValues({}, it), {
     t: lessonTitles[`extra-${it.n}`] || it.t
+  }));
+  const curriculumFightMerged = CURRICULUM_FIGHT.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`fight-${it.n}`] || it.t
+  }));
+  const curriculumPartnerMerged = CURRICULUM_PARTNER.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`partner-${it.n}`] || it.t
+  }));
+  const curriculumFocusMerged = CURRICULUM_FOCUS.map((it) => __spreadProps(__spreadValues({}, it), {
+    t: lessonTitles[`focus-${it.n}`] || it.t
   }));
   useEffect(() => {
     (async () => {
@@ -2865,7 +3031,9 @@ function App() {
         onLogout: handleLogout,
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         memberCount,
-        onSetMemberCount: handleSetMemberCount
+        onSetMemberCount: handleSetMemberCount,
+        chapterVisibility,
+        onToggleChapterVisibility: handleToggleChapterVisibility
       }
     ), step === "info-gear" && /* @__PURE__ */ React.createElement(
       InfoScreen,
@@ -2969,6 +3137,42 @@ function App() {
         onSelect: (item) => openLesson("advanced", item),
         hasVideo: (n) => Boolean(videos[`advanced-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`advanced-${n}`]),
+        plan: (authUser == null ? void 0 : authUser.plan) || "none",
+        onLockedSelect: () => setStep("subscription")
+      }
+    ), step === "curriculum-fight" && /* @__PURE__ */ React.createElement(
+      CurriculumScreen,
+      {
+        title: "\u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647",
+        items: curriculumFightMerged,
+        onBack: () => setStep("home"),
+        onSelect: (item) => openLesson("fight", item),
+        hasVideo: (n) => Boolean(videos[`fight-${n}`]),
+        isCompleted: (n) => Boolean(completedLessons[`fight-${n}`]),
+        plan: (authUser == null ? void 0 : authUser.plan) || "none",
+        onLockedSelect: () => setStep("subscription")
+      }
+    ), step === "curriculum-partner" && /* @__PURE__ */ React.createElement(
+      CurriculumScreen,
+      {
+        title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647",
+        items: curriculumPartnerMerged,
+        onBack: () => setStep("home"),
+        onSelect: (item) => openLesson("partner", item),
+        hasVideo: (n) => Boolean(videos[`partner-${n}`]),
+        isCompleted: (n) => Boolean(completedLessons[`partner-${n}`]),
+        plan: (authUser == null ? void 0 : authUser.plan) || "none",
+        onLockedSelect: () => setStep("subscription")
+      }
+    ), step === "curriculum-focus" && /* @__PURE__ */ React.createElement(
+      CurriculumScreen,
+      {
+        title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632\u060C \u0633\u0631\u0639\u062A",
+        items: curriculumFocusMerged,
+        onBack: () => setStep("home"),
+        onSelect: (item) => openLesson("focus", item),
+        hasVideo: (n) => Boolean(videos[`focus-${n}`]),
+        isCompleted: (n) => Boolean(completedLessons[`focus-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription")
       }
