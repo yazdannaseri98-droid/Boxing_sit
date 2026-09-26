@@ -398,13 +398,34 @@ async function apiSetChapterTitle(key, title, token) {
   }
   return data.title;
 }
+const DEMO_BOT_RULES = [
+  { keywords: ["\u0642\u06CC\u0645\u062A", "\u0647\u0632\u06CC\u0646\u0647", "\u0686\u0642\u062F\u0631", "\u062A\u0648\u0645\u0627\u0646"], answer: "\u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u0648 \u0637\u0644\u0627\u06CC\u06CC \u0647\u0631\u06A9\u062F\u0648\u0645 \u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0 \u062A\u0648\u0645\u0627\u0646 \u0648 \u06F2 \u0633\u0627\u0644 \u0627\u0639\u062A\u0628\u0627\u0631 \u062F\u0627\u0631\u0646. \u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u067E\u0627\u06CC\u0647 \u0631\u0648 \u0628\u0627\u0632 \u0645\u06CC\u200C\u06A9\u0646\u0647\u060C \u0637\u0644\u0627\u06CC\u06CC \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0631\u0648." },
+  { keywords: ["\u062F\u0633\u062A\u06AF\u0627\u0647", "\u06AF\u0648\u0634\u06CC \u062C\u062F\u06CC\u062F", "\u0647\u0645\u0632\u0645\u0627\u0646"], answer: "\u0647\u0631 \u062D\u0633\u0627\u0628 \u0641\u0642\u0637 \u0631\u0648\u06CC \u06CC\u06A9 \u06AF\u0648\u0634\u06CC \u0647\u0645\u0632\u0645\u0627\u0646 \u0641\u0639\u0627\u0644\u0647." },
+  { keywords: ["\u062F\u0627\u0646\u0644\u0648\u062F \u0648\u06CC\u062F\u06CC\u0648", "\u0628\u0627\u0632\u0646\u0634\u0631"], answer: "\u062F\u0627\u0646\u0644\u0648\u062F \u06CC\u0627 \u0628\u0627\u0632\u0646\u0634\u0631 \u0648\u06CC\u062F\u06CC\u0648\u0647\u0627 \u0645\u062C\u0627\u0632 \u0646\u06CC\u0633\u062A\u060C \u0641\u0642\u0637 \u0628\u0631\u0627\u06CC \u0627\u0633\u062A\u0641\u0627\u062F\u0647\u200C\u06CC \u0634\u062E\u0635\u06CC \u062F\u0627\u062E\u0644 \u0627\u067E\u0647." },
+  { keywords: ["\u0633\u0644\u0627\u0645", "\u062F\u0631\u0648\u062F"], answer: "\u0633\u0644\u0627\u0645! \u062E\u0648\u0634 \u0627\u0648\u0645\u062F\u06CC \u{1F44B} \u0686\u0647 \u06A9\u0645\u06A9\u06CC \u0627\u0632 \u062F\u0633\u062A\u0645 \u0628\u0631\u0645\u06CC\u0627\u062F\u061F" },
+  { keywords: ["\u0645\u0645\u0646\u0648\u0646", "\u0645\u0631\u0633\u06CC", "\u062A\u0634\u06A9\u0631"], answer: "\u062E\u0648\u0627\u0647\u0634 \u0645\u06CC\u200C\u06A9\u0646\u0645 \u{1F64F} \u0647\u0631 \u0633\u0648\u0627\u0644 \u062F\u06CC\u06AF\u0647\u200C\u0627\u06CC \u0647\u0645 \u062F\u0627\u0634\u062A\u06CC \u0628\u067E\u0631\u0633." }
+];
+function demoMatchBotReply(message) {
+  const normalized = String(message || "").trim();
+  if (!normalized) return null;
+  for (const rule of DEMO_BOT_RULES) {
+    if (rule.keywords.some((kw) => normalized.includes(kw))) return rule.answer;
+  }
+  return null;
+}
 async function apiSendSupportMessage(token, message) {
   if (DEMO_MODE) {
     const stored = await AppStorage.get("demo-support-messages");
     const messages = stored ? JSON.parse(stored) : [];
     messages.push({ sender: "user", message, createdAt: Date.now() });
+    let botReply = null;
+    const botAnswer = demoMatchBotReply(message);
+    if (botAnswer) {
+      botReply = { sender: "bot", message: botAnswer, createdAt: Date.now() };
+      messages.push(botReply);
+    }
     await AppStorage.set("demo-support-messages", JSON.stringify(messages));
-    return;
+    return { botReply };
   }
   const res = await fetch(`${API_BASE_URL}/support/messages`, {
     method: "POST",
@@ -414,6 +435,7 @@ async function apiSendSupportMessage(token, message) {
   if (res.status === 401) triggerAuthFailure();
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || "\u0627\u0631\u0633\u0627\u0644 \u067E\u06CC\u0627\u0645 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  return { botReply: data.botReply || null };
 }
 async function apiFetchMySupportMessages(token) {
   if (DEMO_MODE) {
@@ -484,9 +506,18 @@ function formatExpiryDate(timestamp) {
 function formatMessageTime(timestamp) {
   try {
     const d = new Date(timestamp);
-    const datePart = d.toLocaleDateString("fa-IR", { month: "short", day: "numeric" });
-    const timePart = d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
-    return `${datePart} - ${timePart}`;
+    const parts = new Intl.DateTimeFormat("fa-IR-u-nu-latn", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(d);
+    const get = (type) => {
+      var _a;
+      return ((_a = parts.find((p) => p.type === type)) == null ? void 0 : _a.value) || "";
+    };
+    const datePart = `${get("day")}/${get("month")}/${get("year")}`;
+    const timePart = d.toLocaleTimeString("fa-IR-u-nu-latn", { hour: "2-digit", minute: "2-digit" });
+    return `${datePart},,${timePart}`;
   } catch (e) {
     return "";
   }
@@ -1461,7 +1492,7 @@ const RULES_ITEMS = [
   },
   {
     q: "\u0627\u0634\u062A\u0631\u0627\u06A9 VIP \u0686\u0637\u0648\u0631 \u06A9\u0627\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0647\u061F",
-    a: "\u0628\u0627 \u062E\u0631\u06CC\u062F \u0647\u0631 \u06A9\u062F\u0648\u0645 \u0627\u0632 \u067E\u0644\u0646\u200C\u0647\u0627\u06CC \u0645\u0627\u0647\u0627\u0646\u0647\u060C \u0641\u0635\u0644\u06CC \u06CC\u0627 \u0633\u0627\u0644\u0627\u0646\u0647\u060C \u062F\u0633\u062A\u0631\u0633\u06CC \u06A9\u0627\u0645\u0644 \u0628\u0647 \u0647\u0645\u0647\u200C\u06CC \u062C\u0644\u0633\u0627\u062A \u062A\u0627 \u067E\u0627\u06CC\u0627\u0646 \u0647\u0645\u0648\u0646 \u0628\u0627\u0632\u0647\u200C\u06CC \u0632\u0645\u0627\u0646\u06CC \u0641\u0639\u0627\u0644 \u0645\u06CC\u200C\u0645\u0648\u0646\u0647. \u0628\u0639\u062F \u0627\u0632 \u062A\u0627\u0631\u06CC\u062E \u0627\u0646\u0642\u0636\u0627\u060C \u062D\u0633\u0627\u0628 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0628\u0647 \u062D\u0627\u0644\u062A \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0628\u0631\u0645\u06CC\u200C\u06AF\u0631\u062F\u0647 \u0645\u06AF\u0631 \u0627\u06CC\u0646\u06A9\u0647 \u062F\u0648\u0628\u0627\u0631\u0647 \u062A\u0645\u062F\u06CC\u062F \u06A9\u0646\u06CC."
+    a: "\u0628\u0627 \u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u06CC\u0627 \u0637\u0644\u0627\u06CC\u06CC (\u0647\u0631\u06A9\u062F\u0648\u0645 \u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0 \u062A\u0648\u0645\u0627\u0646)\u060C \u0628\u0647 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u0645\u0631\u0628\u0648\u0637 \u0628\u0647 \u0647\u0645\u0648\u0646 \u0627\u0634\u062A\u0631\u0627\u06A9 \u0628\u0647 \u0645\u062F\u062A \u06F2 \u0633\u0627\u0644 \u0627\u0632 \u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u06CC\u062F \u062F\u0633\u062A\u0631\u0633\u06CC \u067E\u06CC\u062F\u0627 \u0645\u06CC\u200C\u06A9\u0646\u06CC. \u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u067E\u0627\u06CC\u0647 (\u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC) \u0631\u0648 \u0628\u0627\u0632 \u0645\u06CC\u200C\u06A9\u0646\u0647 \u0648 \u0637\u0644\u0627\u06CC\u06CC \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC (\u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF\u060C \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644/\u0645\u0628\u0627\u0631\u0632\u0647) \u0631\u0648\u061B \u0627\u06CC\u0646 \u062F\u0648 \u062A\u0627 \u0645\u0633\u062A\u0642\u0644 \u0627\u0632 \u0647\u0645\u0646\u060C \u067E\u0633 \u0628\u0631\u0627\u06CC \u062F\u0633\u062A\u0631\u0633\u06CC \u06A9\u0627\u0645\u0644 \u0628\u0627\u06CC\u062F \u0647\u0631 \u062F\u0648 \u0631\u0648 \u062C\u062F\u0627 \u062A\u0647\u06CC\u0647 \u06A9\u0646\u06CC. \u0628\u0639\u062F \u0627\u0632 \u067E\u0627\u06CC\u0627\u0646 \u06F2 \u0633\u0627\u0644\u060C \u0628\u0631\u0627\u06CC \u0627\u062F\u0627\u0645\u0647\u200C\u06CC \u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0627\u06CC\u062F \u062A\u0645\u062F\u06CC\u062F \u06A9\u0646\u06CC."
   },
   {
     q: "\u0622\u06CC\u0627 \u0648\u062C\u0647 \u067E\u0631\u062F\u0627\u062E\u062A\u06CC \u0642\u0627\u0628\u0644 \u0628\u0627\u0632\u06AF\u0634\u062A\u0647\u061F",
@@ -1632,7 +1663,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
   };
   const lastMessage = messages.length ? messages[messages.length - 1] : null;
   const showStatusBanner = myRole === "user" && Boolean(lastMessage);
-  const isAnswered = (lastMessage == null ? void 0 : lastMessage.sender) === "admin";
+  const isAnswered = (lastMessage == null ? void 0 : lastMessage.sender) === "admin" || (lastMessage == null ? void 0 : lastMessage.sender) === "bot";
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col min-h-0", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "px-5 pt-3 pb-2 shrink-0" }, /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -1660,7 +1691,15 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
     )
   )), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2" }, messages.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center mt-10" }, "\u0647\u0646\u0648\u0632 \u067E\u06CC\u0627\u0645\u06CC \u0631\u062F \u0648 \u0628\u062F\u0644 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644\u06CC\u0646 \u067E\u06CC\u0627\u0645 \u0631\u0648 \u0628\u0641\u0631\u0633\u062A."), messages.map((m, i) => {
     const isMine = m.sender === myRole;
-    return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex flex-col ${isMine ? "items-start" : "items-end"}` }, /* @__PURE__ */ React.createElement(
+    const showSenderLabel = myRole === "user" && !isMine && m.sender === "bot";
+    return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex flex-col ${isMine ? "items-start" : "items-end"}` }, showSenderLabel && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" },
+        className: "text-[10px] font-bold mb-1 px-1"
+      },
+      "\u{1F916} \u067E\u0627\u0633\u062E \u062E\u0648\u062F\u06A9\u0627\u0631"
+    ), /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "rounded-2xl px-3.5 py-2.5",
@@ -1904,7 +1943,7 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -2063,6 +2102,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
       ),
       /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, menuItems.map((item) => {
         const Icon = item.icon;
+        const dotColor = item.key === "support" && supportStatus === "pending" ? "#E8B33D" : item.key === "support" && supportStatus === "answered" ? "#1FA855" : null;
         return /* @__PURE__ */ React.createElement(
           "button",
           {
@@ -2075,7 +2115,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
                 onNavigate(item.key);
               }
             },
-            className: "flex items-center gap-3 rounded-xl px-3 py-3",
+            className: "flex items-center gap-3 rounded-xl px-3 py-3 relative",
             style: {
               background: "#17161A",
               border: "1px solid #5FD3E8",
@@ -2083,7 +2123,14 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
             }
           },
           /* @__PURE__ */ React.createElement(Icon, { className: "w-5 h-5", style: { color: "#D91E2B" } }),
-          /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, item.label)
+          /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, item.label),
+          dotColor && /* @__PURE__ */ React.createElement(
+            "span",
+            {
+              style: { background: dotColor, boxShadow: `0 0 6px ${dotColor}` },
+              className: "absolute top-2 left-2 w-2.5 h-2.5 rounded-full"
+            }
+          )
         );
       })),
       /* @__PURE__ */ React.createElement(
@@ -3095,6 +3142,7 @@ function App() {
   const [supportLoading, setSupportLoading] = useState(false);
   const [supportError, setSupportError] = useState("");
   const [activeSupportIdentifier, setActiveSupportIdentifier] = useState(null);
+  const [supportStatus, setSupportStatus] = useState(null);
   const [exitHint, setExitHint] = useState(false);
   const lastPersistedPracticeRef = useRef(0);
   const lastBackPressRef = useRef(0);
@@ -3196,6 +3244,28 @@ function App() {
     const saved = await apiSetChapterVisibility(key, visible, authToken);
     setChapterVisibility((prev) => __spreadProps(__spreadValues({}, prev), { [key]: saved }));
   };
+  const refreshSupportStatus = async () => {
+    if (!authToken) {
+      setSupportStatus(null);
+      return;
+    }
+    try {
+      if (authUser == null ? void 0 : authUser.isAdmin) {
+        const threads = await apiFetchSupportThreads(authToken);
+        if (threads.length === 0) setSupportStatus(null);
+        else if (threads.some((t) => t.lastSender === "user")) setSupportStatus("pending");
+        else setSupportStatus("answered");
+      } else {
+        const messages = await apiFetchMySupportMessages(authToken);
+        if (messages.length === 0) setSupportStatus(null);
+        else setSupportStatus(messages[messages.length - 1].sender === "user" ? "pending" : "answered");
+      }
+    } catch (e) {
+    }
+  };
+  useEffect(() => {
+    refreshSupportStatus();
+  }, [authToken, authUser == null ? void 0 : authUser.isAdmin]);
   const openMySupportChat = async () => {
     setActiveSupportIdentifier(null);
     setStep("support-chat");
@@ -3245,9 +3315,15 @@ function App() {
     if ((authUser == null ? void 0 : authUser.isAdmin) && activeSupportIdentifier) {
       await apiSendSupportReply(authToken, activeSupportIdentifier, text);
       setSupportMessages((prev) => [...prev, { sender: "admin", message: text, createdAt: Date.now() }]);
+      refreshSupportStatus();
     } else {
-      await apiSendSupportMessage(authToken, text);
-      setSupportMessages((prev) => [...prev, { sender: "user", message: text, createdAt: Date.now() }]);
+      const { botReply } = await apiSendSupportMessage(authToken, text);
+      setSupportMessages((prev) => {
+        const next = [...prev, { sender: "user", message: text, createdAt: Date.now() }];
+        if (botReply) next.push(botReply);
+        return next;
+      });
+      setSupportStatus(botReply ? "answered" : "pending");
     }
   };
   const curriculumBasicMerged = CURRICULUM_BASIC.map((it) => __spreadProps(__spreadValues({}, it), {
@@ -3451,7 +3527,8 @@ function App() {
         chapterVisibility,
         onToggleChapterVisibility: handleToggleChapterVisibility,
         onOpenSupport: handleOpenSupport,
-        chapterTitles
+        chapterTitles,
+        supportStatus
       }
     ), step === "info-gear" && /* @__PURE__ */ React.createElement(
       InfoScreen,
