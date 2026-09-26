@@ -358,6 +358,46 @@ async function apiSetChapterVisibility(key, visible, token) {
   }
   return data.visible;
 }
+async function apiFetchChapterTitles() {
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-chapter-titles");
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+      }
+    }
+    return {};
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/settings/chapter-titles`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return {};
+    return data.titles || {};
+  } catch (e) {
+    return {};
+  }
+}
+async function apiSetChapterTitle(key, title, token) {
+  if (DEMO_MODE) {
+    const stored = await AppStorage.get("demo-chapter-titles");
+    const titles = stored ? JSON.parse(stored) : {};
+    titles[key] = title;
+    await AppStorage.set("demo-chapter-titles", JSON.stringify(titles));
+    return title;
+  }
+  const res = await fetch(`${API_BASE_URL}/settings/chapter-titles/${key}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ title })
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "\u062A\u063A\u06CC\u06CC\u0631 \u0639\u0646\u0648\u0627\u0646 \u0641\u0635\u0644 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
+  }
+  return data.title;
+}
 async function apiSendSupportMessage(token, message) {
   if (DEMO_MODE) {
     const stored = await AppStorage.get("demo-support-messages");
@@ -437,6 +477,16 @@ async function apiSendSupportReply(token, identifier, message) {
 function formatExpiryDate(timestamp) {
   try {
     return new Date(timestamp).toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" });
+  } catch (e) {
+    return "";
+  }
+}
+function formatMessageTime(timestamp) {
+  try {
+    const d = new Date(timestamp);
+    const datePart = d.toLocaleDateString("fa-IR", { month: "short", day: "numeric" });
+    const timePart = d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
+    return `${datePart} - ${timePart}`;
   } catch (e) {
     return "";
   }
@@ -1357,7 +1407,7 @@ const TIPS_ITEMS = [
   "\u062D\u062A\u0645\u0627\u064B \u0648\u06CC\u062F\u06CC\u0648\u0647\u0627\u06CC \u0645\u0633\u0627\u0628\u0642\u0627\u062A \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631 \u0648 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u0628\u0628\u06CC\u0646 \u062A\u0627 \u0630\u0647\u0646 \u067E\u0648\u06CC\u0627\u06CC\u06CC\u062A \u0641\u0639\u0627\u0644 \u0628\u0634\u0647 \u0648 \u0628\u062F\u0648\u0646\u06CC \u062F\u0627\u0631\u06CC \u0686\u06CC\u06A9\u0627\u0631 \u0645\u06CC\u200C\u06A9\u0646\u06CC",
   "\u062D\u062A\u0645\u0627\u064B \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u0647\u0648\u0627\u0632\u06CC \u0648 \u06A9\u0631\u0627\u0633\u0641\u06CC\u062A \u0631\u0648 \u0647\u0645\u0631\u0627\u0647 \u0628\u0627 \u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627 \u0647\u0641\u062A\u0647\u200C\u0627\u06CC \u062F\u0648 \u0628\u0627\u0631 \u0627\u0646\u062C\u0627\u0645 \u0628\u062F\u0647 \u062A\u0627 \u0628\u0647 \u06CC\u0647 \u0628\u0648\u06A9\u0633\u0648\u0631 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u062A\u0628\u062F\u06CC\u0644 \u0628\u0634\u06CC"
 ];
-const ABOUT_TEXT = "\u0645\u0646 \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC\u200C\u0627\u0645\u061B \u0645\u0631\u0628\u06CC \u0631\u0633\u0645\u06CC \u0641\u062F\u0631\u0627\u0633\u06CC\u0648\u0646 \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631\u060C \u06A9\u0633\u06CC \u06A9\u0647 \u0633\u0627\u0644\u200C\u0647\u0627 \u0631\u0627\u0647 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u062A\u0648\u06CC \u0686\u06CC\u0646 \u0648 \u0627\u0631\u0645\u0646\u0633\u062A\u0627\u0646 \u062F\u0646\u0628\u0627\u0644 \u06A9\u0631\u062F \u062A\u0627 \u0628\u0641\u0647\u0645\u0647 \u0627\u0648\u0646\u200C\u0637\u0631\u0641 \u062F\u0646\u06CC\u0627 \u0627\u06CC\u0646 \u0648\u0631\u0632\u0634 \u0631\u0648 \u0686\u0637\u0648\u0631 \u062C\u062F\u06CC \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646.\n\n\u0647\u0645\u0647\u200C\u06CC \u062A\u0644\u0627\u0634\u0645 \u0627\u06CC\u0646 \u0628\u0648\u062F \u06A9\u0647 \u06CC\u0647 \u062F\u0648\u0631\u0647\u200C\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0633\u0627\u0632\u0645 \u06A9\u0647 \u062F\u06CC\u06AF\u0647 \u0628\u0647\u0648\u0646\u0647\u200C\u0627\u06CC \u0628\u0631\u0627\u0634 \u0646\u0645\u0648\u0646\u0647\u061B \u0646\u0647 \u0627\u0646\u062F\u0627\u0645 \u062E\u0627\u0635 \u0645\u06CC\u200C\u062E\u0648\u0627\u062F\u060C \u0646\u0647 \u0633\u0646 \u0645\u0634\u062E\u0635\u060C \u0646\u0647 \u0642\u062F\u0631\u062A \u0628\u062F\u0646\u06CC \u0641\u0648\u0642\u200C\u0627\u0644\u0639\u0627\u062F\u0647. \u0641\u0642\u0637 \u0628\u0627\u06CC\u062F \u0645\u062B\u0644 \u06CC\u0647 \u06A9\u0644\u0627\u0633 \u062F\u0631\u0633\u060C \u0642\u062F\u0645\u200C\u0628\u0647\u200C\u0642\u062F\u0645 \u067E\u06CC\u0634 \u0628\u0631\u06CC.\n\n\u0628\u0631\u0627\u06CC \u0631\u0633\u06CC\u062F\u0646 \u0628\u0647 \u0627\u06CC\u0646 \u0646\u0642\u0637\u0647\u060C \u062F\u0647\u200C\u0647\u0627 \u0633\u0627\u0639\u062A \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0645\u0628\u0627\u0631\u0632\u0627\u062A \u0645\u0627\u06CC\u06A9 \u062A\u0627\u06CC\u0633\u0648\u0646\u060C \u0645\u062D\u0645\u062F \u0639\u0644\u06CC \u06A9\u0644\u06CC \u0648 \u062E\u06CC\u0644\u06CC \u0627\u0632 \u0628\u0648\u06A9\u0633\u0648\u0631\u0647\u0627\u06CC \u0628\u0632\u0631\u06AF \u062A\u0627\u0631\u06CC\u062E \u0631\u0648 \u062A\u062D\u0644\u06CC\u0644 \u06A9\u0631\u062F\u0645\u061B \u0647\u0631 \u0645\u0628\u0627\u0631\u0632\u0647 \u06CC\u0647 \u0646\u06A9\u062A\u0647\u200C\u06CC \u0637\u0644\u0627\u06CC\u06CC \u062F\u0627\u0634\u062A. \u0627\u06CC\u0646 \u0646\u06A9\u062A\u0647\u200C\u0647\u0627 \u0631\u0648 \u0628\u0631\u062F\u0645 \u062A\u0648\u06CC \u0628\u0627\u0634\u06AF\u0627\u0647 \u062E\u0648\u062F\u0645\u060C \u0631\u0648\u06CC \u0634\u0627\u06AF\u0631\u062F\u0627\u06CC\u06CC \u0628\u0627 \u0647\u0631 \u0633\u0646 \u0648 \u0634\u0631\u0627\u06CC\u0637\u06CC \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0631\u062F\u0645\u060C \u062A\u0627 \u0648\u0642\u062A\u06CC \u0628\u0647 \u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u0631\u0633\u06CC\u062F\u0645 \u06A9\u0647 \u0648\u0627\u0642\u0639\u0627\u064B \u062C\u0648\u0627\u0628 \u0645\u06CC\u200C\u062F\u0647.\n\n\u062D\u0627\u0644\u0627 \u0627\u06CC\u0646 \u0627\u067E \u0628\u0627 \u06F6 \u0641\u0635\u0644 \u06A9\u0627\u0645\u0644 (\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC\u060C \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647\u060C \u0648 \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632 \u0648 \u0633\u0631\u0639\u062A) \u062F\u0631\u0648\u0627\u0632\u0647\u200C\u06CC \u0648\u0631\u0648\u062F\u062A \u0628\u0647 \u062F\u0646\u06CC\u0627\u06CC \u0628\u0648\u06A9\u0633\u0647 \u2014 \u0627\u0632 \u0627\u0648\u0644\u06CC\u0646 \u0642\u062F\u0645 \u062A\u0627 \u0622\u0645\u0627\u062F\u0647 \u0634\u062F\u0646 \u0628\u0631\u0627\u06CC \u0631\u06CC\u0646\u06AF.\n\n\u0622\u0631\u0632\u0648\u06CC \u0645\u0648\u0641\u0642\u06CC\u062A \u062F\u0627\u0631\u0645 \u0628\u0631\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0647\u0645\u200C\u0648\u0637\u0646\u0627\u0645. \u0628\u06CC\u0627 \u0628\u0627 \u0647\u0645 \u0634\u0631\u0648\u0639 \u06A9\u0646\u06CC\u0645.";
+const ABOUT_TEXT = "\u0645\u0646 \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC\u200C\u0627\u0645\u061B \u0645\u0631\u0628\u06CC \u0631\u0633\u0645\u06CC \u0641\u062F\u0631\u0627\u0633\u06CC\u0648\u0646 \u0628\u0648\u06A9\u0633 \u0622\u0645\u0627\u062A\u0648\u0631\u060C \u06A9\u0633\u06CC \u06A9\u0647 \u0633\u0627\u0644\u200C\u0647\u0627 \u0631\u0627\u0647 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC \u0631\u0648 \u062A\u0648\u06CC \u0686\u06CC\u0646 \u0648 \u0627\u0631\u0645\u0646\u0633\u062A\u0627\u0646 \u062F\u0646\u0628\u0627\u0644 \u06A9\u0631\u062F \u062A\u0627 \u0628\u0641\u0647\u0645\u0647 \u0627\u0648\u0646\u200C\u0637\u0631\u0641 \u062F\u0646\u06CC\u0627 \u0627\u06CC\u0646 \u0648\u0631\u0632\u0634 \u0631\u0648 \u0686\u0637\u0648\u0631 \u062C\u062F\u06CC \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646.\n\n\u0647\u0645\u0647\u200C\u06CC \u062A\u0644\u0627\u0634\u0645 \u0627\u06CC\u0646 \u0628\u0648\u062F \u06A9\u0647 \u06CC\u0647 \u062F\u0648\u0631\u0647\u200C\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0633\u0627\u0632\u0645 \u06A9\u0647 \u062F\u06CC\u06AF\u0647 \u0628\u0647\u0648\u0646\u0647\u200C\u0627\u06CC \u0628\u0631\u0627\u0634 \u0646\u0645\u0648\u0646\u0647\u061B \u0646\u0647 \u0627\u0646\u062F\u0627\u0645 \u062E\u0627\u0635 \u0645\u06CC\u200C\u062E\u0648\u0627\u062F\u060C \u0646\u0647 \u0633\u0646 \u0645\u0634\u062E\u0635\u060C \u0646\u0647 \u0642\u062F\u0631\u062A \u0628\u062F\u0646\u06CC \u0641\u0648\u0642\u200C\u0627\u0644\u0639\u0627\u062F\u0647. \u0641\u0642\u0637 \u0628\u0627\u06CC\u062F \u0645\u062B\u0644 \u06CC\u0647 \u06A9\u0644\u0627\u0633 \u062F\u0631\u0633\u060C \u0642\u062F\u0645\u200C\u0628\u0647\u200C\u0642\u062F\u0645 \u067E\u06CC\u0634 \u0628\u0631\u06CC.\n\n\u0628\u0631\u0627\u06CC \u0631\u0633\u06CC\u062F\u0646 \u0628\u0647 \u0627\u06CC\u0646 \u0646\u0642\u0637\u0647\u060C \u062F\u0647\u200C\u0647\u0627 \u0633\u0627\u0639\u062A \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0645\u0628\u0627\u0631\u0632\u0627\u062A \u0645\u0627\u06CC\u06A9 \u062A\u0627\u06CC\u0633\u0648\u0646\u060C \u0645\u062D\u0645\u062F \u0639\u0644\u06CC \u06A9\u0644\u06CC \u0648 \u062E\u06CC\u0644\u06CC \u0627\u0632 \u0628\u0648\u06A9\u0633\u0648\u0631\u0647\u0627\u06CC \u0628\u0632\u0631\u06AF \u062A\u0627\u0631\u06CC\u062E \u0631\u0648 \u062A\u062D\u0644\u06CC\u0644 \u06A9\u0631\u062F\u0645\u061B \u0647\u0631 \u0645\u0628\u0627\u0631\u0632\u0647 \u06CC\u0647 \u0646\u06A9\u062A\u0647\u200C\u06CC \u0637\u0644\u0627\u06CC\u06CC \u062F\u0627\u0634\u062A. \u0627\u06CC\u0646 \u0646\u06A9\u062A\u0647\u200C\u0647\u0627 \u0631\u0648 \u0628\u0631\u062F\u0645 \u062A\u0648\u06CC \u0628\u0627\u0634\u06AF\u0627\u0647 \u062E\u0648\u062F\u0645\u060C \u0631\u0648\u06CC \u0634\u0627\u06AF\u0631\u062F\u0627\u06CC\u06CC \u0628\u0627 \u0647\u0631 \u0633\u0646 \u0648 \u0634\u0631\u0627\u06CC\u0637\u06CC \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0631\u062F\u0645\u060C \u062A\u0627 \u0648\u0642\u062A\u06CC \u0628\u0647 \u0646\u062A\u06CC\u062C\u0647\u200C\u0627\u06CC \u0631\u0633\u06CC\u062F\u0645 \u06A9\u0647 \u0648\u0627\u0642\u0639\u0627\u064B \u062C\u0648\u0627\u0628 \u0645\u06CC\u200C\u062F\u0647.\n\n\u062D\u0627\u0644\u0627 \u0627\u06CC\u0646 \u0627\u067E \u0628\u0627 \u06F6 \u0641\u0635\u0644 \u06A9\u0627\u0645\u0644 (\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC\u060C \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF / \u062A\u0645\u0631\u06CC\u0646 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u0648 \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632 \u0648 \u0633\u0631\u0639\u062A) \u062F\u0631\u0648\u0627\u0632\u0647\u200C\u06CC \u0648\u0631\u0648\u062F\u062A \u0628\u0647 \u062F\u0646\u06CC\u0627\u06CC \u0628\u0648\u06A9\u0633\u0647 \u2014 \u0627\u0632 \u0627\u0648\u0644\u06CC\u0646 \u0642\u062F\u0645 \u062A\u0627 \u0622\u0645\u0627\u062F\u0647 \u0634\u062F\u0646 \u0628\u0631\u0627\u06CC \u0631\u06CC\u0646\u06AF.\n\n\u0622\u0631\u0632\u0648\u06CC \u0645\u0648\u0641\u0642\u06CC\u062A \u062F\u0627\u0631\u0645 \u0628\u0631\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0647\u0645\u200C\u0648\u0637\u0646\u0627\u0645. \u0628\u06CC\u0627 \u0628\u0627 \u0647\u0645 \u0634\u0631\u0648\u0639 \u06A9\u0646\u06CC\u0645.";
 const FAQ_ITEMS = [
   {
     q: "\u0622\u0645\u0648\u0632\u0634\u200C\u0647\u0627 \u0686\u0631\u0627 \u062A\u0648\u06CC \u0633\u0647 \u0641\u0635\u0644 \u0647\u0633\u062A\u0646\u061F",
@@ -1381,7 +1431,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "\u0622\u06CC\u0627 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062F\u06CC\u06AF\u0647\u200C\u0627\u06CC \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0647\u061F",
-    a: "\u0628\u0644\u0647\u060C \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647 \u0648 \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u0628\u0647\u200C\u062A\u062F\u0631\u06CC\u062C \u0628\u0647 \u0627\u067E \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0646 \u062A\u0627 \u0645\u0633\u06CC\u0631 \u06CC\u0627\u062F\u06AF\u06CC\u0631\u06CC\u062A \u0627\u0632 \u067E\u0627\u06CC\u0647 \u062A\u0627 \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC \u06A9\u0627\u0645\u0644 \u0628\u0631\u0627\u06CC \u0631\u06CC\u0646\u06AF\u060C \u0628\u062F\u0648\u0646 \u0648\u0642\u0641\u0647 \u0627\u062F\u0627\u0645\u0647 \u067E\u06CC\u062F\u0627 \u06A9\u0646\u0647."
+    a: "\u0628\u0644\u0647\u060C \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF / \u062A\u0645\u0631\u06CC\u0646 \u0645\u0628\u0627\u0631\u0632\u0647 \u0648 \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644 / \u0645\u0628\u0627\u0631\u0632\u0647 \u0628\u0647\u200C\u062A\u062F\u0631\u06CC\u062C \u0628\u0647 \u0627\u067E \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0646 \u062A\u0627 \u0645\u0633\u06CC\u0631 \u06CC\u0627\u062F\u06AF\u06CC\u0631\u06CC\u062A \u0627\u0632 \u067E\u0627\u06CC\u0647 \u062A\u0627 \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC \u06A9\u0627\u0645\u0644 \u0628\u0631\u0627\u06CC \u0631\u06CC\u0646\u06AF\u060C \u0628\u062F\u0648\u0646 \u0648\u0642\u0641\u0647 \u0627\u062F\u0627\u0645\u0647 \u067E\u06CC\u062F\u0627 \u06A9\u0646\u0647."
   },
   {
     q: "\u0628\u0627 \u0627\u06CC\u0646 \u062A\u0645\u0631\u06CC\u0646\u0627 \u062A\u0627 \u0686\u0647 \u062D\u062F \u067E\u06CC\u0634 \u0645\u06CC\u200C\u0631\u0645\u061F",
@@ -1580,6 +1630,9 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
       setSending(false);
     }
   };
+  const lastMessage = messages.length ? messages[messages.length - 1] : null;
+  const showStatusBanner = myRole === "user" && Boolean(lastMessage);
+  const isAnswered = (lastMessage == null ? void 0 : lastMessage.sender) === "admin";
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col min-h-0", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "px-5 pt-3 pb-2 shrink-0" }, /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -1588,9 +1641,26 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
       className: "text-sm mb-3 rounded-lg px-3 py-1.5 font-bold inline-block"
     },
     "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"
-  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black" }, title), subtitle && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Oswald, sans-serif", color: "#8A8790", direction: "ltr" }, className: "text-xs mt-1" }, subtitle)), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2" }, messages.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center mt-10" }, "\u0647\u0646\u0648\u0632 \u067E\u06CC\u0627\u0645\u06CC \u0631\u062F \u0648 \u0628\u062F\u0644 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644\u06CC\u0646 \u067E\u06CC\u0627\u0645 \u0631\u0648 \u0628\u0641\u0631\u0633\u062A."), messages.map((m, i) => {
+  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black" }, title), subtitle && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Oswald, sans-serif", color: "#8A8790", direction: "ltr" }, className: "text-xs mt-1" }, subtitle), showStatusBanner && /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "mt-3 rounded-xl px-3.5 py-2.5 text-center",
+      style: {
+        background: isAnswered ? "rgba(31,168,85,0.15)" : "rgba(232,179,61,0.15)",
+        border: `1px solid ${isAnswered ? "#1FA855" : "#E8B33D"}`
+      }
+    },
+    /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: isAnswered ? "#1FA855" : "#E8B33D" },
+        className: "text-xs font-bold"
+      },
+      isAnswered ? "\u2713 \u067E\u0627\u0633\u062E \u067E\u0634\u062A\u06CC\u0628\u0627\u0646" : "\u23F3 \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC\u0647"
+    )
+  )), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2" }, messages.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center mt-10" }, "\u0647\u0646\u0648\u0632 \u067E\u06CC\u0627\u0645\u06CC \u0631\u062F \u0648 \u0628\u062F\u0644 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644\u06CC\u0646 \u067E\u06CC\u0627\u0645 \u0631\u0648 \u0628\u0641\u0631\u0633\u062A."), messages.map((m, i) => {
     const isMine = m.sender === myRole;
-    return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex ${isMine ? "justify-start" : "justify-end"}` }, /* @__PURE__ */ React.createElement(
+    return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex flex-col ${isMine ? "items-start" : "items-end"}` }, /* @__PURE__ */ React.createElement(
       "div",
       {
         className: "rounded-2xl px-3.5 py-2.5",
@@ -1608,6 +1678,13 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
         },
         m.message
       )
+    ), m.createdAt && /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a", direction: "ltr" },
+        className: "text-[10px] mt-1 px-1"
+      },
+      formatMessageTime(m.createdAt)
     ));
   })), /* @__PURE__ */ React.createElement("div", { className: "px-4 py-3 flex items-center gap-2 shrink-0", style: { borderTop: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement(
     "input",
@@ -1634,7 +1711,14 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
       className: "rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
     },
     "\u0627\u0631\u0633\u0627\u0644"
-  )));
+  )), myRole === "user" && /* @__PURE__ */ React.createElement(
+    "p",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" },
+      className: "text-[11px] text-center leading-5 px-6 pb-3 shrink-0"
+    },
+    "\u067E\u0627\u0633\u062E\u200C\u06AF\u0648\u06CC\u06CC \u062A\u06CC\u0645 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0646\u0627\u0635\u0631\u06CC \u0645\u0639\u0645\u0648\u0644\u0627\u064B \u062F\u0631 \u06A9\u0648\u062A\u0627\u0647\u200C\u062A\u0631\u06CC\u0646 \u0632\u0645\u0627\u0646 \u0645\u0645\u06A9\u0646 \u0627\u0646\u062C\u0627\u0645 \u0645\u06CC\u200C\u0634\u0647 \u0648 \u062D\u062F\u0627\u06A9\u062B\u0631 \u0638\u0631\u0641 \u06F7\u06F2 \u0633\u0627\u0639\u062A \u06A9\u0627\u0631\u06CC \u067E\u0627\u0633\u062E \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0627\u062F\u0647 \u062E\u0648\u0627\u0647\u062F \u0634\u062F."
+  ));
 }
 function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement(
@@ -1690,7 +1774,7 @@ function AdminUsersScreen({ authToken, onBack }) {
       cancelled = true;
     };
   }, [authToken]);
-  const planLabel = { none: "\u0628\u062F\u0648\u0646 \u0627\u0634\u062A\u0631\u0627\u06A9", monthly: "\u0645\u0627\u0647\u0627\u0646\u0647", seasonal: "\u0641\u0635\u0644\u06CC", yearly: "\u0633\u0627\u0644\u0627\u0646\u0647" };
+  const planLabel = { none: "\u0628\u062F\u0648\u0646 \u0627\u0634\u062A\u0631\u0627\u06A9", silver: "\u0646\u0642\u0631\u0647\u200C\u0627\u06CC", gold: "\u0637\u0644\u0627\u06CC\u06CC" };
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -1707,30 +1791,41 @@ function AdminUsersScreen({ authToken, onBack }) {
     },
     total.toLocaleString("en-US"),
     " \u0646\u0641\u0631"
-  )), loading && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm text-center mt-10" }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC\u2026"), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-sm text-center mt-10" }, error), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, users.map((u) => /* @__PURE__ */ React.createElement(
-    "div",
-    {
-      key: u.identifier,
-      className: "rounded-xl p-3",
-      style: { background: "#17161A", border: "1px solid #2a292e" }
-    },
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement(
-      "span",
+  )), loading && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm text-center mt-10" }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC\u2026"), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-sm text-center mt-10" }, error), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, users.map((u) => {
+    const isActivePaid = (u.plan === "silver" || u.plan === "gold") && u.planExpiresAt && u.planExpiresAt > Date.now();
+    return /* @__PURE__ */ React.createElement(
+      "div",
       {
-        style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" },
-        className: "text-sm font-bold"
+        key: u.identifier,
+        className: "rounded-xl p-3",
+        style: { background: "#17161A", border: "1px solid #2a292e" }
       },
-      u.identifier
-    ), u.isAdmin && /* @__PURE__ */ React.createElement(
-      "span",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
-        className: "text-[10px] font-bold rounded-full px-2 py-0.5 shrink-0"
-      },
-      "\u0627\u062F\u0645\u06CC\u0646"
-    )),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, planLabel[u.plan] || u.plan, u.planExpiresAt ? ` \xB7 \u062A\u0627 ${formatExpiryDate(u.planExpiresAt)}` : ""), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs" }, formatExpiryDate(u.createdAt)))
-  ))));
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" },
+          className: "text-sm font-bold"
+        },
+        u.identifier
+      ), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1.5 shrink-0" }, u.isAdmin && /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
+          className: "text-[10px] font-bold rounded-full px-2 py-0.5"
+        },
+        "\u0627\u062F\u0645\u06CC\u0646"
+      ), isActivePaid && /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: { fontFamily: "Vazirmatn, sans-serif", color: "#1FA855", background: "rgba(31,168,85,0.12)" },
+          className: "text-[10px] font-bold rounded-full px-2 py-0.5 flex items-center gap-1"
+        },
+        /* @__PURE__ */ React.createElement("span", { style: { background: "#1FA855" }, className: "w-1.5 h-1.5 rounded-full" }),
+        "\u0641\u0639\u0627\u0644"
+      ))),
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, planLabel[u.plan] || u.plan, u.planExpiresAt ? ` \xB7 \u062A\u0627 ${formatExpiryDate(u.planExpiresAt)}` : ""), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs" }, formatExpiryDate(u.createdAt)))
+    );
+  })));
 }
 function InfoScreen({ title, items, paragraph, onBack }) {
   const [expandedItem, setExpandedItem] = useState(null);
@@ -1809,7 +1904,7 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -1817,11 +1912,11 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
     if (!editingCount) setCountDraft(String(memberCount));
   }, [memberCount]);
   const menuItems = [
-    { key: "support", label: "\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC", icon: SupportIcon },
     { key: "info-tips", label: "\u0646\u06A9\u0627\u062A \u06A9\u0644\u06CC\u062F\u06CC", icon: TipIcon },
     { key: "info-coach", label: "\u06A9\u0645\u06A9 \u0645\u0631\u0628\u06CC", icon: CoachIcon },
     { key: "info-faq", label: "\u0633\u0648\u0627\u0644\u0627\u062A \u0645\u062A\u062F\u0627\u0648\u0644", icon: QuestionIcon },
     { key: "info-gear", label: "\u0648\u0633\u0627\u06CC\u0644 \u0628\u0648\u06A9\u0633", icon: GloveIcon },
+    { key: "support", label: "\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC", icon: SupportIcon },
     { key: "info-rules", label: "\u0642\u0648\u0627\u0646\u06CC\u0646 \u0648 \u0645\u0642\u0631\u0631\u0627\u062A", icon: LockIcon },
     { key: "info-about", label: "\u062F\u0631\u0628\u0627\u0631\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC Naseri", icon: InfoIcon },
     ...isAdmin ? [{ key: "admin-users", label: "\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646", icon: UserIcon }] : []
@@ -1837,28 +1932,28 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
   ), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black" }, "\u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-12 h-12 object-contain" }))), /* @__PURE__ */ React.createElement(RopeDivider, null), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 mt-4" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F",
+      title: (chapterTitles == null ? void 0 : chapterTitles.basic) || DEFAULT_CHAPTER_TITLES.basic,
       image: CHAPTER1_IMAGE_SRC,
       onClick: () => onNavigate("curriculum-basic")
     }
   ), /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u0622\u0645\u0648\u0632\u0634 \u0636\u0631\u0628\u0627\u062A",
+      title: (chapterTitles == null ? void 0 : chapterTitles.advanced) || DEFAULT_CHAPTER_TITLES.advanced,
       image: CHAPTER2_IMAGE_SRC,
       onClick: () => onNavigate("curriculum-advanced")
     }
   ), /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u0622\u0645\u0648\u0632\u0634 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
+      title: (chapterTitles == null ? void 0 : chapterTitles.extra) || DEFAULT_CHAPTER_TITLES.extra,
       image: CHAPTER3_IMAGE_SRC,
       onClick: () => onNavigate("curriculum-extra")
     }
   ), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647",
+      title: (chapterTitles == null ? void 0 : chapterTitles.fight) || DEFAULT_CHAPTER_TITLES.fight,
       onClick: () => onNavigate("curriculum-fight"),
       comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.fight),
       image: CHAPTER4_IMAGE_SRC
@@ -1872,7 +1967,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
   )), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647",
+      title: (chapterTitles == null ? void 0 : chapterTitles.partner) || DEFAULT_CHAPTER_TITLES.partner,
       onClick: () => onNavigate("curriculum-partner"),
       comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.partner)
     }
@@ -1885,7 +1980,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
   )), /* @__PURE__ */ React.createElement("div", { className: "relative" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
-      title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632\u060C \u0633\u0631\u0639\u062A",
+      title: (chapterTitles == null ? void 0 : chapterTitles.focus) || DEFAULT_CHAPTER_TITLES.focus,
       onClick: () => onNavigate("curriculum-focus"),
       comingSoon: !isAdmin && !(chapterVisibility == null ? void 0 : chapterVisibility.focus)
     }
@@ -2088,6 +2183,14 @@ const CURRICULUM_FOCUS = Array.from({ length: 30 }, (_, i) => ({
   t: "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627"
 }));
 const HIGHLIGHT_YELLOW = /* @__PURE__ */ new Set([30]);
+const DEFAULT_CHAPTER_TITLES = {
+  basic: "\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F",
+  advanced: "\u0622\u0645\u0648\u0632\u0634 \u0636\u0631\u0628\u0627\u062A",
+  extra: "\u0622\u0645\u0648\u0632\u0634 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
+  fight: "\u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633",
+  partner: "\u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF / \u062A\u0645\u0631\u06CC\u0646 \u0645\u0628\u0627\u0631\u0632\u0647",
+  focus: "\u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644 / \u0645\u0628\u0627\u0631\u0632\u0647"
+};
 function PlayIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "currentColor" }, /* @__PURE__ */ React.createElement("path", { d: "M8 5v14l11-7z" }));
 }
@@ -2458,9 +2561,12 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
   ), /* @__PURE__ */ React.createElement("div", { className: "mt-6 rounded-xl p-4", style: { background: "#17161A", border: "1px solid #232227" } }, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs leading-6" }, "\xA9 \u062A\u0645\u0627\u0645\u06CC \u062D\u0642\u0648\u0642 \u0627\u06CC\u0646 \u0648\u06CC\u062F\u06CC\u0648 \u0645\u062A\u0639\u0644\u0642 \u0628\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC \u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u0646\u0627\u0635\u0631\u06CC \u0627\u0633\u062A. \u0647\u0631\u06AF\u0648\u0646\u0647 \u06A9\u067E\u06CC\u200C\u0628\u0631\u062F\u0627\u0631\u06CC\u060C \u062F\u0627\u0646\u0644\u0648\u062F \u06CC\u0627 \u0628\u0627\u0632\u0646\u0634\u0631 \u0622\u0646 \u0628\u062F\u0648\u0646 \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u06A9\u062A\u0628\u06CC\u060C \u067E\u06CC\u06AF\u0631\u062F \u0642\u0627\u0646\u0648\u0646\u06CC \u062F\u0627\u0631\u062F.")));
 }
 const FREE_LESSONS_COUNT = 5;
-function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLockedSelect, isCompleted, curriculumKey }) {
-  const hasAccess = plan === "silver" || plan === "gold";
+function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLockedSelect, isCompleted, curriculumKey, isAdmin, onRename }) {
   const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
+  const hasAccess = isGoldChapter ? plan === "gold" : plan === "silver";
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
+  const [savingTitle, setSavingTitle] = useState(false);
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-4 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -2473,7 +2579,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
       className: "text-sm mb-3 rounded-lg px-3 py-1.5 font-bold inline-block"
     },
     "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"
-  ), /* @__PURE__ */ React.createElement(
+  ), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-2 mb-1" }, /* @__PURE__ */ React.createElement(
     "h1",
     {
       style: {
@@ -2481,9 +2587,64 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
         color: "#F3EEE6",
         textShadow: "0 0 12px rgba(95,211,232,0.85), 0 0 24px rgba(95,211,232,0.5)"
       },
-      className: "text-base font-black text-center leading-6 mb-1"
+      className: "text-base font-black text-center leading-6"
     },
     title
+  ), isAdmin && !editingTitle && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => {
+        setTitleDraft(title);
+        setEditingTitle(true);
+      },
+      className: "shrink-0 rounded-full p-1.5",
+      style: { background: "#17161A", border: "1px solid #2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#E8B33D" } })
+  )), isAdmin && editingTitle && /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex items-center gap-2 mb-3 rounded-xl px-3 py-2 border",
+      style: { background: "#17161A", borderColor: "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        value: titleDraft,
+        onChange: (e) => setTitleDraft(e.target.value),
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" },
+        className: "bg-transparent outline-none flex-1 text-sm",
+        autoFocus: true
+      }
+    ),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        disabled: savingTitle || !titleDraft.trim(),
+        onClick: async () => {
+          setSavingTitle(true);
+          try {
+            await (onRename == null ? void 0 : onRename(titleDraft.trim()));
+            setEditingTitle(false);
+          } catch (e) {
+          } finally {
+            setSavingTitle(false);
+          }
+        },
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#D91E2B" },
+        className: "rounded-lg px-3 py-1.5 text-xs font-bold shrink-0"
+      },
+      savingTitle ? "..." : "\u0630\u062E\u06CC\u0631\u0647"
+    ),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setEditingTitle(false),
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" },
+        className: "text-xs shrink-0"
+      },
+      "\u0627\u0646\u0635\u0631\u0627\u0641"
+    )
   ), /* @__PURE__ */ React.createElement("div", { className: "w-full rounded-full mb-4", style: { background: "#D91E2B", height: "3px" } }), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-5 gap-x-1.5 gap-y-3" }, items.map((it) => {
     const isHi = HIGHLIGHT_YELLOW.has(it.n);
     const hasVid = hasVideo == null ? void 0 : hasVideo(it.n);
@@ -2597,8 +2758,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
     "\u0622\u067E\u062F\u06CC\u062A\u200C\u0647\u0627\u06CC \u0628\u0639\u062F\u06CC \u0647\u0645\u06CC\u0646 \u0633\u0647 \u0641\u0635\u0644 \u0631\u0627\u06CC\u06AF\u0627\u0646\u0647"
   ];
   const goldFeatures = [
-    "\u0647\u0645\u0647\u200C\u06CC \u0627\u0645\u06A9\u0627\u0646\u0627\u062A \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC",
-    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647\u060C \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647 \u0648 \u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC",
+    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF / \u062A\u0645\u0631\u06CC\u0646 \u0645\u0628\u0627\u0631\u0632\u0647 \u0648 \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644 / \u0645\u0628\u0627\u0631\u0632\u0647",
     "\u0627\u0639\u062A\u0628\u0627\u0631 \u0627\u0634\u062A\u0631\u0627\u06A9: \u06F2 \u0633\u0627\u0644 \u0627\u0632 \u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u06CC\u062F",
     "\u0647\u0645\u06CC\u0634\u0647 \u0627\u0648\u0644\u06CC\u0646 \u0646\u0641\u0631\u06CC \u0628\u0627\u0634 \u06A9\u0647 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062C\u062F\u06CC\u062F \u0631\u0648 \u0645\u06CC\u200C\u0628\u06CC\u0646\u0647"
   ];
@@ -2929,6 +3089,7 @@ function App() {
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
   const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
+  const [chapterTitles, setChapterTitles] = useState({});
   const [supportMessages, setSupportMessages] = useState([]);
   const [supportThreads, setSupportThreads] = useState([]);
   const [supportLoading, setSupportLoading] = useState(false);
@@ -3016,11 +3177,16 @@ function App() {
     apiFetchLessonTitles().then(setLessonTitles);
     apiFetchMemberCount().then(setMemberCount);
     apiFetchChapterVisibility().then(setChapterVisibility);
+    apiFetchChapterTitles().then(setChapterTitles);
   }, []);
   const handleRenameLesson = async (curriculumKey, n, newTitle) => {
     const key = `${curriculumKey}-${n}`;
     const saved = await apiSetLessonTitle(curriculumKey, n, newTitle, authToken);
     setLessonTitles((prev) => __spreadProps(__spreadValues({}, prev), { [key]: saved }));
+  };
+  const handleRenameChapter = async (curriculumKey, newTitle) => {
+    const saved = await apiSetChapterTitle(curriculumKey, newTitle, authToken);
+    setChapterTitles((prev) => __spreadProps(__spreadValues({}, prev), { [curriculumKey]: saved }));
   };
   const handleSetMemberCount = async (newCount) => {
     const saved = await apiSetMemberCount(newCount, authToken);
@@ -3158,7 +3324,8 @@ function App() {
     saveProfileInfo({ name: profileName, image });
   };
   const openLesson = (curriculumKey, item) => {
-    const hasAccess = (authUser == null ? void 0 : authUser.plan) === "silver" || (authUser == null ? void 0 : authUser.plan) === "gold";
+    const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
+    const hasAccess = isGoldChapter ? (authUser == null ? void 0 : authUser.plan) === "gold" : (authUser == null ? void 0 : authUser.plan) === "silver";
     if (item.n > FREE_LESSONS_COUNT && !hasAccess) {
       setStep("subscription");
       return;
@@ -3283,7 +3450,8 @@ function App() {
         onSetMemberCount: handleSetMemberCount,
         chapterVisibility,
         onToggleChapterVisibility: handleToggleChapterVisibility,
-        onOpenSupport: handleOpenSupport
+        onOpenSupport: handleOpenSupport,
+        chapterTitles
       }
     ), step === "info-gear" && /* @__PURE__ */ React.createElement(
       InfoScreen,
@@ -3386,43 +3554,52 @@ function App() {
     ), step === "curriculum-extra" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u0622\u0645\u0648\u0632\u0634 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
+        title: (chapterTitles == null ? void 0 : chapterTitles.extra) || DEFAULT_CHAPTER_TITLES.extra,
         items: curriculumExtraMerged,
+        curriculumKey: "extra",
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("extra", item),
         hasVideo: (n) => Boolean(videos[`extra-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`extra-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("extra", newTitle)
       }
     ), step === "curriculum-basic" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F",
+        title: (chapterTitles == null ? void 0 : chapterTitles.basic) || DEFAULT_CHAPTER_TITLES.basic,
         items: curriculumBasicMerged,
+        curriculumKey: "basic",
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("basic", item),
         hasVideo: (n) => Boolean(videos[`basic-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`basic-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("basic", newTitle)
       }
     ), step === "curriculum-advanced" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u0622\u0645\u0648\u0632\u0634 \u0636\u0631\u0628\u0627\u062A",
+        title: (chapterTitles == null ? void 0 : chapterTitles.advanced) || DEFAULT_CHAPTER_TITLES.advanced,
         items: curriculumAdvancedMerged,
+        curriculumKey: "advanced",
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("advanced", item),
         hasVideo: (n) => Boolean(videos[`advanced-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`advanced-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("advanced", newTitle)
       }
     ), step === "curriculum-fight" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u0622\u0645\u0648\u0632\u0634 \u0647\u0646\u0631 \u0645\u0628\u0627\u0631\u0632\u0647",
+        title: (chapterTitles == null ? void 0 : chapterTitles.fight) || DEFAULT_CHAPTER_TITLES.fight,
         items: curriculumFightMerged,
         curriculumKey: "fight",
         onBack: () => setStep("home"),
@@ -3430,12 +3607,14 @@ function App() {
         hasVideo: (n) => Boolean(videos[`fight-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`fight-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("fight", newTitle)
       }
     ), step === "curriculum-partner" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062F\u0648 \u0646\u0641\u0631\u0647",
+        title: (chapterTitles == null ? void 0 : chapterTitles.partner) || DEFAULT_CHAPTER_TITLES.partner,
         items: curriculumPartnerMerged,
         curriculumKey: "partner",
         onBack: () => setStep("home"),
@@ -3443,12 +3622,14 @@ function App() {
         hasVideo: (n) => Boolean(videos[`partner-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`partner-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("partner", newTitle)
       }
     ), step === "curriculum-focus" && /* @__PURE__ */ React.createElement(
       CurriculumScreen,
       {
-        title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u062A\u0645\u0631\u06A9\u0632\u060C \u0633\u0631\u0639\u062A",
+        title: (chapterTitles == null ? void 0 : chapterTitles.focus) || DEFAULT_CHAPTER_TITLES.focus,
         items: curriculumFocusMerged,
         curriculumKey: "focus",
         onBack: () => setStep("home"),
@@ -3456,7 +3637,9 @@ function App() {
         hasVideo: (n) => Boolean(videos[`focus-${n}`]),
         isCompleted: (n) => Boolean(completedLessons[`focus-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
-        onLockedSelect: () => setStep("subscription")
+        onLockedSelect: () => setStep("subscription"),
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onRename: (newTitle) => handleRenameChapter("focus", newTitle)
       }
     ), step === "lesson" && activeLesson && /* @__PURE__ */ React.createElement(
       LessonScreen,
