@@ -13,7 +13,7 @@
     "@capacitor/preferences": "^6.0.3",
     "@capacitor/app": "^6.0.1",
     "@capacitor/share": "^6.0.2",
-    "capacitor-voice-recorder": "^6.0.1"
+    "capacitor-voice-recorder": "6.0.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.2",
