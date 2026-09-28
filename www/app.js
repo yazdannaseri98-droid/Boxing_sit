@@ -1924,11 +1924,11 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
       onKeyDown: (e) => {
         if (e.key === "Enter") handleSend();
       },
-      placeholder: "\u067E\u06CC\u0627\u0645\u062A \u0631\u0648 \u0628\u0646\u0648\u06CC\u0633 \u06CC\u0627 \u{1F3A4} \u0631\u0648 \u0628\u0632\u0646...",
+      placeholder: myRole === "admin" ? "\u067E\u06CC\u0627\u0645\u062A \u0631\u0648 \u0628\u0646\u0648\u06CC\u0633 \u06CC\u0627 \u{1F3A4} \u0631\u0648 \u0628\u0632\u0646..." : "\u067E\u06CC\u0627\u0645\u062A \u0631\u0648 \u0628\u0646\u0648\u06CC\u0633...",
       style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" },
       className: "flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
     }
-  ), text.trim() ? /* @__PURE__ */ React.createElement(
+  ), text.trim() || myRole !== "admin" ? /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: handleSend,
@@ -2234,7 +2234,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
   )))), menuOpen && /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "absolute inset-0",
+      className: "fixed inset-0",
       style: { background: "rgba(0,0,0,0.55)", zIndex: 30 },
       onClick: () => setMenuOpen(false)
     },
@@ -2242,8 +2242,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
       "div",
       {
         onClick: (e) => e.stopPropagation(),
-        className: "absolute top-0 right-0 h-full flex flex-col px-5 pt-5 pb-6",
-        style: { width: "62%", background: "#111013", borderLeft: "1px solid #2a292e" },
+        className: "absolute top-0 right-0 h-full flex flex-col px-5 pt-5 pb-24 overflow-y-auto [&>*]:shrink-0",
+        style: { width: "62%", background: "#111013", borderLeft: "1px solid #2a292e", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" },
         dir: "rtl"
       },
       /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-6" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D", letterSpacing: "0.1em" }, className: "text-xs font-semibold" }, "\u0645\u0646\u0648"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMenuOpen(false) }, /* @__PURE__ */ React.createElement(CloseIcon, { className: "w-5 h-5", style: { color: "#8A8790" } }))),
@@ -2337,6 +2337,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
           )
         );
       })),
+      /* @__PURE__ */ React.createElement("div", { className: "h-4" }),
       /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -2344,7 +2345,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
             setMenuOpen(false);
             onLogout();
           },
-          className: "flex items-center gap-3 rounded-xl px-3 py-3 mt-auto",
+          className: "flex items-center gap-3 rounded-xl px-3 py-3 mt-auto mb-2",
           style: { background: "rgba(217,30,43,0.1)", border: "1px solid rgba(217,30,43,0.4)" }
         },
         /* @__PURE__ */ React.createElement(LogoutIcon, { className: "w-5 h-5", style: { color: "#D91E2B" } }),
@@ -2443,7 +2444,7 @@ const DEFAULT_CHAPTER_TITLES = {
   focus: "\u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644 / \u0645\u0628\u0627\u0631\u0632\u0647"
 };
 const INVITE_SHARE_TITLE = "\u0628\u0627\u06A9\u0633 \u0627\u06CC\u0631\u0627\u0646 | \u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633";
-const INVITE_SHARE_TEXT = "\u0628\u06CC\u0627 \u0628\u0627 \u0647\u0645 \u0628\u0631\u06CC\u0645 \u0631\u0648 \u0628\u0648\u06A9\u0633! \u{1F94A} \u0627\u06CC\u0646 \u0627\u067E\u0644\u06CC\u06A9\u06CC\u0634\u0646 \u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u0631\u0648 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646:";
+const INVITE_SHARE_TEXT = "\u{1F947}\u0627\u0648\u0644\u06CC\u0646 \u0627\u067E\u0644\u06CC\u06A9\u06CC\u0634\u0646 \u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647 \u0627\u06CC \u{1F947}\n\u062D\u062A\u0645\u0627 \u0627\u0645\u062A\u062D\u0627\u0646\u0634 \u06A9\u0646 \u{1F339}";
 const INVITE_SHARE_URL = "https://YOUR_APP_LINK";
 function PlayIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "currentColor" }, /* @__PURE__ */ React.createElement("path", { d: "M8 5v14l11-7z" }));
