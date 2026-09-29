@@ -668,7 +668,7 @@ function PhoneMock({ children }) {
 function TopNotch() {
   return /* @__PURE__ */ React.createElement("div", { className: "flex justify-center pt-2 pb-1 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "w-24 h-1.5 rounded-full", style: { background: "#2a292e" } }));
 }
-function SplashScreen({ onStart }) {
+function SplashScreen({ onStart, loading }) {
   return /* @__PURE__ */ React.createElement(
     "div",
     {
@@ -726,7 +726,28 @@ function SplashScreen({ onStart }) {
       },
       "\u062A\u0645\u0631\u06CC\u0646 \u0628\u0627 \u0645\u062A\u062F \u0628\u0627\u0634\u06AF\u0627\u0647\u200C\u0647\u0627\u06CC \u062D\u0631\u0641\u0647\u200C\u0627\u06CC NASERI\u060C \u0632\u06CC\u0631 \u0646\u0638\u0631 \u0645\u0631\u0628\u06CC\u200C\u0647\u0627\u06CC \u0631\u0633\u0645\u06CC"
     )),
-    /* @__PURE__ */ React.createElement("div", { className: "relative px-6 pb-8" }, /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "relative px-6 pb-8" }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "w-full rounded-full overflow-hidden mb-3",
+        style: { background: "#1c1b1f", height: "6px" }
+      },
+      /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            height: "100%",
+            background: "linear-gradient(90deg, #2E9FE8, #5FD3E8)",
+            animation: "splashLoadFill 900ms ease-out forwards"
+          }
+        }
+      )
+    ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC..."), /* @__PURE__ */ React.createElement("style", null, `
+              @keyframes splashLoadFill {
+                0% { width: 0%; }
+                100% { width: 100%; }
+              }
+            `)) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: onStart,
@@ -734,7 +755,7 @@ function SplashScreen({ onStart }) {
         className: "w-full rounded-xl py-4 font-bold text-base mb-3 shadow-lg"
       },
       "\u0634\u0631\u0648\u0639 \u06A9\u0646"
-    ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644"))
+    ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644")))
   );
 }
 function SignupScreen({ contact, setContact, method, setMethod, onSubmit }) {
@@ -3751,7 +3772,7 @@ function App() {
           .active-dot {
             animation: activeDotPulse 1.8s ease-out infinite;
           }
-        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, !sessionChecked && /* @__PURE__ */ React.createElement("div", { className: "flex-1", style: { background: "#0B0B0D" } }), sessionChecked && step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
+        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { loading: !sessionChecked, onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
       SignupScreen,
       {
         contact,
