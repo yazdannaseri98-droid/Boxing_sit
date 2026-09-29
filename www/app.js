@@ -1715,25 +1715,34 @@ function AccordionScreen({ title, items, onBack }) {
   })));
 }
 async function startVoiceRecording() {
-  var _a, _b;
+  var _a, _b, _c;
   const VR = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.VoiceRecorder;
   if (VR == null ? void 0 : VR.startRecording) {
     const has = await VR.hasAudioRecordingPermission().catch(() => ({ value: false }));
     if (!(has == null ? void 0 : has.value)) {
       const granted = await VR.requestAudioRecordingPermission().catch(() => ({ value: false }));
-      if (!(granted == null ? void 0 : granted.value)) throw new Error("\u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u0645\u06CC\u06A9\u0631\u0648\u0641\u0648\u0646 \u062F\u0627\u062F\u0647 \u0646\u0634\u062F");
+      if (!(granted == null ? void 0 : granted.value)) {
+        throw new Error(
+          "\u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u0645\u06CC\u06A9\u0631\u0648\u0641\u0648\u0646 \u062F\u0627\u062F\u0647 \u0646\u0634\u062F. \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u06AF\u0648\u0634\u06CC\u060C \u0628\u062E\u0634 \u0627\u067E\u200C\u0647\u0627\u060C \u0627\u06CC\u0646 \u0627\u067E \u0631\u0648 \u067E\u06CC\u062F\u0627 \u06A9\u0646 \u0648 \u062F\u0633\u062A\u0631\u0633\u06CC \u0645\u06CC\u06A9\u0631\u0648\u0641\u0648\u0646 \u0631\u0648 \u0641\u0639\u0627\u0644 \u06A9\u0646."
+        );
+      }
     }
     await VR.startRecording();
     return { mode: "native" };
   }
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const recorder = new MediaRecorder(stream);
-  const chunks = [];
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
-  recorder.start();
-  return { mode: "web", recorder, chunks, stream };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.start();
+    return { mode: "web", recorder, chunks, stream };
+  } catch (e) {
+    const available = Object.keys(((_c = window.Capacitor) == null ? void 0 : _c.Plugins) || {}).join("\u060C ") || "\u0647\u06CC\u0686\u200C\u06A9\u062F\u0627\u0645";
+    throw new Error(`\u0642\u0627\u0628\u0644\u06CC\u062A \u0636\u0628\u0637 \u0635\u062F\u0627 \u0631\u0648\u06CC \u0627\u06CC\u0646 \u0646\u0633\u062E\u0647 \u0627\u0632 \u0627\u067E \u0641\u0639\u0627\u0644 \u0646\u06CC\u0633\u062A. (\u067E\u0644\u0627\u06AF\u06CC\u0646\u200C\u0647\u0627\u06CC \u0634\u0646\u0627\u0633\u0627\u06CC\u06CC\u200C\u0634\u062F\u0647: ${available})`);
+  }
 }
 async function stopVoiceRecording(session) {
   var _a, _b, _c, _d;
