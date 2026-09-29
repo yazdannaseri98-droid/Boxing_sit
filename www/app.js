@@ -3435,7 +3435,8 @@ function App() {
   }, []);
   useEffect(() => {
     (async () => {
-      const session = await loadSession();
+      const minDelay = new Promise((resolve) => setTimeout(resolve, 5e3));
+      const [session] = await Promise.all([loadSession(), minDelay]);
       if (session) {
         setAuthToken(session.token);
         setAuthUser(session.user);
