@@ -729,7 +729,7 @@ function SplashScreen({ onStart, loading }) {
     /* @__PURE__ */ React.createElement("div", { className: "relative px-6 pb-8" }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: "w-full rounded-full overflow-hidden mb-3",
+        className: "w-full rounded-full overflow-hidden",
         style: { background: "#1c1b1f", height: "6px" }
       },
       /* @__PURE__ */ React.createElement(
@@ -738,11 +738,11 @@ function SplashScreen({ onStart, loading }) {
           style: {
             height: "100%",
             background: "linear-gradient(90deg, #2E9FE8, #5FD3E8)",
-            animation: "splashLoadFill 900ms ease-out forwards"
+            animation: "splashLoadFill 5000ms ease-out forwards"
           }
         }
       )
-    ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC..."), /* @__PURE__ */ React.createElement("style", null, `
+    ), /* @__PURE__ */ React.createElement("style", null, `
               @keyframes splashLoadFill {
                 0% { width: 0%; }
                 100% { width: 100%; }
