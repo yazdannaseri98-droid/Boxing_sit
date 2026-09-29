@@ -10,6 +10,24 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #0B0B0D; overscroll-behavior: none; }
     #root { min-height: 100%; }
+
+    /* جلوگیری از انتخاب متن/عکس با لمس طولانی، مثل یه اپ واقعی نه یه صفحه‌ی وب */
+    * {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none; /* منوی کپی/ذخیره‌ی لمس طولانی رو هم غیرفعال می‌کنه */
+      -webkit-tap-highlight-color: transparent; /* حذف فلاش خاکستری موقع لمس */
+    }
+    img {
+      -webkit-user-drag: none;
+      user-drag: none;
+    }
+    /* داخل فیلدهای ورودی، انتخاب و تایپ متن باید عادی کار کنه */
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+    }
   </style>
 </head>
 <body>
