@@ -3341,6 +3341,7 @@ function App() {
   const [activeLesson, setActiveLesson] = useState(null);
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [completedLessons, setCompletedLessons] = useState({});
   const [profileName, setProfileName] = useState("");
   const [profileImage, setProfileImage] = useState(null);
@@ -3419,6 +3420,7 @@ function App() {
         setAuthUser(session.user);
         setStep("home");
       }
+      setSessionChecked(true);
     })();
   }, []);
   useEffect(() => {
@@ -3749,7 +3751,7 @@ function App() {
           .active-dot {
             animation: activeDotPulse 1.8s ease-out infinite;
           }
-        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
+        `), /* @__PURE__ */ React.createElement(PhoneMock, null, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, !sessionChecked && /* @__PURE__ */ React.createElement("div", { className: "flex-1", style: { background: "#0B0B0D" } }), sessionChecked && step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
       SignupScreen,
       {
         contact,
