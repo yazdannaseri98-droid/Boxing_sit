@@ -4096,15 +4096,7 @@ function App() {
         },
         "\u0628\u0631\u0627\u06CC \u062E\u0631\u0648\u062C \u062F\u0648\u0628\u0627\u0631\u0647 \u0628\u0632\u0646\u06CC\u062F"
       )
-    )), /* @__PURE__ */ React.createElement(
-      "p",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" },
-        className: "text-center text-xs mt-4",
-        dir: "rtl"
-      },
-      "\u067E\u0631\u0648\u062A\u0648\u062A\u0627\u06CC\u067E \xB7 \u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644 \u2192 \u062E\u0627\u0646\u0647 \u2192 \u067E\u0631\u0648\u0641\u0627\u06CC\u0644 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC"
-    ))
+    )))
   );
 }
 const rootEl = document.getElementById("root");
