@@ -43,6 +43,14 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
+      - name: Add RECORD_AUDIO permission for voice messages
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "android.permission.RECORD_AUDIO" "$MANIFEST"; then
+            sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' "$MANIFEST"
+          fi
+          cat "$MANIFEST"
+
       - name: Restore release signing key
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
 
