@@ -2710,6 +2710,15 @@ function VideoPlayer({ src, onComplete, onTick }) {
     )
   );
 }
+function setScreenCaptureBlocked(blocked) {
+  var _a, _b, _c, _d;
+  const PS = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.PrivacyScreen;
+  if (!PS) return;
+  if (blocked) (_c = PS.enable) == null ? void 0 : _c.call(PS).catch(() => {
+  });
+  else (_d = PS.disable) == null ? void 0 : _d.call(PS).catch(() => {
+  });
+}
 function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
   const fileRef = useRef(null);
   const isHi = HIGHLIGHT_YELLOW.has(item.n);
@@ -2719,6 +2728,10 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.t);
   const [savingTitle, setSavingTitle] = useState(false);
+  useEffect(() => {
+    setScreenCaptureBlocked(true);
+    return () => setScreenCaptureBlocked(false);
+  }, []);
   const handleFile = (e) => {
     var _a;
     const file = (_a = e.target.files) == null ? void 0 : _a[0];
