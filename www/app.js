@@ -661,20 +661,20 @@ function RopeDivider() {
   ));
 }
 function PhoneMock({ children, bgImage }) {
-  return /* @__PURE__ */ React.createElement("div", { className: "relative w-full h-full overflow-hidden flex flex-col", style: { background: "#0B0B0D" } }, children, bgImage && /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "relative w-full h-full overflow-hidden flex flex-col", style: { background: "#0B0B0D" } }, bgImage && /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "fixed inset-0",
+      className: "absolute inset-0",
       style: {
         backgroundImage: `url(${bgImage})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        opacity: 0.1,
-        zIndex: 20,
+        opacity: 0.2,
+        zIndex: 0,
         pointerEvents: "none"
       }
     }
-  ));
+  ), /* @__PURE__ */ React.createElement("div", { className: "relative flex-1 flex flex-col min-h-0", style: { zIndex: 1 } }, children));
 }
 function TopNotch() {
   return /* @__PURE__ */ React.createElement("div", { className: "flex justify-center pt-2 pb-1 shrink-0" }, /* @__PURE__ */ React.createElement("div", { className: "w-24 h-1.5 rounded-full", style: { background: "#2a292e" } }));
