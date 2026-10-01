@@ -24,7 +24,9 @@ jobs:
           java-version: "17"
 
       - name: Install dependencies
-        run: npm install
+        # چون پلاگین‌های کپسیتور بعضاً peer dependency رو سخت‌گیرانه‌تر از چیزی که واقعاً لازمه اعلام می‌کنن،
+        # از legacy-peer-deps استفاده می‌کنیم تا این تضادهای غیرواقعی باعث شکست نصب نشن
+        run: npm install --legacy-peer-deps
 
       - name: Add Android platform (first time only)
         run: |
