@@ -21,7 +21,8 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          # پلاگین privacy-screen به جاوا ۲۱ نیاز داره؛ جاوا ۱۷ دیگه کافی نیست
+          java-version: "21"
 
       - name: Install dependencies
         # چون پلاگین‌های کپسیتور بعضاً peer dependency رو سخت‌گیرانه‌تر از چیزی که واقعاً لازمه اعلام می‌کنن،
