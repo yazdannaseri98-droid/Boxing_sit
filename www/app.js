@@ -2925,7 +2925,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
 const FREE_LESSONS_COUNT = 5;
 function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLockedSelect, isCompleted, curriculumKey, isAdmin, onRename }) {
   const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
-  const hasAccess = isGoldChapter ? plan === "gold" : plan === "silver";
+  const hasAccess = isAdmin || (isGoldChapter ? plan === "gold" : plan === "silver");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(title);
   const [savingTitle, setSavingTitle] = useState(false);
@@ -3762,7 +3762,7 @@ function App() {
   };
   const openLesson = (curriculumKey, item) => {
     const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
-    const hasAccess = isGoldChapter ? (authUser == null ? void 0 : authUser.plan) === "gold" : (authUser == null ? void 0 : authUser.plan) === "silver";
+    const hasAccess = (authUser == null ? void 0 : authUser.isAdmin) || (isGoldChapter ? (authUser == null ? void 0 : authUser.plan) === "gold" : (authUser == null ? void 0 : authUser.plan) === "silver");
     if (item.n > FREE_LESSONS_COUNT && !hasAccess) {
       setStep("subscription");
       return;
