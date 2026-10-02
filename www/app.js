@@ -3103,7 +3103,8 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
 function CheckIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "2.2", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M20 6L9 17l-5-5" }));
 }
-function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlanConfirmed }) {
+function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlanConfirmed, chapterVisibility }) {
+  const goldUnlocked = Boolean((chapterVisibility == null ? void 0 : chapterVisibility.fight) || (chapterVisibility == null ? void 0 : chapterVisibility.partner) || (chapterVisibility == null ? void 0 : chapterVisibility.focus));
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -3112,18 +3113,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       if (confirmed && confirmed !== "none") onPlanConfirmed == null ? void 0 : onPlanConfirmed(confirmed, expiresAt);
     });
   }, [isLoggedIn, plan, authToken]);
-  const silverChapters = CURRICULUM_BASIC.length + CURRICULUM_ADVANCED.length + CURRICULUM_EXTRA.length + CURRICULUM_FIGHT.length + CURRICULUM_PARTNER.length + CURRICULUM_FOCUS.length;
-  const silverFeatures = [
-    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634 \u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A \u0648 \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC",
-    `${silverChapters} \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0628\u0627 \u06A9\u06CC\u0641\u06CC\u062A HD`,
-    "\u0627\u0639\u062A\u0628\u0627\u0631 \u0627\u0634\u062A\u0631\u0627\u06A9: \u06F2 \u0633\u0627\u0644 \u0627\u0632 \u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u06CC\u062F",
-    "\u0622\u067E\u062F\u06CC\u062A\u200C\u0647\u0627\u06CC \u0628\u0639\u062F\u06CC \u0647\u0645\u06CC\u0646 \u0633\u0647 \u0641\u0635\u0644 \u0631\u0627\u06CC\u06AF\u0627\u0646\u0647"
-  ];
-  const goldFeatures = [
-    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF / \u062A\u0645\u0631\u06CC\u0646 \u0645\u0628\u0627\u0631\u0632\u0647 \u0648 \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644 / \u0645\u0628\u0627\u0631\u0632\u0647",
-    "\u0627\u0639\u062A\u0628\u0627\u0631 \u0627\u0634\u062A\u0631\u0627\u06A9: \u06F2 \u0633\u0627\u0644 \u0627\u0632 \u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u06CC\u062F",
-    "\u0647\u0645\u06CC\u0634\u0647 \u0627\u0648\u0644\u06CC\u0646 \u0646\u0641\u0631\u06CC \u0628\u0627\u0634 \u06A9\u0647 \u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u062C\u062F\u06CC\u062F \u0631\u0648 \u0645\u06CC\u200C\u0628\u06CC\u0646\u0647"
-  ];
+  const ORIGINAL_PRICE_DISPLAY = "\u06F2,\u06F0\u06F0\u06F0,\u06F0\u06F0\u06F0";
   const handleBuy = async (planKey) => {
     setError("");
     if (!isLoggedIn) {
@@ -3176,16 +3166,25 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       className: "rounded-2xl p-5 mb-5",
       style: { background: "linear-gradient(160deg,#1c1c1e,#17161A)", border: "1px solid rgba(192,192,192,0.35)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-2 mb-4" }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "20px" } }, "\u{1F948}"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-1 mb-5" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646 / \u06CC\u06A9\u200C\u0628\u0627\u0631")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 mb-5" }, silverFeatures.map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(
-      "div",
+    /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u{1F948} \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC")),
+    /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs text-center mb-4" }, "(\u06F2 \u0633\u0627\u0644\u0647)"),
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")),
+    /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
+      "span",
       {
-        className: "rounded-full flex items-center justify-center shrink-0 mt-0.5",
-        style: { width: "18px", height: "18px", background: "rgba(200,200,200,0.15)" }
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#1FA855", background: "rgba(31,168,85,0.12)" },
+        className: "text-[11px] font-bold rounded-full px-3 py-1"
       },
-      /* @__PURE__ */ React.createElement(CheckIcon, { className: "w-3 h-3", style: { color: "#C0C0C0" } })
-    ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-xs leading-6" }, f)))),
+      "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
+    )),
+    /* @__PURE__ */ React.createElement(
+      "p",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
+        className: "text-xs leading-6 text-center mb-5"
+      },
+      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (\u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC)"
+    ),
     plan === "silver" || plan === "gold" ? /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -3214,16 +3213,25 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       className: "rounded-2xl p-5 mb-3",
       style: { background: "linear-gradient(160deg,#221c14,#17161A)", border: "1px solid rgba(232,179,61,0.35)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-2 mb-4" }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "20px" } }, "\u{1F3C5}"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-1 mb-5" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646 / \u06CC\u06A9\u200C\u0628\u0627\u0631")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3 mb-5" }, goldFeatures.map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "flex items-start gap-2" }, /* @__PURE__ */ React.createElement(
-      "div",
+    /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u{1F3C5} \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC")),
+    /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs text-center mb-4" }, "(\u06F2 \u0633\u0627\u0644\u0647)"),
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")),
+    /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
+      "span",
       {
-        className: "rounded-full flex items-center justify-center shrink-0 mt-0.5",
-        style: { width: "18px", height: "18px", background: "rgba(232,179,61,0.15)" }
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
+        className: "text-[11px] font-bold rounded-full px-3 py-1"
       },
-      /* @__PURE__ */ React.createElement(CheckIcon, { className: "w-3 h-3", style: { color: "#E8B33D" } })
-    ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-xs leading-6" }, f)))),
+      "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
+    )),
+    /* @__PURE__ */ React.createElement(
+      "p",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
+        className: "text-xs leading-6 text-center mb-5"
+      },
+      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (\u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF\u060C \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644)"
+    ),
     plan === "gold" ? /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -3232,6 +3240,19 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       },
       /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-sm font-bold" }, "\u0639\u0636\u0648\u06CC\u062A \u0637\u0644\u0627\u06CC\u06CC \u062A\u0648 \u0641\u0639\u0627\u0644\u0647 \u2713"),
       planExpiresAt && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0645\u0639\u062A\u0628\u0631 \u062A\u0627 ", formatExpiryDate(planExpiresAt))
+    ) : goldUnlocked ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => handleBuy("gold"),
+        disabled: loadingPlan === "gold",
+        style: {
+          fontFamily: "Vazirmatn, sans-serif",
+          background: loadingPlan === "gold" ? "#4a3a1f" : "#E8B33D",
+          color: loadingPlan === "gold" ? "#8a7550" : "#17161A"
+        },
+        className: "w-full rounded-xl py-3.5 font-bold text-sm transition-colors"
+      },
+      loadingPlan === "gold" ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0628\u0647 \u062F\u0631\u06AF\u0627\u0647\u2026" : "\u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC"
     ) : /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -4123,6 +4144,7 @@ function App() {
         planExpiresAt: (authUser == null ? void 0 : authUser.planExpiresAt) || null,
         authToken,
         isLoggedIn: Boolean(authToken),
+        chapterVisibility,
         onPlanConfirmed: (newPlan, expiresAt) => {
           setAuthUser((u) => {
             const next = __spreadProps(__spreadValues({}, u), { plan: newPlan, planExpiresAt: expiresAt || (u == null ? void 0 : u.planExpiresAt) || null });
