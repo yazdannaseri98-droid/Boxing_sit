@@ -2220,7 +2220,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
     { key: "info-coach", label: "\u06A9\u0645\u06A9 \u0645\u0631\u0628\u06CC", icon: CoachIcon },
     { key: "info-faq", label: "\u0633\u0648\u0627\u0644\u0627\u062A \u0645\u062A\u062F\u0627\u0648\u0644", icon: QuestionIcon },
     { key: "info-gear", label: "\u0648\u0633\u0627\u06CC\u0644 \u0628\u0648\u06A9\u0633", icon: GloveIcon },
-    { key: "support", label: "\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC", icon: SupportIcon },
+    // فعلاً پشتیبانی فقط برای ادمین نشون داده می‌شه (برای مدیریت گفتگوهای قبلی)، از دسترس کاربر عادی خارجه - شاید بعداً برگردوندیمش
+    ...isAdmin ? [{ key: "support", label: "\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC", icon: SupportIcon }] : [],
     { key: "info-rules", label: "\u0642\u0648\u0627\u0646\u06CC\u0646 \u0648 \u0645\u0642\u0631\u0631\u0627\u062A", icon: LockIcon },
     { key: "info-about", label: "\u062F\u0631\u0628\u0627\u0631\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC Naseri", icon: InfoIcon },
     ...isAdmin ? [{ key: "admin-users", label: "\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646", icon: UserIcon }] : [],
