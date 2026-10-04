@@ -202,13 +202,21 @@ async function loadSession() {
 async function clearSession() {
   await AppStorage.remove("auth-session");
 }
+function toAbsoluteVideoUrl(url) {
+  if (!url) return url;
+  return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+}
 async function apiFetchVideos() {
   if (DEMO_MODE) return {};
   try {
     const res = await fetch(`${API_BASE_URL}/videos`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) return {};
-    return data.videos || {};
+    const videos = {};
+    for (const [key, url] of Object.entries(data.videos || {})) {
+      videos[key] = toAbsoluteVideoUrl(url);
+    }
+    return videos;
   } catch (e) {
     return {};
   }
@@ -226,7 +234,7 @@ async function apiUploadVideo(curriculumKey, n, file, token) {
   if (!res.ok || !data.ok) {
     throw new Error(data.error || "\u0622\u067E\u0644\u0648\u062F \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
   }
-  return data.url;
+  return toAbsoluteVideoUrl(data.url);
 }
 async function apiCreatePayment(token, plan) {
   if (DEMO_MODE) {
@@ -2755,7 +2763,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300 && data.ok) {
-          onUploaded(data.url);
+          onUploaded(toAbsoluteVideoUrl(data.url));
         } else {
           setError(data.error || "\u0622\u067E\u0644\u0648\u062F \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F");
         }
