@@ -629,7 +629,12 @@ function useDisableZoom() {
     };
     let lastTouchEnd = 0;
     const preventDoubleTapZoom = (e) => {
+      var _a, _b;
       const now = Date.now();
+      if ((_b = (_a = e.target) == null ? void 0 : _a.closest) == null ? void 0 : _b.call(_a, "[data-fast-tap]")) {
+        lastTouchEnd = now;
+        return;
+      }
       if (now - lastTouchEnd < 300) e.preventDefault();
       lastTouchEnd = now;
     };
@@ -2577,152 +2582,679 @@ function formatTime(sec) {
   const s = Math.floor(sec % 60);
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
+const SEEK_STEP_SECONDS = 10;
+const CONTROLS_HIDE_MS = 3e3;
+const DOUBLE_TAP_MS = 280;
+function SkipIcon({ className, forward }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, forward ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M21 12a9 9 0 1 1-3-6.7L21 8" }), /* @__PURE__ */ React.createElement("path", { d: "M21 3v5h-5" })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7L3 8" }), /* @__PURE__ */ React.createElement("path", { d: "M3 3v5h5" })), /* @__PURE__ */ React.createElement("text", { x: "12", y: "15.5", textAnchor: "middle", fontSize: "8", fontWeight: "700", fill: "currentColor", stroke: "none", fontFamily: "Oswald, sans-serif" }, "10"));
+}
+function ReplayIcon({ className }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7L3 8" }), /* @__PURE__ */ React.createElement("path", { d: "M3 3v5h5" }));
+}
+function ShrinkIcon({ className }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" }));
+}
 function VideoPlayer({ src, onComplete, onTick }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  const barRef = useRef(null);
+  const tapTimerRef = useRef(null);
+  const flashTimerRef = useRef(null);
+  const noteTimerRef = useRef(null);
+  const lastTapRef = useRef(0);
+  const draggingRef = useRef(false);
+  const lastTimeRef = useRef(0);
+  const lastSavedRef = useRef(0);
+  const endedRef = useRef(false);
+  const pendingSeekRef = useRef(0);
+  const speedRef = useRef(1);
   const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [ended, setEnded] = useState(false);
   const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [bufferedPct, setBufferedPct] = useState(0);
+  const [buffering, setBuffering] = useState(false);
+  const [error, setError] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [interactionTick, setInteractionTick] = useState(0);
+  const [dragRatio, setDragRatio] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [flash, setFlash] = useState(null);
+  const [resumeNote, setResumeNote] = useState("");
+  const playingRef = useRef(false);
+  const showControlsRef = useRef(true);
+  const speedMenuOpenRef = useRef(false);
+  playingRef.current = playing;
+  showControlsRef.current = showControls;
+  speedMenuOpenRef.current = speedMenuOpen;
+  const posKey = `video-pos:${src}`;
+  const revealControls = () => {
+    setShowControls(true);
+    setInteractionTick((t) => t + 1);
+  };
   useEffect(() => {
     setPlaying(false);
-    setProgress(0);
+    setEnded(false);
     setCurrent(0);
+    setDuration(0);
+    setBufferedPct(0);
+    setBuffering(false);
+    setError(false);
+    setShowControls(true);
+    setSpeedMenuOpen(false);
+    setDragRatio(null);
+    setResumeNote("");
+    endedRef.current = false;
+    lastTimeRef.current = 0;
+    lastSavedRef.current = 0;
+    pendingSeekRef.current = 0;
+    return () => {
+      const t = Math.floor(lastTimeRef.current);
+      if (!endedRef.current && t >= 5) AppStorage.set(posKey, String(t));
+    };
   }, [src]);
+  const applySpeed = (value) => {
+    speedRef.current = value;
+    setSpeed(value);
+    const v = videoRef.current;
+    if (v) {
+      v.defaultPlaybackRate = value;
+      v.playbackRate = value;
+    }
+  };
+  useEffect(() => {
+    AppStorage.get("video-speed").then((stored) => {
+      const n = Number(stored);
+      if (PLAYBACK_SPEEDS.includes(n)) applySpeed(n);
+    });
+  }, []);
   useEffect(() => {
     if (!playing) return;
     const id = setInterval(() => onTick == null ? void 0 : onTick(), 1e3);
     return () => clearInterval(id);
   }, [playing]);
+  useEffect(() => {
+    if (!showControls || !playing || speedMenuOpen || dragRatio !== null) return;
+    const id = setTimeout(() => setShowControls(false), CONTROLS_HIDE_MS);
+    return () => clearTimeout(id);
+  }, [showControls, playing, speedMenuOpen, dragRatio, interactionTick]);
+  useEffect(() => {
+    const onVisibility = () => {
+      var _a;
+      if (document.hidden) (_a = videoRef.current) == null ? void 0 : _a.pause();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+  useEffect(() => {
+    const onChange = () => {
+      var _a, _b;
+      const active = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      setIsFullscreen(active);
+      if (!active) {
+        try {
+          (_b = (_a = screen.orientation) == null ? void 0 : _a.unlock) == null ? void 0 : _b.call(_a);
+        } catch (e) {
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      var _a;
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (_a = document.exitFullscreen || document.webkitExitFullscreen) == null ? void 0 : _a.call(document);
+      }
+    };
+  }, []);
+  useEffect(() => {
+    return () => {
+      clearTimeout(tapTimerRef.current);
+      clearTimeout(flashTimerRef.current);
+      clearTimeout(noteTimerRef.current);
+    };
+  }, []);
   const togglePlay = () => {
+    var _a, _b;
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      v.play();
-      setPlaying(true);
+    if (v.ended) v.currentTime = 0;
+    if (v.paused || v.ended) {
+      (_b = (_a = v.play()) == null ? void 0 : _a.catch) == null ? void 0 : _b.call(_a, () => {
+      });
     } else {
       v.pause();
-      setPlaying(false);
     }
+  };
+  const showSkipFlash = (side, seconds) => {
+    setFlash((f) => ({ side, total: f && f.side === side ? f.total + seconds : seconds }));
+    clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlash(null), 700);
+  };
+  const skip = (delta) => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    v.currentTime = Math.min(Math.max(0, v.currentTime + delta), v.duration);
+    lastTimeRef.current = v.currentTime;
+    setCurrent(v.currentTime);
+    showSkipFlash(delta < 0 ? "back" : "fwd", Math.abs(delta));
+  };
+  const handleSurfaceTap = (e) => {
+    var _a;
+    const rect = (_a = containerRef.current) == null ? void 0 : _a.getBoundingClientRect();
+    if (!rect) return;
+    const x = (e.clientX - rect.left) / rect.width;
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+      lastTapRef.current = 0;
+      clearTimeout(tapTimerRef.current);
+      if (x < 0.35) skip(-SEEK_STEP_SECONDS);
+      else if (x > 0.65) skip(SEEK_STEP_SECONDS);
+      else togglePlay();
+      return;
+    }
+    lastTapRef.current = now;
+    clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => {
+      if (speedMenuOpenRef.current) {
+        setSpeedMenuOpen(false);
+        return;
+      }
+      if (!playingRef.current) {
+        togglePlay();
+        return;
+      }
+      if (showControlsRef.current) setShowControls(false);
+      else revealControls();
+    }, DOUBLE_TAP_MS);
+  };
+  const updateBuffered = () => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    const t = v.currentTime;
+    let end = 0;
+    for (let i = 0; i < v.buffered.length; i++) {
+      if (v.buffered.start(i) <= t + 0.5 && v.buffered.end(i) >= t) end = v.buffered.end(i);
+    }
+    setBufferedPct(end / v.duration * 100);
+  };
+  const persistPosition = () => {
+    const t = Math.floor(lastTimeRef.current);
+    if (t < 5) return;
+    lastSavedRef.current = t;
+    AppStorage.set(posKey, String(t));
   };
   const onTimeUpdate = () => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
-    setCurrent(v.currentTime);
-    setProgress(v.currentTime / v.duration * 100);
+    lastTimeRef.current = v.currentTime;
+    if (!draggingRef.current) setCurrent(v.currentTime);
+    updateBuffered();
+    if (Math.abs(v.currentTime - lastSavedRef.current) >= 5) persistPosition();
   };
-  const onLoadedMeta = () => {
+  const onLoadedMeta = async () => {
     const v = videoRef.current;
-    if (v) setDuration(v.duration);
+    if (!v) return;
+    setDuration(v.duration);
+    v.defaultPlaybackRate = speedRef.current;
+    v.playbackRate = speedRef.current;
+    if (pendingSeekRef.current > 0) {
+      v.currentTime = pendingSeekRef.current;
+      pendingSeekRef.current = 0;
+      return;
+    }
+    const stored = Number(await AppStorage.get(posKey));
+    if (stored > 5 && v.duration && stored < v.duration - 5 && v.currentTime < 1) {
+      v.currentTime = stored;
+      setCurrent(stored);
+      setResumeNote(`\u0627\u062F\u0627\u0645\u0647 \u0627\u0632 ${formatTime(stored)}`);
+      clearTimeout(noteTimerRef.current);
+      noteTimerRef.current = setTimeout(() => setResumeNote(""), 3e3);
+    }
   };
-  const seek = (e) => {
+  const handleRetry = () => {
+    var _a, _b;
     const v = videoRef.current;
-    if (!v || !v.duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    v.currentTime = ratio * v.duration;
+    if (!v) return;
+    pendingSeekRef.current = lastTimeRef.current;
+    setError(false);
+    setBuffering(true);
+    v.load();
+    (_b = (_a = v.play()) == null ? void 0 : _a.catch) == null ? void 0 : _b.call(_a, () => {
+    });
   };
   const toggleMute = () => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = !v.muted;
     setMuted(v.muted);
+    revealControls();
   };
-  const toggleFullscreen = () => {
-    var _a;
+  const toggleFullscreen = async () => {
+    var _a, _b;
     const el = containerRef.current;
     if (!el) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      (_a = el.requestFullscreen) == null ? void 0 : _a.call(el);
+    revealControls();
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        const request = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (!request) return;
+        await request.call(el);
+        try {
+          await ((_b = (_a = screen.orientation) == null ? void 0 : _a.lock) == null ? void 0 : _b.call(_a, "landscape"));
+        } catch (e) {
+        }
+      }
+    } catch (e) {
     }
+  };
+  const ratioFromPointer = (e) => {
+    const rect = barRef.current.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  };
+  const onBarPointerDown = (e) => {
+    var _a, _b;
+    if (!duration) return;
+    (_b = (_a = e.currentTarget).setPointerCapture) == null ? void 0 : _b.call(_a, e.pointerId);
+    draggingRef.current = true;
+    setDragRatio(ratioFromPointer(e));
+    revealControls();
+  };
+  const onBarPointerMove = (e) => {
+    if (draggingRef.current) setDragRatio(ratioFromPointer(e));
+  };
+  const finishBarDrag = (e, commit) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    const v = videoRef.current;
+    if (commit && v && v.duration) {
+      const target = ratioFromPointer(e) * v.duration;
+      v.currentTime = target;
+      lastTimeRef.current = target;
+      setCurrent(target);
+    }
+    setDragRatio(null);
+    revealControls();
+  };
+  const progressPct = dragRatio !== null ? dragRatio * 100 : duration ? current / duration * 100 : 0;
+  const displayTime = dragRatio !== null ? dragRatio * duration : current;
+  const controlsVisible = showControls || !playing || error;
+  const uiPointer = controlsVisible ? "auto" : "none";
+  const roundBtn = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: "9999px",
+    background: "rgba(11,11,13,0.55)",
+    border: "1px solid rgba(243,238,230,0.18)",
+    color: "#F3EEE6"
   };
   return /* @__PURE__ */ React.createElement(
     "div",
     {
       ref: containerRef,
-      className: "relative w-full overflow-hidden rounded-xl",
-      style: { background: "#000", aspectRatio: "16 / 9" },
-      onMouseEnter: () => setShowControls(true),
+      "data-fast-tap": "true",
+      dir: "ltr",
+      style: {
+        position: "relative",
+        width: "100%",
+        overflow: "hidden",
+        background: "#000",
+        aspectRatio: "16 / 9",
+        borderRadius: isFullscreen ? 0 : "12px",
+        touchAction: "manipulation"
+      },
       onContextMenu: (e) => e.preventDefault()
     },
+    /* @__PURE__ */ React.createElement("style", null, `
+        @keyframes vpSpin { to { transform: rotate(360deg); } }
+        @keyframes vpFlash { 0% { opacity: 0; transform: scale(0.9); } 15% { opacity: 1; transform: scale(1); } 100% { opacity: 0.9; } }
+      `),
     /* @__PURE__ */ React.createElement(
       "video",
       {
         ref: videoRef,
         src,
-        className: "w-full h-full object-contain",
+        preload: "metadata",
+        style: { width: "100%", height: "100%", objectFit: "contain", display: "block" },
         onTimeUpdate,
+        onProgress: updateBuffered,
         onLoadedMetadata: onLoadedMeta,
-        onClick: togglePlay,
+        onPlay: () => {
+          setPlaying(true);
+          setEnded(false);
+          endedRef.current = false;
+        },
+        onPause: () => {
+          setPlaying(false);
+          persistPosition();
+        },
+        onPlaying: () => setBuffering(false),
+        onWaiting: () => setBuffering(true),
+        onSeeking: () => setBuffering(true),
+        onSeeked: () => setBuffering(false),
+        onCanPlay: () => setBuffering(false),
+        onError: () => {
+          setBuffering(false);
+          setPlaying(false);
+          setError(true);
+        },
         onEnded: () => {
           setPlaying(false);
+          setEnded(true);
+          endedRef.current = true;
+          AppStorage.remove(posKey);
+          lastSavedRef.current = 0;
           onComplete == null ? void 0 : onComplete();
         },
         onContextMenu: (e) => e.preventDefault(),
-        controlsList: "nodownload noremoteplayback noplaybackrate",
+        controlsList: "nodownload noremoteplayback",
         disablePictureInPicture: true,
         disableRemotePlayback: true,
         playsInline: true
       }
     ),
-    /* @__PURE__ */ React.createElement("div", { className: "absolute top-2 right-2", style: { width: "14px", height: "14px", borderTop: "2px solid #D91E2B", borderRight: "2px solid #D91E2B" } }),
-    /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-2 left-2", style: { width: "14px", height: "14px", borderBottom: "2px solid #E8B33D", borderLeft: "2px solid #E8B33D" } }),
-    !playing && /* @__PURE__ */ React.createElement(
-      "button",
+    /* @__PURE__ */ React.createElement(
+      "div",
       {
-        onClick: togglePlay,
-        className: "absolute inset-0 flex items-center justify-center",
-        style: { background: "rgba(11,11,13,0.25)" }
+        onClick: handleSurfaceTap,
+        style: { position: "absolute", inset: 0 }
+      }
+    ),
+    /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: 8, right: 8, width: 14, height: 14, borderTop: "2px solid #D91E2B", borderRight: "2px solid #D91E2B", pointerEvents: "none" } }),
+    /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", bottom: 8, left: 8, width: 14, height: 14, borderBottom: "2px solid #E8B33D", borderLeft: "2px solid #E8B33D", pointerEvents: "none" } }),
+    flash && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: flash.total + flash.side,
+        style: {
+          position: "absolute",
+          top: "50%",
+          [flash.side === "back" ? "left" : "right"]: "10%",
+          transform: "translateY(-50%)",
+          pointerEvents: "none",
+          animation: "vpFlash 700ms ease-out both",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+          color: "#F3EEE6",
+          textShadow: "0 1px 4px rgba(0,0,0,0.9)"
+        }
+      },
+      /* @__PURE__ */ React.createElement(SkipIcon, { forward: flash.side === "fwd", className: "w-8 h-8" }),
+      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", fontSize: 11, fontWeight: 700 } }, flash.total.toLocaleString("fa-IR"), " \u062B\u0627\u0646\u06CC\u0647")
+    ),
+    resumeNote && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          top: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
+          pointerEvents: "none",
+          background: "rgba(11,11,13,0.8)",
+          border: "1px solid rgba(232,179,61,0.5)",
+          borderRadius: 9999,
+          padding: "4px 12px",
+          fontFamily: "Vazirmatn, sans-serif",
+          fontSize: 11,
+          color: "#E8B33D",
+          whiteSpace: "nowrap"
+        }
+      },
+      resumeNote
+    ),
+    error && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          background: "rgba(11,11,13,0.85)",
+          textAlign: "center",
+          padding: 16
+        }
+      },
+      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 13 } }, "\u067E\u062E\u0634 \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u0645\u0634\u06A9\u0644 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F. \u0627\u06CC\u0646\u062A\u0631\u0646\u062A\u062A \u0631\u0648 \u0686\u06A9 \u06A9\u0646."),
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: handleRetry,
+          style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "8px 18px" }
+        },
+        "\u062A\u0644\u0627\u0634 \u0645\u062C\u062F\u062F"
+      )
+    ),
+    buffering && !error && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" } }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          width: 38,
+          height: 38,
+          borderRadius: "50%",
+          border: "3px solid rgba(243,238,230,0.25)",
+          borderTopColor: "#E8B33D",
+          animation: "vpSpin 0.8s linear infinite"
+        }
+      }
+    )),
+    !error && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 22,
+          pointerEvents: "none",
+          opacity: controlsVisible && !buffering ? 1 : 0,
+          transition: "opacity 200ms"
+        }
       },
       /* @__PURE__ */ React.createElement(
-        "div",
+        "button",
         {
-          className: "rounded-full flex items-center justify-center",
-          style: { width: "56px", height: "56px", background: "rgba(217,30,43,0.9)", boxShadow: "0 0 20px rgba(217,30,43,0.6)" }
+          onClick: () => {
+            skip(-SEEK_STEP_SECONDS);
+            revealControls();
+          },
+          "aria-label": "\u06F1\u06F0 \u062B\u0627\u0646\u06CC\u0647 \u0639\u0642\u0628",
+          style: __spreadProps(__spreadValues({}, roundBtn), { width: 40, height: 40, pointerEvents: uiPointer })
         },
-        /* @__PURE__ */ React.createElement(PlayIcon, { className: "w-6 h-6", style: { color: "#F3EEE6", marginRight: "-2px" } })
+        /* @__PURE__ */ React.createElement(SkipIcon, { className: "w-6 h-6" })
+      ),
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            togglePlay();
+            revealControls();
+          },
+          "aria-label": playing ? "\u062A\u0648\u0642\u0641" : "\u067E\u062E\u0634",
+          style: {
+            width: 58,
+            height: 58,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "9999px",
+            background: "rgba(217,30,43,0.92)",
+            boxShadow: "0 0 20px rgba(217,30,43,0.55)",
+            color: "#F3EEE6",
+            pointerEvents: uiPointer
+          }
+        },
+        ended ? /* @__PURE__ */ React.createElement(ReplayIcon, { className: "w-6 h-6", style: { color: "#F3EEE6" } }) : playing ? /* @__PURE__ */ React.createElement(PauseIcon, { className: "w-6 h-6", style: { color: "#F3EEE6" } }) : /* @__PURE__ */ React.createElement(PlayIcon, { className: "w-6 h-6", style: { color: "#F3EEE6", marginRight: "-2px" } })
+      ),
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            skip(SEEK_STEP_SECONDS);
+            revealControls();
+          },
+          "aria-label": "\u06F1\u06F0 \u062B\u0627\u0646\u06CC\u0647 \u062C\u0644\u0648",
+          style: __spreadProps(__spreadValues({}, roundBtn), { width: 40, height: 40, pointerEvents: uiPointer })
+        },
+        /* @__PURE__ */ React.createElement(SkipIcon, { forward: true, className: "w-6 h-6" })
       )
+    ),
+    speedMenuOpen && controlsVisible && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          position: "absolute",
+          right: 10,
+          bottom: 52,
+          display: "flex",
+          flexDirection: "column",
+          background: "rgba(23,22,26,0.96)",
+          border: "1px solid #2a292e",
+          borderRadius: 10,
+          overflow: "hidden",
+          zIndex: 2
+        }
+      },
+      PLAYBACK_SPEEDS.map((s) => /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          key: s,
+          onClick: () => {
+            applySpeed(s);
+            AppStorage.set("video-speed", String(s));
+            setSpeedMenuOpen(false);
+            revealControls();
+          },
+          style: {
+            fontFamily: "Oswald, sans-serif",
+            fontSize: 12,
+            padding: "5px 18px",
+            color: s === speed ? "#E8B33D" : "#DAD6CE",
+            fontWeight: s === speed ? 700 : 400,
+            background: s === speed ? "rgba(232,179,61,0.12)" : "transparent",
+            textAlign: "center"
+          }
+        },
+        s,
+        "x"
+      ))
     ),
     /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: "absolute bottom-0 left-0 right-0 px-3 pb-2 pt-6",
-        style: { background: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)" }
+        style: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: "22px 12px 6px",
+          background: "linear-gradient(to top, rgba(0,0,0,0.88), transparent)",
+          opacity: controlsVisible ? 1 : 0,
+          transition: "opacity 200ms",
+          pointerEvents: "none"
+        }
       },
       /* @__PURE__ */ React.createElement(
         "div",
         {
-          onClick: seek,
-          className: "w-full rounded-full cursor-pointer mb-2",
-          style: { height: "4px", background: "rgba(255,255,255,0.25)" }
+          ref: barRef,
+          onPointerDown: onBarPointerDown,
+          onPointerMove: onBarPointerMove,
+          onPointerUp: (e) => finishBarDrag(e, true),
+          onPointerCancel: (e) => finishBarDrag(e, false),
+          style: { height: 24, display: "flex", alignItems: "center", cursor: "pointer", touchAction: "none", pointerEvents: uiPointer, position: "relative" }
         },
         /* @__PURE__ */ React.createElement(
           "div",
           {
-            className: "h-full rounded-full relative",
-            style: { width: `${progress}%`, background: "linear-gradient(90deg,#D91E2B,#E8B33D)" }
+            style: {
+              position: "relative",
+              width: "100%",
+              height: dragRatio !== null ? 6 : 4,
+              borderRadius: 9999,
+              background: "rgba(255,255,255,0.25)",
+              transition: "height 120ms"
+            }
           },
+          /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", left: 0, top: 0, bottom: 0, width: `${bufferedPct}%`, borderRadius: 9999, background: "rgba(255,255,255,0.35)" } }),
+          /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", left: 0, top: 0, bottom: 0, width: `${progressPct}%`, borderRadius: 9999, background: "linear-gradient(90deg,#D91E2B,#E8B33D)" } }),
           /* @__PURE__ */ React.createElement(
             "div",
             {
-              className: "absolute rounded-full",
               style: {
-                width: "10px",
-                height: "10px",
-                background: "#E8B33D",
+                position: "absolute",
                 top: "50%",
-                left: "100%",
-                transform: "translate(-50%,-50%)"
+                left: `${progressPct}%`,
+                width: dragRatio !== null ? 16 : 12,
+                height: dragRatio !== null ? 16 : 12,
+                borderRadius: "50%",
+                background: "#E8B33D",
+                boxShadow: "0 0 8px rgba(232,179,61,0.7)",
+                transform: "translate(-50%,-50%)",
+                transition: "width 120ms, height 120ms"
               }
             }
+          ),
+          dragRatio !== null && /* @__PURE__ */ React.createElement(
+            "div",
+            {
+              style: {
+                position: "absolute",
+                bottom: 18,
+                left: `${Math.min(92, Math.max(8, progressPct))}%`,
+                transform: "translateX(-50%)",
+                background: "rgba(11,11,13,0.92)",
+                border: "1px solid #E8B33D",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontFamily: "Oswald, sans-serif",
+                fontSize: 11,
+                color: "#F3EEE6",
+                whiteSpace: "nowrap"
+              }
+            },
+            formatTime(displayTime)
           )
         )
       ),
-      /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between", dir: "ltr" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("button", { onClick: togglePlay }, playing ? /* @__PURE__ */ React.createElement(PauseIcon, { className: "w-5 h-5", style: { color: "#F3EEE6" } }) : /* @__PURE__ */ React.createElement(PlayIcon, { className: "w-5 h-5", style: { color: "#F3EEE6" } })), /* @__PURE__ */ React.createElement("button", { onClick: toggleMute }, /* @__PURE__ */ React.createElement(MuteIcon, { className: "w-4 h-4", muted, style: { color: "#F3EEE6" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#DAD6CE", fontSize: "10px" } }, formatTime(current), " / ", formatTime(duration))), /* @__PURE__ */ React.createElement("button", { onClick: toggleFullscreen }, /* @__PURE__ */ React.createElement(ExpandIcon, { className: "w-4 h-4", style: { color: "#F3EEE6" } })))
+      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", pointerEvents: uiPointer } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 14 } }, /* @__PURE__ */ React.createElement("button", { onClick: toggleMute, "aria-label": muted ? "\u067E\u062E\u0634 \u0635\u062F\u0627" : "\u0628\u06CC\u200C\u0635\u062F\u0627", style: { padding: 4, color: "#F3EEE6" } }, /* @__PURE__ */ React.createElement(MuteIcon, { className: "w-5 h-5", muted, style: { color: "#F3EEE6" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#DAD6CE", fontSize: 11 } }, formatTime(displayTime), " / ", formatTime(duration))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } }, /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          onClick: () => {
+            setSpeedMenuOpen((o) => !o);
+            revealControls();
+          },
+          "aria-label": "\u0633\u0631\u0639\u062A \u067E\u062E\u0634",
+          style: {
+            fontFamily: "Oswald, sans-serif",
+            fontSize: 12,
+            fontWeight: 700,
+            color: speed === 1 ? "#F3EEE6" : "#E8B33D",
+            border: `1px solid ${speed === 1 ? "rgba(243,238,230,0.35)" : "#E8B33D"}`,
+            borderRadius: 6,
+            padding: "2px 8px"
+          }
+        },
+        speed,
+        "x"
+      ), /* @__PURE__ */ React.createElement("button", { onClick: toggleFullscreen, "aria-label": "\u062A\u0645\u0627\u0645\u200C\u0635\u0641\u062D\u0647", style: { padding: 4, color: "#F3EEE6" } }, isFullscreen ? /* @__PURE__ */ React.createElement(ShrinkIcon, { className: "w-5 h-5", style: { color: "#F3EEE6" } }) : /* @__PURE__ */ React.createElement(ExpandIcon, { className: "w-5 h-5", style: { color: "#F3EEE6" } }))))
     )
   );
 }
