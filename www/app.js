@@ -732,7 +732,7 @@ function useFonts() {
     const link = document.createElement("link");
     link.id = FONT_LINK_ID;
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&family=Oswald:wght@500;600;700&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;900&family=Oswald:wght@500;600;700&family=Bebas+Neue&display=swap";
     document.head.appendChild(link);
   }, []);
 }
@@ -2360,7 +2360,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
     ...isAdmin ? [{ key: "admin-users", label: "\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646", icon: UserIcon }] : [],
     { key: "invite", label: "\u062F\u0639\u0648\u062A \u0627\u0632 \u062F\u0648\u0633\u062A\u0627\u0646", icon: InviteIcon }
   ];
-  return /* @__PURE__ */ React.createElement("div", { className: "relative flex-1 flex flex-col overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "relative flex-1 flex flex-col overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: "rtl" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-1 gap-2" }, /* @__PURE__ */ React.createElement("div", { className: "w-12 flex items-center shrink-0" }, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: () => setMenuOpen(true),
@@ -2368,7 +2368,36 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
       style: { width: "32px", height: "32px", background: "#F3EEE6", border: "1px solid #F3EEE6" }
     },
     /* @__PURE__ */ React.createElement(MenuIcon, { className: "w-4 h-4", style: { color: "#0B0B0D" } })
-  ), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black" }, "\u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC"))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-12 h-12 object-contain" }))), /* @__PURE__ */ React.createElement(RopeDivider, null), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 mt-4" }, /* @__PURE__ */ React.createElement(
+  )), /* @__PURE__ */ React.createElement(
+    "h1",
+    {
+      dir: "ltr",
+      className: "flex-1 min-w-0 text-center",
+      style: {
+        fontFamily: '"Bebas Neue", Oswald, Impact, "sans-serif-condensed", "Arial Narrow", sans-serif',
+        fontSize: "clamp(15px, 5vw, 21px)",
+        letterSpacing: "0.1em",
+        lineHeight: 1.15,
+        fontWeight: 400,
+        textShadow: "0 0 14px rgba(217,30,43,0.35)"
+      }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { color: "#F3EEE6" } }, "BOXING ACADEMY"),
+    " ",
+    /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        style: {
+          color: "#E8B33D",
+          background: "linear-gradient(90deg, #E8B33D, #D91E2B)",
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          WebkitTextFillColor: "transparent"
+        }
+      },
+      "NASERI"
+    )
+  ), /* @__PURE__ */ React.createElement("div", { className: "w-12 flex items-center justify-end shrink-0" }, /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-12 h-12 object-contain" }))), /* @__PURE__ */ React.createElement(RopeDivider, null), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 mt-4" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
       title: (chapterTitles == null ? void 0 : chapterTitles.basic) || DEFAULT_CHAPTER_TITLES.basic,
@@ -4280,6 +4309,34 @@ ${text.body}`);
   }, target.getTime() - Date.now());
   return "scheduled";
 }
+const CHAPTER_ITEMS = {
+  basic: CURRICULUM_BASIC,
+  advanced: CURRICULUM_ADVANCED,
+  extra: CURRICULUM_EXTRA,
+  fight: CURRICULUM_FIGHT,
+  partner: CURRICULUM_PARTNER,
+  focus: CURRICULUM_FOCUS
+};
+function canCompleteLesson(storedCompleted, videos, curriculumKey, n) {
+  const items = CHAPTER_ITEMS[curriculumKey] || [];
+  for (const it of items) {
+    if (it.n >= n) break;
+    const key = `${curriculumKey}-${it.n}`;
+    if ((videos == null ? void 0 : videos[key]) && !storedCompleted[key]) return false;
+  }
+  return true;
+}
+function computeChainedCompletions(storedCompleted, videos) {
+  const out = {};
+  for (const [curriculumKey, items] of Object.entries(CHAPTER_ITEMS)) {
+    for (const it of items) {
+      const key = `${curriculumKey}-${it.n}`;
+      if (storedCompleted[key]) out[key] = true;
+      else if (videos == null ? void 0 : videos[key]) break;
+    }
+  }
+  return out;
+}
 function computeProgressPercent(completedLessons) {
   let percent = 0;
   for (const key of Object.keys(completedLessons)) {
@@ -4720,8 +4777,10 @@ function App() {
     setStep("lesson");
   };
   const lessonKey = activeLesson ? `${activeLesson.curriculumKey}-${activeLesson.item.n}` : null;
+  const effectiveCompleted = computeChainedCompletions(completedLessons, videos);
   const handleLessonComplete = async () => {
     if (!lessonKey || completedLessons[lessonKey]) return;
+    if (!canCompleteLesson(completedLessons, videos, activeLesson.curriculumKey, activeLesson.item.n)) return;
     const updated = __spreadProps(__spreadValues({}, completedLessons), { [lessonKey]: true });
     setCompletedLessons(updated);
     await AppStorage.set("completed-lessons", JSON.stringify(updated));
@@ -4951,7 +5010,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("extra", item),
         hasVideo: (n) => Boolean(videos[`extra-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`extra-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`extra-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -4966,7 +5025,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("basic", item),
         hasVideo: (n) => Boolean(videos[`basic-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`basic-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`basic-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -4981,7 +5040,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("advanced", item),
         hasVideo: (n) => Boolean(videos[`advanced-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`advanced-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`advanced-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -4996,7 +5055,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("fight", item),
         hasVideo: (n) => Boolean(videos[`fight-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`fight-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`fight-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -5011,7 +5070,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("partner", item),
         hasVideo: (n) => Boolean(videos[`partner-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`partner-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`partner-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -5026,7 +5085,7 @@ function App() {
         onBack: () => setStep("home"),
         onSelect: (item) => openLesson("focus", item),
         hasVideo: (n) => Boolean(videos[`focus-${n}`]),
-        isCompleted: (n) => Boolean(completedLessons[`focus-${n}`]),
+        isCompleted: (n) => Boolean(effectiveCompleted[`focus-${n}`]),
         plan: (authUser == null ? void 0 : authUser.plan) || "none",
         onLockedSelect: () => setStep("subscription"),
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
@@ -5049,8 +5108,8 @@ function App() {
     ), step === "profile" && /* @__PURE__ */ React.createElement(
       ProfileScreen,
       {
-        sessionsCount: Object.keys(completedLessons).length,
-        progressPercent: computeProgressPercent(completedLessons),
+        sessionsCount: Object.keys(effectiveCompleted).length,
+        progressPercent: computeProgressPercent(effectiveCompleted),
         practiceMinutes: Math.floor(practiceSeconds / 60),
         profileName,
         profileImage,
@@ -5060,12 +5119,12 @@ function App() {
         reminder,
         onSetReminder: handleSetReminder,
         badgeUnlocked: {
-          basic: CURRICULUM_BASIC.every((it) => completedLessons[`basic-${it.n}`]),
-          advanced: CURRICULUM_ADVANCED.every((it) => completedLessons[`advanced-${it.n}`]),
-          extra: CURRICULUM_EXTRA.every((it) => completedLessons[`extra-${it.n}`]),
-          fight: CURRICULUM_FIGHT.every((it) => completedLessons[`fight-${it.n}`]),
-          partner: CURRICULUM_PARTNER.every((it) => completedLessons[`partner-${it.n}`]),
-          focus: CURRICULUM_FOCUS.every((it) => completedLessons[`focus-${it.n}`])
+          basic: CURRICULUM_BASIC.every((it) => effectiveCompleted[`basic-${it.n}`]),
+          advanced: CURRICULUM_ADVANCED.every((it) => effectiveCompleted[`advanced-${it.n}`]),
+          extra: CURRICULUM_EXTRA.every((it) => effectiveCompleted[`extra-${it.n}`]),
+          fight: CURRICULUM_FIGHT.every((it) => effectiveCompleted[`fight-${it.n}`]),
+          partner: CURRICULUM_PARTNER.every((it) => effectiveCompleted[`partner-${it.n}`]),
+          focus: CURRICULUM_FOCUS.every((it) => effectiveCompleted[`focus-${it.n}`])
         }
       }
     ), step === "subscription" && /* @__PURE__ */ React.createElement(
