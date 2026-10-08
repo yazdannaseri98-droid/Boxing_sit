@@ -438,6 +438,18 @@ async function apiFetchUsers(token) {
   }
   return { users: data.users || [], total: data.total || 0 };
 }
+async function apiFetchAdminStats(token) {
+  if (DEMO_MODE) return { totalUsers: 1 };
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) triggerAuthFailure();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return null;
+    return { totalUsers: Number(data.totalUsers) || 0 };
+  } catch (e) {
+    return null;
+  }
+}
 async function apiFetchMemberCount() {
   if (DEMO_MODE) {
     const stored = await AppStorage.get("demo-member-count");
@@ -2341,7 +2353,7 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, realMemberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -2520,7 +2532,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
             className: "active-dot rounded-full shrink-0",
             style: { width: "8px", height: "8px", background: "#22c55e" }
           }
-        ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }, className: "text-xs font-bold" }, "\u0627\u0639\u0636\u0627\u06CC \u0641\u0639\u0627\u0644 \u0627\u067E")), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, Number(memberCount).toLocaleString("en-US")), isAdmin && /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }, className: "text-xs font-bold" }, "\u0627\u0639\u0636\u0627\u06CC \u0641\u0639\u0627\u0644 \u0627\u067E")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-end gap-0.5" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, Number(memberCount).toLocaleString("en-US")), isAdmin && /* @__PURE__ */ React.createElement(
           "button",
           {
             onClick: () => {
@@ -2529,7 +2541,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
             }
           },
           /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#5FD3E8" } })
-        )))
+        )), isAdmin && /* @__PURE__ */ React.createElement("span", { "data-testid": "real-member-count", style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[10px] whitespace-nowrap" }, "\u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u0648\u0627\u0642\u0639\u06CC:", " ", /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#5FD3E8" }, className: "font-bold" }, realMemberCount == null ? "\u2014" : Number(realMemberCount).toLocaleString("en-US")))))
       ),
       /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, menuItems.map((item) => {
         const Icon = item.icon;
@@ -4396,6 +4408,7 @@ function App() {
   const [deviceId, setDeviceId] = useState(null);
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
+  const [realMemberCount, setRealMemberCount] = useState(null);
   const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
   const [chapterTitles, setChapterTitles] = useState({});
   const [supportMessages, setSupportMessages] = useState([]);
@@ -4491,15 +4504,31 @@ function App() {
     apiFetchChapterVisibility().then(setChapterVisibility);
     apiFetchChapterTitles().then(setChapterTitles);
   };
+  const loadAdminStats = () => {
+    if (!(authUser == null ? void 0 : authUser.isAdmin) || !authToken) return;
+    apiFetchAdminStats(authToken).then((stats) => {
+      if (stats) setRealMemberCount(stats.totalUsers);
+    });
+  };
   useEffect(() => {
     loadPublicData();
   }, []);
+  useEffect(() => {
+    if (!(authUser == null ? void 0 : authUser.isAdmin)) setRealMemberCount(null);
+    loadAdminStats();
+  }, [authUser == null ? void 0 : authUser.isAdmin, authToken]);
+  useEffect(() => {
+    if (menuOpen) loadAdminStats();
+  }, [menuOpen]);
   const appConnectivity = useConnectivity();
   const prevAppConnectivityRef = useRef(appConnectivity);
   useEffect(() => {
     const was = prevAppConnectivityRef.current;
     prevAppConnectivityRef.current = appConnectivity;
-    if (was !== "ok" && appConnectivity === "ok") loadPublicData();
+    if (was !== "ok" && appConnectivity === "ok") {
+      loadPublicData();
+      loadAdminStats();
+    }
   }, [appConnectivity]);
   const handleRenameLesson = async (curriculumKey, n, newTitle) => {
     const key = `${curriculumKey}-${n}`;
@@ -4894,6 +4923,7 @@ function App() {
         onLogout: handleLogout,
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         memberCount,
+        realMemberCount,
         onSetMemberCount: handleSetMemberCount,
         chapterVisibility,
         onToggleChapterVisibility: handleToggleChapterVisibility,
