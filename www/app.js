@@ -1044,7 +1044,7 @@ function PencilIcon({ className }) {
 function BellIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20a2 2 0 0 0 4 0" }));
 }
-function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange }) {
+function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange, nextLesson, reminder, onSetReminder }) {
   const BOXER_LEVELS = ["\u0645\u0628\u062A\u062F\u06CC", "\u0645\u062A\u0648\u0633\u0637", "\u062D\u0631\u0641\u0647\u200C\u0627\u06CC"];
   const chaptersCompleted = [badgeUnlocked == null ? void 0 : badgeUnlocked.basic, badgeUnlocked == null ? void 0 : badgeUnlocked.advanced, badgeUnlocked == null ? void 0 : badgeUnlocked.extra].filter(Boolean).length;
   const boxerLevel = BOXER_LEVELS[Math.min(chaptersCompleted, BOXER_LEVELS.length - 1)];
@@ -1064,77 +1064,18 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
   const fileRef = useRef(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(profileName || "");
-  const nextSessionTitle = "\u062A\u06A9\u0646\u06CC\u06A9 \u0647\u0648\u06A9 \u0648 \u0622\u067E\u0631\u06A9\u0627\u062A";
+  const nextSessionTitle = nextLesson ? nextLesson.title : "\u0645\u0631\u0648\u0631 \u062A\u0645\u0631\u06CC\u0646\u200C\u0647\u0627\u06CC \u0642\u0628\u0644\u06CC";
+  const reminderTime = (reminder == null ? void 0 : reminder.time) || "18:00";
+  const reminderEnabled = Boolean(reminder == null ? void 0 : reminder.enabled);
+  const reminderDayWord = nextReminderDate(reminderTime).getDate() === (/* @__PURE__ */ new Date()).getDate() ? "\u0627\u0645\u0631\u0648\u0632" : "\u0641\u0631\u062F\u0627";
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [reminderTime, setReminderTime] = useState("18:00");
-  const [reminderStatus, setReminderStatus] = useState("");
-  const timeoutRef = useRef(null);
-  const fireReminder = () => {
-    const body = `\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647! \u062C\u0644\u0633\u0647\u200C\u06CC \xAB${nextSessionTitle}\xBB \u{1F94A}`;
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      try {
-        new Notification("\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647", {
-          body,
-          icon: SPLASH_LOGO_SRC,
-          image: SPLASH_LOGO_SRC,
-          badge: SPLASH_LOGO_SRC
-        });
-        return;
-      } catch (e) {
-      }
-    }
-    alert(body);
-  };
-  const REMINDER_NOTIFICATION_ID = 1001;
+  const [timeDraft, setTimeDraft] = useState(reminderTime);
   const handleSetReminder = async () => {
-    var _a, _b;
-    const [hh, mm] = reminderTime.split(":").map(Number);
-    if (Number.isNaN(hh) || Number.isNaN(mm)) return;
-    const now = /* @__PURE__ */ new Date();
-    const target = /* @__PURE__ */ new Date();
-    target.setHours(hh, mm, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-    const LocalNotifications = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.LocalNotifications;
-    if (LocalNotifications) {
-      try {
-        const perm = await LocalNotifications.checkPermissions();
-        if (perm.display !== "granted") {
-          const req = await LocalNotifications.requestPermissions();
-          if (req.display !== "granted") {
-            alert("\u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644 \u06A9\u0631\u062F\u0646 \u06CC\u0627\u062F\u0622\u0648\u0631\u060C \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0631\u0648 \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u06AF\u0648\u0634\u06CC \u0628\u062F\u06CC\u062F.");
-            return;
-          }
-        }
-        await LocalNotifications.cancel({ notifications: [{ id: REMINDER_NOTIFICATION_ID }] });
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: REMINDER_NOTIFICATION_ID,
-              title: "\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647 \u{1F94A}",
-              body: `\u062C\u0644\u0633\u0647\u200C\u06CC \xAB${nextSessionTitle}\xBB \u0645\u0646\u062A\u0638\u0631\u062A\u0647`,
-              schedule: { at: target, allowWhileIdle: true },
-              smallIcon: "ic_stat_glove",
-              sound: void 0
-              // صدای پیش‌فرض سیستم استفاده می‌شه
-            }
-          ]
-        });
-        setReminderStatus("set");
-        setShowTimePicker(false);
-        return;
-      } catch (e) {
-      }
+    const status = await (onSetReminder == null ? void 0 : onSetReminder(timeDraft));
+    if (status === "denied") {
+      alert("\u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644 \u06A9\u0631\u062F\u0646 \u06CC\u0627\u062F\u0622\u0648\u0631\u060C \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0631\u0648 \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u06AF\u0648\u0634\u06CC \u0628\u062F\u06CC\u062F.");
+      return;
     }
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      try {
-        await Notification.requestPermission();
-      } catch (e) {
-      }
-    }
-    const delay = target.getTime() - now.getTime();
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(fireReminder, delay);
-    setReminderStatus("set");
     setShowTimePicker(false);
   };
   const displayName = profileName || "\u0646\u0627\u0645 \u0648 \u0646\u0627\u0645 \u062E\u0627\u0646\u0648\u0627\u062F\u06AF\u06CC";
@@ -1303,13 +1244,13 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
       className: "rounded-2xl p-4",
       style: { background: "linear-gradient(135deg,#2a1013,#17161A)", border: "1px solid rgba(217,30,43,0.35)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold mb-1" }, "\u062C\u0644\u0633\u0647 \u0628\u0639\u062F\u06CC"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, nextSessionTitle), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0641\u0631\u062F\u0627 \xB7 ", reminderTime)), /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-11 h-11 object-contain shrink-0" })),
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold mb-1" }, "\u062C\u0644\u0633\u0647 \u0628\u0639\u062F\u06CC"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, nextSessionTitle), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, reminderDayWord, " \xB7 ", reminderTime)), /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-11 h-11 object-contain shrink-0" })),
     /* @__PURE__ */ React.createElement("div", { className: "mt-3 pt-3", style: { borderTop: "1px solid rgba(217,30,43,0.2)" } }, showTimePicker ? /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "time",
-        value: reminderTime,
-        onChange: (e) => setReminderTime(e.target.value),
+        value: timeDraft,
+        onChange: (e) => setTimeDraft(e.target.value),
         style: {
           fontFamily: "Oswald, sans-serif",
           background: "#17161A",
@@ -1327,17 +1268,28 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
         className: "rounded-lg px-3 py-1.5 text-xs font-bold"
       },
       "\u062A\u0646\u0638\u06CC\u0645"
-    )) : /* @__PURE__ */ React.createElement("button", { onClick: () => setShowTimePicker(true), className: "flex items-center gap-1.5" }, /* @__PURE__ */ React.createElement(BellIcon, { className: "w-4 h-4", style: { color: reminderStatus === "set" ? "#E8B33D" : "#8A8790" } }), /* @__PURE__ */ React.createElement(
-      "span",
+    )) : /* @__PURE__ */ React.createElement(
+      "button",
       {
-        style: {
-          fontFamily: "Vazirmatn, sans-serif",
-          color: reminderStatus === "set" ? "#E8B33D" : "#8A8790"
+        onClick: () => {
+          setTimeDraft(reminderTime);
+          setShowTimePicker(true);
         },
-        className: "text-xs"
+        className: "flex items-center gap-1.5"
       },
-      reminderStatus === "set" ? `\u06CC\u0627\u062F\u0622\u0648\u0631 \u0628\u0631\u0627\u06CC \u0633\u0627\u0639\u062A ${reminderTime} \u0641\u0639\u0627\u0644\u0647` : "\u062A\u0646\u0638\u06CC\u0645 \u06CC\u0627\u062F\u0622\u0648\u0631"
-    )))
+      /* @__PURE__ */ React.createElement(BellIcon, { className: "w-4 h-4", style: { color: reminderEnabled ? "#E8B33D" : "#8A8790" } }),
+      /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: {
+            fontFamily: "Vazirmatn, sans-serif",
+            color: reminderEnabled ? "#E8B33D" : "#8A8790"
+          },
+          className: "text-xs"
+        },
+        reminderEnabled ? `\u06CC\u0627\u062F\u0622\u0648\u0631 \u0628\u0631\u0627\u06CC \u0633\u0627\u0639\u062A ${reminderTime} \u0641\u0639\u0627\u0644\u0647` : "\u062A\u0646\u0638\u06CC\u0645 \u06CC\u0627\u062F\u0622\u0648\u0631"
+      )
+    ))
   ));
 }
 function ChapterVisibilityToggle({ visible, onToggle }) {
@@ -2586,6 +2538,60 @@ const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 const SEEK_STEP_SECONDS = 10;
 const CONTROLS_HIDE_MS = 3e3;
 const DOUBLE_TAP_MS = 280;
+const videoPosterCache = /* @__PURE__ */ new Map();
+const POSTER_MAX_WIDTH = 640;
+function captureVideoPoster(src, isCancelled) {
+  return new Promise((resolve) => {
+    const probe = document.createElement("video");
+    let settled = false;
+    let timer = null;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      probe.onloadedmetadata = null;
+      probe.onseeked = null;
+      probe.onerror = null;
+      probe.removeAttribute("src");
+      try {
+        probe.load();
+      } catch (e) {
+      }
+      resolve(value);
+    };
+    timer = setTimeout(() => finish(null), 15e3);
+    probe.crossOrigin = "anonymous";
+    probe.muted = true;
+    probe.playsInline = true;
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => {
+      if (isCancelled == null ? void 0 : isCancelled()) return finish(null);
+      const target = Math.min(1, Math.max(0.05, (probe.duration || 1) * 0.1));
+      try {
+        probe.currentTime = target;
+      } catch (e) {
+        finish(null);
+      }
+    };
+    probe.onseeked = () => {
+      try {
+        const w = probe.videoWidth;
+        const h = probe.videoHeight;
+        if (!w || !h) return finish(null);
+        const scale = Math.min(1, POSTER_MAX_WIDTH / w);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        canvas.getContext("2d").drawImage(probe, 0, 0, canvas.width, canvas.height);
+        finish(canvas.toDataURL("image/jpeg", 0.72));
+      } catch (e) {
+        finish(null);
+      }
+    };
+    probe.onerror = () => finish(null);
+    probe.src = src;
+  });
+}
 function SkipIcon({ className, forward }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, forward ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M21 12a9 9 0 1 1-3-6.7L21 8" }), /* @__PURE__ */ React.createElement("path", { d: "M21 3v5h-5" })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("path", { d: "M3 12a9 9 0 1 0 3-6.7L3 8" }), /* @__PURE__ */ React.createElement("path", { d: "M3 3v5h5" })), /* @__PURE__ */ React.createElement("text", { x: "12", y: "15.5", textAnchor: "middle", fontSize: "8", fontWeight: "700", fill: "currentColor", stroke: "none", fontFamily: "Oswald, sans-serif" }, "10"));
 }
@@ -2625,6 +2631,7 @@ function VideoPlayer({ src, onComplete, onTick }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [flash, setFlash] = useState(null);
   const [resumeNote, setResumeNote] = useState("");
+  const [poster, setPoster] = useState(() => videoPosterCache.get(src) || null);
   const playingRef = useRef(false);
   const showControlsRef = useRef(true);
   const speedMenuOpenRef = useRef(false);
@@ -2655,6 +2662,20 @@ function VideoPlayer({ src, onComplete, onTick }) {
     return () => {
       const t = Math.floor(lastTimeRef.current);
       if (!endedRef.current && t >= 5) AppStorage.set(posKey, String(t));
+    };
+  }, [src]);
+  useEffect(() => {
+    const cached = videoPosterCache.get(src);
+    setPoster(cached || null);
+    if (cached) return;
+    let cancelled = false;
+    captureVideoPoster(src, () => cancelled).then((url) => {
+      if (!url) return;
+      videoPosterCache.set(src, url);
+      if (!cancelled) setPoster(url);
+    });
+    return () => {
+      cancelled = true;
     };
   }, [src]);
   const applySpeed = (value) => {
@@ -2922,7 +2943,8 @@ function VideoPlayer({ src, onComplete, onTick }) {
       "video",
       {
         ref: videoRef,
-        src,
+        src: `${src}#t=0.1`,
+        poster: poster || void 0,
         preload: "metadata",
         style: { width: "100%", height: "100%", objectFit: "contain", display: "block" },
         onTimeUpdate,
@@ -3961,6 +3983,92 @@ function BottomTabs({ active, onNavigate }) {
     )
   );
 }
+const CHAPTER_ORDER = ["basic", "advanced", "extra", "fight", "partner", "focus"];
+const PLACEHOLDER_LESSON_TITLE = "\u062F\u0631 \u0627\u0646\u062A\u0638\u0627\u0631 \u0645\u062D\u062A\u0648\u0627";
+const REMINDER_NOTIFICATION_ID = 1001;
+function computeNextLesson(lastLesson, chaptersByKey, availableKeys) {
+  const isReal = (it) => Boolean(it && it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
+  const toResult = (key, it) => ({ curriculumKey: key, n: it.n, title: it.t });
+  const firstRealOfChaptersAfter = (afterIndex) => {
+    for (let i = afterIndex + 1; i < CHAPTER_ORDER.length; i++) {
+      const key = CHAPTER_ORDER[i];
+      if (!availableKeys.includes(key)) continue;
+      const first = (chaptersByKey[key] || [])[0];
+      if (isReal(first)) return toResult(key, first);
+    }
+    return null;
+  };
+  if (!lastLesson) return firstRealOfChaptersAfter(-1);
+  const items = chaptersByKey[lastLesson.curriculumKey] || [];
+  const following = items.find((it) => it.n === lastLesson.n + 1);
+  if (isReal(following)) return toResult(lastLesson.curriculumKey, following);
+  return firstRealOfChaptersAfter(CHAPTER_ORDER.indexOf(lastLesson.curriculumKey));
+}
+function buildReminderText(next) {
+  if (!next) {
+    return { title: "\u0648\u0642\u062A \u0645\u0631\u0648\u0631 \u062A\u0645\u0631\u06CC\u0646\u0647 \u{1F94A}", body: "\u0647\u0645\u0647\u200C\u06CC \u062C\u0644\u0633\u0647\u200C\u0647\u0627\u06CC \u0641\u0639\u0644\u06CC \u0631\u0648 \u062F\u06CC\u062F\u06CC\u061B \u0627\u0645\u0631\u0648\u0632 \u06CC\u0647 \u0645\u0631\u0648\u0631 \u0633\u0631\u06CC\u0639 \u062A\u0645\u0631\u06CC\u0646\u200C\u0647\u0627\u06CC \u0642\u0628\u0644\u06CC \u0628\u06A9\u0646" };
+  }
+  return {
+    title: "\u0648\u0642\u062A \u062A\u0645\u0631\u06CC\u0646\u0647 \u{1F94A}",
+    body: `\u062C\u0644\u0633\u0647\u200C\u06CC ${next.n.toLocaleString("fa-IR")}: \xAB${next.title}\xBB \u0645\u0646\u062A\u0638\u0631\u062A\u0647`
+  };
+}
+function nextReminderDate(timeStr) {
+  const [hh, mm] = String(timeStr || "18:00").split(":").map(Number);
+  const now = /* @__PURE__ */ new Date();
+  const target = /* @__PURE__ */ new Date();
+  target.setHours(Number.isNaN(hh) ? 18 : hh, Number.isNaN(mm) ? 0 : mm, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  return target;
+}
+let browserReminderTimer = null;
+async function armReminder(timeStr, next, askPermission) {
+  var _a, _b;
+  if (!/^\d{1,2}:\d{2}$/.test(String(timeStr || ""))) return "invalid";
+  const target = nextReminderDate(timeStr);
+  const text = buildReminderText(next);
+  const LocalNotifications = (_b = (_a = window.Capacitor) == null ? void 0 : _a.Plugins) == null ? void 0 : _b.LocalNotifications;
+  if (LocalNotifications) {
+    try {
+      let perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== "granted" && askPermission) perm = await LocalNotifications.requestPermissions();
+      if (perm.display !== "granted") return "denied";
+      await LocalNotifications.cancel({ notifications: [{ id: REMINDER_NOTIFICATION_ID }] });
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: REMINDER_NOTIFICATION_ID,
+            title: text.title,
+            body: text.body,
+            schedule: { at: target, allowWhileIdle: true },
+            smallIcon: "ic_stat_glove"
+          }
+        ]
+      });
+      return "scheduled";
+    } catch (e) {
+    }
+  }
+  if (askPermission && typeof Notification !== "undefined" && Notification.permission === "default") {
+    try {
+      await Notification.requestPermission();
+    } catch (e) {
+    }
+  }
+  clearTimeout(browserReminderTimer);
+  browserReminderTimer = setTimeout(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      try {
+        new Notification(text.title, { body: text.body, icon: SPLASH_LOGO_SRC });
+        return;
+      } catch (e) {
+      }
+    }
+    alert(`${text.title}
+${text.body}`);
+  }, target.getTime() - Date.now());
+  return "scheduled";
+}
 function computeProgressPercent(completedLessons) {
   let percent = 0;
   for (const key of Object.keys(completedLessons)) {
@@ -4031,6 +4139,9 @@ function App() {
   const [exitHint, setExitHint] = useState(false);
   const lastPersistedPracticeRef = useRef(0);
   const lastBackPressRef = useRef(0);
+  const [lastLesson, setLastLesson] = useState(null);
+  const [reminder, setReminder] = useState({ enabled: false, time: "18:00" });
+  const [remindersLoaded, setRemindersLoaded] = useState(false);
   const backStateRef = useRef({ step, activeLesson, menuOpen, isAdmin: authUser == null ? void 0 : authUser.isAdmin, activeSupportIdentifier });
   backStateRef.current = { step, activeLesson, menuOpen, isAdmin: authUser == null ? void 0 : authUser.isAdmin, activeSupportIdentifier };
   useEffect(() => {
@@ -4276,6 +4387,53 @@ function App() {
   }));
   useEffect(() => {
     (async () => {
+      const [lastRaw, reminderRaw] = await Promise.all([AppStorage.get("last-lesson"), AppStorage.get("reminder")]);
+      try {
+        if (lastRaw) {
+          const parsed = JSON.parse(lastRaw);
+          if ((parsed == null ? void 0 : parsed.curriculumKey) && (parsed == null ? void 0 : parsed.n)) setLastLesson(parsed);
+        }
+        if (reminderRaw) {
+          const parsed = JSON.parse(reminderRaw);
+          if (parsed == null ? void 0 : parsed.time) setReminder({ enabled: Boolean(parsed.enabled), time: parsed.time });
+        }
+      } catch (e) {
+      }
+      setRemindersLoaded(true);
+    })();
+  }, []);
+  const availableChapterKeys = [
+    "basic",
+    "advanced",
+    "extra",
+    ...NEW_CHAPTER_KEYS.filter((k) => (authUser == null ? void 0 : authUser.isAdmin) || (chapterVisibility == null ? void 0 : chapterVisibility[k]))
+  ];
+  const nextLesson = computeNextLesson(
+    lastLesson,
+    {
+      basic: curriculumBasicMerged,
+      advanced: curriculumAdvancedMerged,
+      extra: curriculumExtraMerged,
+      fight: curriculumFightMerged,
+      partner: curriculumPartnerMerged,
+      focus: curriculumFocusMerged
+    },
+    availableChapterKeys
+  );
+  useEffect(() => {
+    if (!remindersLoaded || !reminder.enabled) return;
+    armReminder(reminder.time, nextLesson, false);
+  }, [remindersLoaded, reminder.enabled, reminder.time, nextLesson == null ? void 0 : nextLesson.curriculumKey, nextLesson == null ? void 0 : nextLesson.n, nextLesson == null ? void 0 : nextLesson.title]);
+  const handleSetReminder = async (time) => {
+    const status = await armReminder(time, nextLesson, true);
+    if (status !== "scheduled") return status;
+    const next = { enabled: true, time };
+    setReminder(next);
+    AppStorage.set("reminder", JSON.stringify(next));
+    return status;
+  };
+  useEffect(() => {
+    (async () => {
       const value = await AppStorage.get("completed-lessons");
       if (value) {
         try {
@@ -4336,6 +4494,9 @@ function App() {
       setStep("subscription");
       return;
     }
+    const record = { curriculumKey, n: item.n };
+    setLastLesson(record);
+    AppStorage.set("last-lesson", JSON.stringify(record));
     setActiveLesson({ curriculumKey, item });
     setStep("lesson");
   };
@@ -4676,6 +4837,9 @@ function App() {
         profileImage,
         onNameChange: handleNameChange,
         onImageChange: handleImageChange,
+        nextLesson,
+        reminder,
+        onSetReminder: handleSetReminder,
         badgeUnlocked: {
           basic: CURRICULUM_BASIC.every((it) => completedLessons[`basic-${it.n}`]),
           advanced: CURRICULUM_ADVANCED.every((it) => completedLessons[`advanced-${it.n}`]),
