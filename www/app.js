@@ -241,6 +241,62 @@ async function apiVerifyOtp(rawIdentifier, method, code, deviceId, force) {
   }
   return data;
 }
+function toLatinDigits(input) {
+  return String(input != null ? input : "").replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 1776)).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 1632));
+}
+const OTP_CODE_LENGTH = 6;
+function getPasswordChecks(rawPassword, phone) {
+  const password = toLatinDigits(rawPassword);
+  const phoneDigits = toLatinDigits(phone || "").replace(/^0/, "");
+  return {
+    length: Array.from(password).length >= 8 && Array.from(password).length <= 64,
+    mix: new RegExp("\\p{L}", "u").test(password) && /[0-9]/.test(password),
+    notPhone: !phoneDigits || !password.replace(/\D/g, "").includes(phoneDigits)
+  };
+}
+function isPasswordAcceptable(rawPassword, phone) {
+  const c = getPasswordChecks(rawPassword, phone);
+  return c.length && c.mix && c.notPhone;
+}
+async function apiAuthPost(path, body) {
+  const res = await apiFetch(`${API_BASE_URL}/auth/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    const err = new Error(data.error || "\u062E\u0637\u0627\u06CC\u06CC \u0631\u062E \u062F\u0627\u062F. \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646");
+    err.code = data.code;
+    err.attemptsLeft = data.attemptsLeft;
+    throw err;
+  }
+  return data;
+}
+async function apiOtpSend(phone, purpose) {
+  if (DEMO_MODE) return { ok: true };
+  return apiAuthPost("otp/send", { phone, purpose });
+}
+async function apiOtpVerify(phone, code, purpose) {
+  if (DEMO_MODE) return { ok: true, proofToken: "demo-proof" };
+  return apiAuthPost("otp/verify", { phone, code, purpose });
+}
+function demoAuthResult(phone) {
+  const user = { identifier: phone, isAdmin: DEMO_ADMIN_IDENTIFIERS.includes(phone), plan: "none" };
+  return { ok: true, token: "demo-token", user };
+}
+async function apiRegisterAccount(proofToken, password, deviceId, force, phone) {
+  if (DEMO_MODE) return demoAuthResult(phone);
+  return apiAuthPost("register", { proofToken, password, deviceId, force: Boolean(force) });
+}
+async function apiPasswordLogin(phone, password, deviceId, force) {
+  if (DEMO_MODE) return demoAuthResult(phone);
+  return apiAuthPost("login", { phone, password, deviceId, force: Boolean(force) });
+}
+async function apiResetPassword(proofToken, password, deviceId, phone) {
+  if (DEMO_MODE) return demoAuthResult(phone);
+  return apiAuthPost("reset-password", { proofToken, password, deviceId });
+}
 async function apiCheckSession(token, deviceId) {
   if (DEMO_MODE) return true;
   try {
@@ -955,7 +1011,315 @@ function SplashScreen({ onStart, loading }) {
     ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644")))
   );
 }
-function SignupScreen({ contact, setContact, method, setMethod, onSubmit }) {
+function EyeIcon({ className, off }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" }), /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "3" }), off && /* @__PURE__ */ React.createElement("path", { d: "M3 3l18 18" }));
+}
+function AuthPhoneField({ value, onChange, onEnter, hasError, autoFocus }) {
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex items-center rounded-xl px-4 py-3.5 border",
+      style: { background: "#17161A", borderColor: hasError ? "#D91E2B" : "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D" }, className: "text-sm font-semibold ml-3" }, "+98"),
+    /* @__PURE__ */ React.createElement("div", { className: "w-px h-5 ml-3", style: { background: "#2a292e" } }),
+    /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "tel",
+        inputMode: "numeric",
+        autoComplete: "tel",
+        autoFocus,
+        placeholder: "912 345 6789",
+        value,
+        onChange: (e) => onChange(toLatinDigits(e.target.value).replace(/[^\d\s]/g, "")),
+        onKeyDown: (e) => e.key === "Enter" && (onEnter == null ? void 0 : onEnter()),
+        style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" },
+        className: "bg-transparent outline-none flex-1 text-base tracking-wider",
+        dir: "ltr"
+      }
+    )
+  );
+}
+function AuthPasswordField({ value, onChange, onEnter, placeholder, autoComplete, hasError }) {
+  const [visible, setVisible] = useState(false);
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex items-center rounded-xl px-4 py-3.5 border",
+      style: { background: "#17161A", borderColor: hasError ? "#D91E2B" : "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: visible ? "text" : "password",
+        autoComplete,
+        placeholder,
+        value,
+        onChange: (e) => onChange(e.target.value),
+        onKeyDown: (e) => e.key === "Enter" && (onEnter == null ? void 0 : onEnter()),
+        style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" },
+        className: "bg-transparent outline-none flex-1 text-base tracking-wider min-w-0",
+        dir: "ltr",
+        maxLength: 64
+      }
+    ),
+    /* @__PURE__ */ React.createElement("button", { type: "button", onClick: () => setVisible((v) => !v), "aria-label": visible ? "\u067E\u0646\u0647\u0627\u0646 \u06A9\u0631\u062F\u0646 \u0631\u0645\u0632" : "\u0646\u0645\u0627\u06CC\u0634 \u0631\u0645\u0632", style: { color: "#8A8790" }, className: "mr-2" }, /* @__PURE__ */ React.createElement(EyeIcon, { className: "w-5 h-5", off: visible }))
+  );
+}
+function AuthCodeInput({ digits, setDigits, hasError, onComplete }) {
+  const refs = useRef([]);
+  const setAt = (i, val) => {
+    var _a2;
+    const next = [...digits];
+    next[i] = val;
+    setDigits(next);
+    if (val && i < digits.length - 1) (_a2 = refs.current[i + 1]) == null ? void 0 : _a2.focus();
+    if (next.every((d) => d !== "")) onComplete == null ? void 0 : onComplete(next.join(""));
+  };
+  const handleChange = (i, raw) => {
+    var _a2;
+    const clean = toLatinDigits(raw).replace(/\D/g, "");
+    if (clean.length > 1) {
+      const next = [...digits];
+      clean.slice(0, digits.length - i).split("").forEach((d, k) => next[i + k] = d);
+      setDigits(next);
+      (_a2 = refs.current[Math.min(i + clean.length, digits.length - 1)]) == null ? void 0 : _a2.focus();
+      if (next.every((d) => d !== "")) onComplete == null ? void 0 : onComplete(next.join(""));
+      return;
+    }
+    setAt(i, clean);
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 justify-center", dir: "ltr" }, digits.map((c, i) => /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      key: i,
+      ref: (el) => refs.current[i] = el,
+      value: c,
+      autoFocus: i === 0,
+      autoComplete: i === 0 ? "one-time-code" : "off",
+      onChange: (e) => handleChange(i, e.target.value),
+      onKeyDown: (e) => {
+        var _a2;
+        if (e.key === "Backspace" && !digits[i] && i > 0) (_a2 = refs.current[i - 1]) == null ? void 0 : _a2.focus();
+      },
+      inputMode: "numeric",
+      style: {
+        fontFamily: "Oswald, sans-serif",
+        background: "#17161A",
+        borderColor: hasError ? "#D91E2B" : c ? "#D91E2B" : "#2a292e",
+        color: "#F3EEE6"
+      },
+      className: "w-11 h-14 text-center text-xl font-bold rounded-xl border-2 outline-none"
+    }
+  )));
+}
+function PasswordRules({ password, phone }) {
+  const c = getPasswordChecks(password, phone);
+  const rows = [
+    [c.length, "\u062D\u062F\u0627\u0642\u0644 \u06F8 \u06A9\u0627\u0631\u0627\u06A9\u062A\u0631"],
+    [c.mix, "\u0647\u0645 \u062D\u0631\u0641 \u0648 \u0647\u0645 \u0639\u062F\u062F \u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u0647"],
+    [c.notPhone, "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644\u062A \u0646\u0628\u0627\u0634\u0647"]
+  ];
+  return /* @__PURE__ */ React.createElement("div", { className: "mt-3 flex flex-col gap-1.5" }, rows.map(([passed, text]) => /* @__PURE__ */ React.createElement("div", { key: text, className: "flex items-center gap-2", style: { fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: passed ? "#4ADE80" : "#8A8790" } }, /* @__PURE__ */ React.createElement("span", { style: { width: 14, textAlign: "center" } }, passed ? "\u2713" : "\u25CB"), /* @__PURE__ */ React.createElement("span", null, text))));
+}
+function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, initialPhone }) {
+  const [mode, setMode] = useState("login");
+  const [stage, setStage] = useState("phone");
+  const [phone, setPhone] = useState(initialPhone || "");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [digits, setDigits] = useState(Array(OTP_CODE_LENGTH).fill(""));
+  const [proofToken, setProofToken] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState(null);
+  const [conflict, setConflict] = useState(false);
+  const [resendLeft, setResendLeft] = useState(0);
+  const normalizedPhone = normalizeIranPhone(toLatinDigits(phone));
+  const phoneValid = isValidIranPhone(normalizedPhone);
+  const purpose = mode === "forgot" ? "reset" : "register";
+  useEffect(() => {
+    if (resendLeft <= 0) return;
+    const id = setTimeout(() => setResendLeft((s) => s - 1), 1e3);
+    return () => clearTimeout(id);
+  }, [resendLeft]);
+  const clearError = () => {
+    setError("");
+    setErrorCode(null);
+  };
+  const fail = (err) => {
+    setError(err.message || "\u062E\u0637\u0627\u06CC\u06CC \u0631\u062E \u062F\u0627\u062F. \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646");
+    setErrorCode(err.code || null);
+  };
+  const goMode = (nextMode) => {
+    setMode(nextMode);
+    setStage("phone");
+    setPassword("");
+    setConfirm("");
+    setDigits(Array(OTP_CODE_LENGTH).fill(""));
+    setProofToken(null);
+    setConflict(false);
+    clearError();
+  };
+  const run = async (fn) => {
+    clearError();
+    setLoading(true);
+    try {
+      await fn();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleLogin = (force) => run(async () => {
+    try {
+      const data = await apiPasswordLogin(normalizedPhone, password, deviceId, force, normalizedPhone);
+      onSuccess(data);
+    } catch (err) {
+      if (err.code === "DEVICE_CONFLICT") {
+        setConflict(true);
+        setError(err.message);
+        return;
+      }
+      throw err;
+    }
+  });
+  const handleSendCode = () => run(async () => {
+    await apiOtpSend(normalizedPhone, purpose);
+    setDigits(Array(OTP_CODE_LENGTH).fill(""));
+    setStage("code");
+    setResendLeft(60);
+  });
+  const handleResend = () => run(async () => {
+    await apiOtpSend(normalizedPhone, purpose);
+    setDigits(Array(OTP_CODE_LENGTH).fill(""));
+    setResendLeft(60);
+  });
+  const handleVerifyCode = (codeOverride) => run(async () => {
+    const code = codeOverride || digits.join("");
+    const data = await apiOtpVerify(normalizedPhone, code, purpose);
+    setProofToken(data.proofToken);
+    setStage("password");
+  });
+  const handleSetPassword = (force) => run(async () => {
+    if (!isPasswordAcceptable(password, normalizedPhone)) throw new Error("\u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u0634\u0631\u0627\u06CC\u0637 \u0644\u0627\u0632\u0645 \u0631\u0648 \u0646\u062F\u0627\u0631\u0647");
+    if (password !== confirm) throw new Error("\u062A\u06A9\u0631\u0627\u0631 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u0628\u0627 \u0631\u0645\u0632 \u0627\u0635\u0644\u06CC \u06CC\u06A9\u06CC \u0646\u06CC\u0633\u062A");
+    try {
+      const data = mode === "forgot" ? await apiResetPassword(proofToken, password, deviceId, normalizedPhone) : await apiRegisterAccount(proofToken, password, deviceId, force, normalizedPhone);
+      onSuccess(data);
+    } catch (err) {
+      if (err.code === "DEVICE_CONFLICT") {
+        setConflict(true);
+        setError(err.message);
+        return;
+      }
+      if (err.code === "PROOF_INVALID") {
+        setStage("phone");
+        setProofToken(null);
+        setDigits(Array(OTP_CODE_LENGTH).fill(""));
+      }
+      throw err;
+    }
+  });
+  const label = { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" };
+  const primaryBtn = (enabled) => ({
+    fontFamily: "Vazirmatn, sans-serif",
+    background: enabled ? "#D91E2B" : "#3a2226",
+    color: enabled ? "#F3EEE6" : "#7a5a5d"
+  });
+  const linkBtn = { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" };
+  const errorBox = error ? /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-xs leading-6" }, error), errorCode === "ACCOUNT_EXISTS" && /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("login"), style: linkBtn, className: "text-xs font-bold mt-1" }, "\u0631\u0641\u062A\u0646 \u0628\u0647 \u0635\u0641\u062D\u0647\u200C\u06CC \u0648\u0631\u0648\u062F"), errorCode === "NO_ACCOUNT" && /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("register"), style: linkBtn, className: "text-xs font-bold mt-1" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645"), errorCode === "NO_PASSWORD" && /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 mt-1" }, /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("register"), style: linkBtn, className: "text-xs font-bold" }, "\u062A\u0639\u06CC\u06CC\u0646 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631"), /* @__PURE__ */ React.createElement("button", { onClick: () => onUseLegacy == null ? void 0 : onUseLegacy(normalizedPhone), style: linkBtn, className: "text-xs font-bold" }, "\u0648\u0631\u0648\u062F \u0628\u0627 \u06A9\u062F \u067E\u06CC\u0627\u0645\u06A9\u06CC"))) : null;
+  const conflictBox = (onForce) => /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-4 mb-4", style: { background: "rgba(217,30,43,0.1)", border: "1px solid rgba(217,30,43,0.35)" } }, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-xs leading-6 mb-3 text-center" }, "\u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u0647\u0645\u06CC\u0646 \u0627\u0644\u0627\u0646 \u0631\u0648\u06CC \u06CC\u0647 \u06AF\u0648\u0634\u06CC \u062F\u06CC\u06AF\u0647 \u0628\u0627\u0632\u0647. \u0647\u0631 \u062D\u0633\u0627\u0628 \u0641\u0642\u0637 \u0645\u06CC\u200C\u062A\u0648\u0646\u0647 \u0631\u0648\u06CC \u06CC\u0647 \u062F\u0633\u062A\u06AF\u0627\u0647 \u0641\u0639\u0627\u0644 \u0628\u0627\u0634\u0647."), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: onForce,
+      disabled: loading,
+      style: { fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE", color: "#0B0B0D" },
+      className: "w-full rounded-lg py-2.5 text-xs font-bold"
+    },
+    loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0648\u0631\u0648\u062F\u2026" : "\u062E\u0631\u0648\u062C \u0627\u0632 \u062F\u0633\u062A\u06AF\u0627\u0647 \u0642\u0628\u0644\u06CC \u0648 \u0648\u0631\u0648\u062F \u0627\u06CC\u0646\u062C\u0627"
+  ));
+  const header = /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-6" }, mode === "login" ? /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-8 h-8 object-contain" }) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => stage === "phone" ? goMode("login") : setStage(stage === "password" ? "code" : "phone"),
+      style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" },
+      className: "text-sm rounded-lg px-3 py-1.5 font-bold"
+    },
+    "\u2039 \u0628\u0627\u0632\u06AF\u0634\u062A"
+  ), DEMO_MODE && /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)", border: "1px solid rgba(232,179,61,0.4)", fontSize: "9px" },
+      className: "rounded-full px-2 py-1 mr-auto"
+    },
+    "\u062D\u0627\u0644\u062A \u0622\u0632\u0645\u0627\u06CC\u0634\u06CC"
+  ));
+  if (mode === "login") {
+    const canLogin = phoneValid && password.length > 0 && !loading && Boolean(deviceId);
+    return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col px-6 pt-4 overflow-y-auto", dir: "rtl" }, header, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.3 }, className: "text-3xl font-black mb-2" }, "\u0648\u0627\u0631\u062F \u0631\u06CC\u0646\u06AF \u0634\u0648."), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm mb-6 leading-7" }, "\u0628\u0627 \u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644 \u0648 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631\u062A \u0648\u0627\u0631\u062F \u0634\u0648."), /* @__PURE__ */ React.createElement("label", { style: label, className: "text-xs mb-2 block" }, "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644"), /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(AuthPhoneField, { value: phone, onChange: (v) => {
+      setPhone(v);
+      clearError();
+      setConflict(false);
+    }, hasError: Boolean(error) })), /* @__PURE__ */ React.createElement("label", { style: label, className: "text-xs mb-2 block" }, "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631"), /* @__PURE__ */ React.createElement("div", { className: "mb-2" }, /* @__PURE__ */ React.createElement(
+      AuthPasswordField,
+      {
+        value: password,
+        onChange: (v) => {
+          setPassword(v);
+          clearError();
+          setConflict(false);
+        },
+        onEnter: () => canLogin && handleLogin(false),
+        placeholder: "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631",
+        autoComplete: "current-password",
+        hasError: Boolean(error)
+      }
+    )), /* @__PURE__ */ React.createElement("div", { className: "flex justify-start mb-5" }, /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("forgot"), style: linkBtn, className: "text-xs font-bold" }, "\u0631\u0645\u0632\u062A \u0631\u0648 \u0641\u0631\u0627\u0645\u0648\u0634 \u06A9\u0631\u062F\u06CC\u061F")), errorBox, conflict ? conflictBox(() => handleLogin(true)) : /* @__PURE__ */ React.createElement("button", { onClick: () => handleLogin(false), disabled: !canLogin, style: primaryBtn(canLogin), className: "w-full rounded-xl py-4 font-bold text-base transition-colors mb-4" }, loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0648\u0631\u0648\u062F\u2026" : "\u0648\u0631\u0648\u062F"), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm text-center mb-3" }, "\u062D\u0633\u0627\u0628 \u0646\u062F\u0627\u0631\u06CC\u061F", " ", /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("register"), style: linkBtn, className: "font-bold" }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645")), /* @__PURE__ */ React.createElement("div", { className: "mt-auto mb-6 text-center" }, /* @__PURE__ */ React.createElement("button", { onClick: () => onUseLegacy == null ? void 0 : onUseLegacy(phoneValid ? normalizedPhone : ""), style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs underline" }, "\u0648\u0631\u0648\u062F \u0628\u0627 \u0627\u06CC\u0645\u06CC\u0644 \u06CC\u0627 \u06A9\u062F \u067E\u06CC\u0627\u0645\u06A9\u06CC")));
+  }
+  const isForgot = mode === "forgot";
+  if (stage === "phone") {
+    const canSend = phoneValid && !loading;
+    return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col px-6 pt-4 overflow-y-auto", dir: "rtl" }, header, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.3 }, className: "text-2xl font-black mb-2" }, isForgot ? "\u0628\u0627\u0632\u06CC\u0627\u0628\u06CC \u0631\u0645\u0632 \u0639\u0628\u0648\u0631" : "\u0633\u0627\u062E\u062A \u062D\u0633\u0627\u0628"), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm mb-6 leading-7" }, isForgot ? "\u0634\u0645\u0627\u0631\u0647\u200C\u0627\u06CC \u06A9\u0647 \u0628\u0627 \u0627\u0648\u0646 \u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u06A9\u0631\u062F\u06CC \u0631\u0648 \u0648\u0627\u0631\u062F \u06A9\u0646 \u062A\u0627 \u06CC\u0647 \u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0628\u0631\u0627\u062A \u067E\u06CC\u0627\u0645\u06A9 \u06A9\u0646\u06CC\u0645." : "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644\u062A \u0631\u0648 \u0648\u0627\u0631\u062F \u06A9\u0646 \u062A\u0627 \u06CC\u0647 \u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0628\u0631\u0627\u062A \u067E\u06CC\u0627\u0645\u06A9 \u06A9\u0646\u06CC\u0645. \u0628\u0639\u062F\u0634 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631\u062A \u0631\u0648 \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u06CC\u200C\u06A9\u0646\u06CC."), /* @__PURE__ */ React.createElement("label", { style: label, className: "text-xs mb-2 block" }, "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644"), /* @__PURE__ */ React.createElement("div", { className: "mb-3" }, /* @__PURE__ */ React.createElement(AuthPhoneField, { value: phone, onChange: (v) => {
+      setPhone(v);
+      clearError();
+    }, onEnter: () => canSend && handleSendCode(), hasError: Boolean(error), autoFocus: true })), errorBox, /* @__PURE__ */ React.createElement("button", { onClick: handleSendCode, disabled: !canSend, style: primaryBtn(canSend), className: "w-full rounded-xl py-4 font-bold text-base transition-colors mb-4 mt-2" }, loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u0631\u0633\u0627\u0644\u2026" : "\u062F\u0631\u06CC\u0627\u0641\u062A \u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F"), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm text-center" }, isForgot ? "\u06CC\u0627\u062F\u062A \u0627\u0648\u0645\u062F\u061F" : "\u0642\u0628\u0644\u0627\u064B \u062B\u0628\u062A\u200C\u0646\u0627\u0645 \u06A9\u0631\u062F\u06CC\u061F", " ", /* @__PURE__ */ React.createElement("button", { onClick: () => goMode("login"), style: linkBtn, className: "font-bold" }, "\u0648\u0631\u0648\u062F")), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-auto mb-6" }, "\u0628\u0627 \u0627\u062F\u0627\u0645\u0647\u060C \u0634\u0631\u0627\u06CC\u0637 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0648 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0631\u0648 \u0645\u06CC\u200C\u067E\u0630\u06CC\u0631\u06CC."));
+  }
+  if (stage === "code") {
+    const filled = digits.every((d) => d !== "");
+    return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col px-6 pt-4 overflow-y-auto", dir: "rtl" }, header, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-2xl font-black mb-2" }, "\u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F \u0631\u0648 \u0648\u0627\u0631\u062F \u06A9\u0646"), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm mb-6 leading-7" }, "\u06A9\u062F ", OTP_CODE_LENGTH.toLocaleString("fa-IR"), " \u0631\u0642\u0645\u06CC \u0628\u0647 \u0634\u0645\u0627\u0631\u0647", " ", /* @__PURE__ */ React.createElement("span", { style: { color: "#E8B33D", direction: "ltr", display: "inline-block" } }, normalizedPhone), " \u067E\u06CC\u0627\u0645\u06A9 \u0634\u062F."), /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement(AuthCodeInput, { digits, setDigits: (d) => {
+      setDigits(d);
+      clearError();
+    }, hasError: Boolean(error), onComplete: (code) => !loading && handleVerifyCode(code) })), /* @__PURE__ */ React.createElement("div", { className: "text-center" }, errorBox), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center mb-6" }, resendLeft > 0 ? /* @__PURE__ */ React.createElement("span", { dir: "ltr", style: { display: "inline-block" } }, "\u0627\u0631\u0633\u0627\u0644 \u0645\u062C\u062F\u062F \u062A\u0627 ", String(Math.floor(resendLeft / 60)).padStart(2, "0"), ":", String(resendLeft % 60).padStart(2, "0")) : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u06A9\u062F \u0631\u0648 \u062F\u0631\u06CC\u0627\u0641\u062A \u0646\u06A9\u0631\u062F\u06CC\u061F", " ", /* @__PURE__ */ React.createElement("button", { onClick: handleResend, disabled: loading, style: linkBtn }, "\u0627\u0631\u0633\u0627\u0644 \u0645\u062C\u062F\u062F"))), /* @__PURE__ */ React.createElement("button", { onClick: () => handleVerifyCode(), disabled: !filled || loading, style: primaryBtn(filled && !loading), className: "w-full rounded-xl py-4 font-bold text-base transition-colors" }, loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC\u2026" : "\u062A\u0627\u06CC\u06CC\u062F"), /* @__PURE__ */ React.createElement("button", { onClick: () => {
+      setStage("phone");
+      clearError();
+    }, style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs underline mt-4" }, "\u0648\u06CC\u0631\u0627\u06CC\u0634 \u0634\u0645\u0627\u0631\u0647"));
+  }
+  const passwordOk = isPasswordAcceptable(password, normalizedPhone);
+  const matches = password.length > 0 && password === confirm;
+  const canSubmit = passwordOk && matches && !loading && Boolean(deviceId);
+  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col px-6 pt-4 overflow-y-auto", dir: "rtl" }, header, /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.3 }, className: "text-2xl font-black mb-2" }, isForgot ? "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u062C\u062F\u06CC\u062F" : "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631\u062A \u0631\u0648 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646"), /* @__PURE__ */ React.createElement("p", { style: label, className: "text-sm mb-6 leading-7" }, isForgot ? "\u0628\u0627 \u062B\u0628\u062A \u0631\u0645\u0632 \u062C\u062F\u06CC\u062F\u060C \u0627\u06AF\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC \u062F\u06CC\u06AF\u0647\u200C\u0627\u06CC \u0648\u0627\u0631\u062F \u0634\u062F\u0647 \u0628\u0627\u0634\u06CC \u0627\u0632 \u0627\u0648\u0646 \u062E\u0627\u0631\u062C \u0645\u06CC\u200C\u0634\u06CC." : "\u0634\u0645\u0627\u0631\u0647\u200C\u0627\u062A \u062A\u0627\u06CC\u06CC\u062F \u0634\u062F. \u0627\u06CC\u0646 \u0631\u0645\u0632 \u0631\u0648 \u0628\u0631\u0627\u06CC \u0648\u0631\u0648\u062F\u0647\u0627\u06CC \u0628\u0639\u062F\u06CC \u0644\u0627\u0632\u0645 \u062F\u0627\u0631\u06CC."), /* @__PURE__ */ React.createElement("label", { style: label, className: "text-xs mb-2 block" }, isForgot ? "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u062C\u062F\u06CC\u062F" : "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631"), /* @__PURE__ */ React.createElement(AuthPasswordField, { value: password, onChange: (v) => {
+    setPassword(v);
+    clearError();
+    setConflict(false);
+  }, placeholder: "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631", autoComplete: "new-password", hasError: false }), /* @__PURE__ */ React.createElement(PasswordRules, { password, phone: normalizedPhone }), /* @__PURE__ */ React.createElement("label", { style: label, className: "text-xs mb-2 mt-5 block" }, "\u062A\u06A9\u0631\u0627\u0631 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631"), /* @__PURE__ */ React.createElement(
+    AuthPasswordField,
+    {
+      value: confirm,
+      onChange: (v) => {
+        setConfirm(v);
+        clearError();
+      },
+      onEnter: () => canSubmit && handleSetPassword(false),
+      placeholder: "\u062A\u06A9\u0631\u0627\u0631 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631",
+      autoComplete: "new-password",
+      hasError: confirm.length > 0 && !matches
+    }
+  ), confirm.length > 0 && !matches && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-xs mt-2" }, "\u062A\u06A9\u0631\u0627\u0631 \u0631\u0645\u0632 \u0628\u0627 \u0631\u0645\u0632 \u0627\u0635\u0644\u06CC \u06CC\u06A9\u06CC \u0646\u06CC\u0633\u062A"), /* @__PURE__ */ React.createElement("div", { className: "mt-5" }, errorBox), conflict ? conflictBox(() => handleSetPassword(true)) : /* @__PURE__ */ React.createElement("button", { onClick: () => handleSetPassword(false), disabled: !canSubmit, style: primaryBtn(canSubmit), className: "w-full rounded-xl py-4 font-bold text-base transition-colors mb-6" }, loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0630\u062E\u06CC\u0631\u0647\u2026" : isForgot ? "\u062B\u0628\u062A \u0631\u0645\u0632 \u062C\u062F\u06CC\u062F \u0648 \u0648\u0631\u0648\u062F" : "\u0633\u0627\u062E\u062A \u062D\u0633\u0627\u0628 \u0648 \u0648\u0631\u0648\u062F"));
+}
+function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUsePassword }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const contactValid = isValidIdentifier(contact.trim(), method);
@@ -1078,7 +1442,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit }) {
       className: "w-full rounded-xl py-4 font-bold text-base transition-colors mb-4"
     },
     loading ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u0631\u0633\u0627\u0644\u2026" : "\u062F\u0631\u06CC\u0627\u0641\u062A \u06A9\u062F \u062A\u0627\u06CC\u06CC\u062F"
-  ), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-auto mb-6" }, "\u0628\u0627 \u0627\u062F\u0627\u0645\u0647\u060C \u0634\u0631\u0627\u06CC\u0637 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0648 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0631\u0648 \u0645\u06CC\u200C\u067E\u0630\u06CC\u0631\u06CC."));
+  ), onUsePassword && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm text-center mb-3" }, "\u0628\u0627 \u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06CC\u0644 \u0648 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631 \u0648\u0627\u0631\u062F \u0645\u06CC\u200C\u0634\u06CC\u061F", " ", /* @__PURE__ */ React.createElement("button", { onClick: onUsePassword, style: { color: "#E8B33D" }, className: "font-bold" }, "\u0648\u0631\u0648\u062F \u0628\u0627 \u0631\u0645\u0632 \u0639\u0628\u0648\u0631")), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-auto mb-6" }, "\u0628\u0627 \u0627\u062F\u0627\u0645\u0647\u060C \u0634\u0631\u0627\u06CC\u0637 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0648 \u062D\u0631\u06CC\u0645 \u062E\u0635\u0648\u0635\u06CC \u0631\u0648 \u0645\u06CC\u200C\u067E\u0630\u06CC\u0631\u06CC."));
 }
 function OtpScreen({ contact, method, onVerify, code, setCode }) {
   const inputsRef = useRef([]);
@@ -4394,6 +4758,7 @@ function App() {
   const [step, setStep] = useState("splash");
   const [contact, setContact] = useState("");
   const [contactMethod, setContactMethod] = useState("email");
+  const [legacyAuth, setLegacyAuth] = useState(false);
   const [code, setCode] = useState(["", "", "", ""]);
   const [videos, setVideos] = useState({});
   const [activeLesson, setActiveLesson] = useState(null);
@@ -4842,6 +5207,19 @@ function App() {
     setStep("home");
     saveSession(data.token, data.user);
   };
+  const handleAuthSuccess = (data) => {
+    setAuthToken(data.token);
+    setAuthUser(data.user);
+    setStep("home");
+    saveSession(data.token, data.user);
+  };
+  const handleUseLegacyAuth = (prefillPhone) => {
+    if (prefillPhone) {
+      setContactMethod("phone");
+      setContact(prefillPhone);
+    }
+    setLegacyAuth(true);
+  };
   useEffect(() => {
     if (!authToken || DEMO_MODE || !deviceId) return;
     const id = setInterval(async () => {
@@ -4860,6 +5238,7 @@ function App() {
   const handleLogout = () => {
     setAuthToken(null);
     setAuthUser(null);
+    setLegacyAuth(false);
     setContact("");
     setCode(["", "", "", ""]);
     setStep("signup");
@@ -4892,14 +5271,15 @@ function App() {
             animation: activeDotPulse 1.8s ease-out infinite;
           }
         `),
-    /* @__PURE__ */ React.createElement(PhoneMock, { bgImage: getScreenBackground(step) }, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement(NetworkBanner, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { loading: !sessionChecked, onStart: () => setStep("signup") }), step === "signup" && /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement(PhoneMock, { bgImage: getScreenBackground(step) }, /* @__PURE__ */ React.createElement(TopNotch, null), /* @__PURE__ */ React.createElement(NetworkBanner, null), /* @__PURE__ */ React.createElement("div", { key: step, className: "screen-enter flex-1 flex flex-col min-h-0" }, step === "splash" && /* @__PURE__ */ React.createElement(SplashScreen, { loading: !sessionChecked, onStart: () => setStep("signup") }), step === "signup" && !legacyAuth && /* @__PURE__ */ React.createElement(PasswordAuthFlow, { deviceId, onSuccess: handleAuthSuccess, onUseLegacy: handleUseLegacyAuth }), step === "signup" && legacyAuth && /* @__PURE__ */ React.createElement(
       SignupScreen,
       {
         contact,
         setContact,
         method: contactMethod,
         setMethod: setContactMethod,
-        onSubmit: handleSendOtp
+        onSubmit: handleSendOtp,
+        onUsePassword: () => setLegacyAuth(false)
       }
     ), step === "otp" && /* @__PURE__ */ React.createElement(
       OtpScreen,
