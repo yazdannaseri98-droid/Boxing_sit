@@ -777,6 +777,43 @@ function formatMessageTime(timestamp) {
     return "";
   }
 }
+async function apiFetchPlanStatus(token) {
+  if (DEMO_MODE) return null;
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/payment/status`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) {
+      triggerAuthFailure();
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) return null;
+    return { plan: data.plan || "none", planExpiresAt: data.planExpiresAt || null };
+  } catch (e) {
+    return null;
+  }
+}
+async function apiFetchPromoText() {
+  if (DEMO_MODE) return "";
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/settings/promo-text`);
+    const data = await res.json().catch(() => ({}));
+    return data.ok ? String(data.text || "") : "";
+  } catch (e) {
+    return "";
+  }
+}
+async function apiSetPromoText(token, text) {
+  if (DEMO_MODE) return text;
+  const res = await apiFetch(`${API_BASE_URL}/settings/promo-text`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ text })
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || "\u0630\u062E\u06CC\u0631\u0647\u200C\u06CC \u0645\u062A\u0646 \u0627\u0646\u062C\u0627\u0645 \u0646\u0634\u062F");
+  return String(data.text || "");
+}
 async function apiCheckPlanStatus(token) {
   if (DEMO_MODE) return { plan: "none", planExpiresAt: null };
   try {
@@ -1581,7 +1618,15 @@ function PencilIcon({ className }) {
 function BellIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" }), /* @__PURE__ */ React.createElement("path", { d: "M10 20a2 2 0 0 0 4 0" }));
 }
-function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange, nextLesson, reminder, onSetReminder }) {
+const PLAN_DISPLAY = {
+  none: { label: "\u0628\u0631\u0646\u0632\u06CC", color: "#CD7F32" },
+  silver: { label: "\u0646\u0642\u0631\u0647\u200C\u0627\u06CC", color: "#C0C0C0" },
+  gold: { label: "\u0637\u0644\u0627\u06CC\u06CC", color: "#E8B33D" }
+};
+function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange, nextLesson, reminder, onSetReminder, plan, planExpiresAt, accountContact }) {
+  const planInfo = PLAN_DISPLAY[plan] || PLAN_DISPLAY.none;
+  const hasPaidPlan = plan === "silver" || plan === "gold";
+  const daysLeft = hasPaidPlan && planExpiresAt ? Math.max(0, Math.ceil((planExpiresAt - Date.now()) / 864e5)) : null;
   const BOXER_LEVELS = ["\u0645\u0628\u062A\u062F\u06CC", "\u0645\u062A\u0648\u0633\u0637", "\u062D\u0631\u0641\u0647\u200C\u0627\u06CC"];
   const chaptersCompleted = [badgeUnlocked == null ? void 0 : badgeUnlocked.basic, badgeUnlocked == null ? void 0 : badgeUnlocked.advanced, badgeUnlocked == null ? void 0 : badgeUnlocked.extra].filter(Boolean).length;
   const boxerLevel = BOXER_LEVELS[Math.min(chaptersCompleted, BOXER_LEVELS.length - 1)];
@@ -1719,7 +1764,33 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
       className: "text-xs font-bold"
     },
     "\u062B\u0628\u062A"
-  )) : /* @__PURE__ */ React.createElement("button", { onClick: startEditName, className: "flex items-center gap-1.5 mb-1" }, /* @__PURE__ */ React.createElement("h2", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black" }, displayName), /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#55535a" } })), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, "\u0645\u0631\u0628\u06CC: \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC \u06AF\u0647\u0631 \xB7 \u0628\u0627\u0634\u06AF\u0627\u0647 \u0622\u0646\u0644\u0627\u06CC\u0646")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2 mb-6" }, stats.map((s) => /* @__PURE__ */ React.createElement(
+  )) : /* @__PURE__ */ React.createElement("button", { onClick: startEditName, className: "flex items-center gap-1.5 mb-1" }, /* @__PURE__ */ React.createElement("h2", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black" }, displayName), /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#55535a" } })), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, "\u0645\u0631\u0628\u06CC: \u06CC\u0632\u062F\u0627\u0646 \u0646\u0627\u0635\u0631\u06CC \u06AF\u0647\u0631 \xB7 \u0628\u0627\u0634\u06AF\u0627\u0647 \u0622\u0646\u0644\u0627\u06CC\u0646")), /* @__PURE__ */ React.createElement("div", { "data-testid": "account-info", className: "rounded-2xl mb-6 overflow-hidden", style: { background: "#17161A", border: "1px solid #232227" } }, [
+    {
+      key: "plan",
+      label: "\u0627\u0634\u062A\u0631\u0627\u06A9 \u0641\u0639\u0644\u06CC",
+      value: /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-2 font-bold", style: { color: planInfo.color } }, /* @__PURE__ */ React.createElement("span", { className: "inline-block rounded-full", style: { width: "9px", height: "9px", background: planInfo.color, boxShadow: `0 0 8px ${planInfo.color}` } }), planInfo.label)
+    },
+    {
+      key: "account",
+      label: "\u0634\u0645\u0627\u0631\u0647 \u062D\u0633\u0627\u0628",
+      value: /* @__PURE__ */ React.createElement("span", { dir: "ltr", style: { fontFamily: "Oswald, sans-serif", letterSpacing: "0.05em", color: "#F3EEE6" } }, accountContact || "\u2014")
+    },
+    {
+      key: "expiry",
+      label: "\u0627\u0639\u062A\u0628\u0627\u0631 \u0627\u0634\u062A\u0631\u0627\u06A9",
+      value: hasPaidPlan && planExpiresAt ? /* @__PURE__ */ React.createElement("span", { className: "flex flex-col items-end", style: { color: "#F3EEE6" } }, /* @__PURE__ */ React.createElement("span", null, formatExpiryDate(planExpiresAt)), /* @__PURE__ */ React.createElement("span", { style: { color: daysLeft <= 14 ? "#D91E2B" : "#8A8790", fontSize: "11px" } }, daysLeft.toLocaleString("fa-IR"), " \u0631\u0648\u0632 \u0645\u0627\u0646\u062F\u0647")) : /* @__PURE__ */ React.createElement("span", { style: { color: "#8A8790" } }, "\u0627\u0634\u062A\u0631\u0627\u06A9 \u0641\u0639\u0627\u0644 \u0646\u062F\u0627\u0631\u06CC")
+    }
+  ].map((row, i) => /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      key: row.key,
+      "data-testid": `account-row-${row.key}`,
+      className: "flex items-center justify-between px-4 py-3",
+      style: { borderTop: i === 0 ? "none" : "1px solid #232227", fontFamily: "Vazirmatn, sans-serif", fontSize: "13px" }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { color: "#8A8790" } }, row.label),
+    row.value
+  ))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2 mb-6" }, stats.map((s) => /* @__PURE__ */ React.createElement(
     "div",
     {
       key: s.label,
@@ -2717,7 +2788,7 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memberCount, realMemberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -2852,6 +2923,29 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, memb
         dir: "rtl"
       },
       /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-6" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D", letterSpacing: "0.1em" }, className: "text-xs font-semibold" }, "\u0645\u0646\u0648"), /* @__PURE__ */ React.createElement("button", { onClick: () => setMenuOpen(false) }, /* @__PURE__ */ React.createElement(CloseIcon, { className: "w-5 h-5", style: { color: "#8A8790" } }))),
+      /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          "data-testid": "menu-account-box",
+          onClick: onOpenAccount,
+          className: "w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-4 text-right",
+          style: {
+            background: "linear-gradient(135deg, #D91E2B 0%, #F97316 100%)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            boxShadow: "0 0 22px rgba(249,115,22,0.55), 0 0 46px rgba(217,30,43,0.38), inset 0 0 14px rgba(255,255,255,0.12)"
+          }
+        },
+        /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: "rounded-full flex items-center justify-center shrink-0",
+            style: { width: "40px", height: "40px", background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.4)" }
+          },
+          /* @__PURE__ */ React.createElement(UserIcon, { className: "w-5 h-5", style: { color: "#fff" } })
+        ),
+        /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "rgba(255,255,255,0.8)", fontSize: "10px" } }, "\u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC"), /* @__PURE__ */ React.createElement("div", { "data-testid": "menu-account-name", style: { fontFamily: "Vazirmatn, sans-serif", color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.35)" }, className: "text-sm font-black truncate" }, accountName || "\u0646\u0627\u0645 \u06A9\u0627\u0631\u0628\u0631"), /* @__PURE__ */ React.createElement("div", { "data-testid": "menu-account-contact", dir: "ltr", style: { fontFamily: "Oswald, sans-serif", color: "rgba(255,255,255,0.92)", letterSpacing: "0.05em", textAlign: "right" }, className: "text-xs truncate" }, accountContact || "")),
+        /* @__PURE__ */ React.createElement("span", { style: { color: "#fff", fontSize: "20px", lineHeight: 1 } }, "\u2039")
+      ),
       /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -4289,7 +4383,130 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
 function CheckIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "2.2", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M20 6L9 17l-5-5" }));
 }
-function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlanConfirmed, chapterVisibility }) {
+const DEFAULT_PROMO_TEXT = "\u{1F525} \u062A\u062E\u0641\u06CC\u0641 \u0648\u06CC\u0698\u0647\u200C\u06CC \u0622\u063A\u0627\u0632\u06CC\u0646!\n\u0647\u0645\u06CC\u0646 \u062D\u0627\u0644\u0627 \u0627\u0634\u062A\u0631\u0627\u06A9\u062A \u0631\u0648 \u0628\u06AF\u06CC\u0631 \u0648 \u0645\u0633\u06CC\u0631 \u0642\u0647\u0631\u0645\u0627\u0646\u06CC \u0631\u0648 \u0634\u0631\u0648\u0639 \u06A9\u0646";
+const PROMO_TEXT_MAX = 100;
+function PromoBanner({ text, isAdmin, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const shown = text || DEFAULT_PROMO_TEXT;
+  const save = async (value) => {
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(value);
+      setEditing(false);
+    } catch (err) {
+      setError(err.message || "\u0630\u062E\u06CC\u0631\u0647 \u0646\u0634\u062F");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      "data-testid": "promo-banner",
+      className: "relative w-full rounded-2xl overflow-hidden mb-4",
+      style: {
+        background: "linear-gradient(120deg, #5B21B6 0%, #C026D3 52%, #06B6D4 100%)",
+        border: "1px solid rgba(255,255,255,0.28)",
+        animation: "promoGlow 3.2s ease-in-out infinite"
+      }
+    },
+    /* @__PURE__ */ React.createElement("style", null, `
+        @keyframes promoGlow {
+          0%, 100% { box-shadow: 0 0 22px rgba(192,38,211,0.50), 0 0 46px rgba(91,33,182,0.35), inset 0 0 16px rgba(255,255,255,0.10); }
+          50% { box-shadow: 0 0 34px rgba(6,182,212,0.60), 0 0 66px rgba(192,38,211,0.42), inset 0 0 22px rgba(255,255,255,0.18); }
+        }
+        @keyframes promoShine { 0% { transform: translateX(-130%) skewX(-18deg); } 60%, 100% { transform: translateX(260%) skewX(-18deg); } }
+      `),
+    /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "absolute top-0 bottom-0 pointer-events-none",
+        style: { width: "40%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)", animation: "promoShine 4.5s ease-in-out infinite" }
+      }
+    ),
+    editing ? /* @__PURE__ */ React.createElement("div", { className: "relative p-3" }, /* @__PURE__ */ React.createElement(
+      "textarea",
+      {
+        value: draft,
+        onChange: (e) => setDraft(e.target.value.slice(0, PROMO_TEXT_MAX)),
+        rows: 2,
+        maxLength: PROMO_TEXT_MAX,
+        dir: "rtl",
+        placeholder: "\u0645\u062A\u0646 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC (\u062D\u062F\u0627\u06A9\u062B\u0631 \u062F\u0648 \u062E\u0637)",
+        style: { fontFamily: "Vazirmatn, sans-serif", background: "rgba(11,11,13,0.45)", color: "#fff", border: "1px solid rgba(255,255,255,0.35)", lineHeight: 1.75, resize: "none" },
+        className: "w-full rounded-xl px-3 py-2 text-sm text-center outline-none"
+      }
+    ), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mt-2 gap-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "rgba(255,255,255,0.8)" }, className: "text-xs" }, draft.length, "/", PROMO_TEXT_MAX), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => save(""),
+        disabled: saving,
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#fff", border: "1px solid rgba(255,255,255,0.45)" },
+        className: "rounded-lg px-3 py-1.5 text-xs"
+      },
+      "\u0645\u062A\u0646 \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => setEditing(false),
+        disabled: saving,
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#fff", border: "1px solid rgba(255,255,255,0.45)" },
+        className: "rounded-lg px-3 py-1.5 text-xs"
+      },
+      "\u0627\u0646\u0635\u0631\u0627\u0641"
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => save(draft),
+        disabled: saving,
+        style: { fontFamily: "Vazirmatn, sans-serif", background: "#fff", color: "#5B21B6" },
+        className: "rounded-lg px-4 py-1.5 text-xs font-black"
+      },
+      saving ? "\u2026" : "\u0630\u062E\u06CC\u0631\u0647"
+    ))), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#FFE4E6" }, className: "text-xs mt-2 text-center" }, error)) : /* @__PURE__ */ React.createElement("div", { className: "relative flex items-center justify-center px-12", style: { height: "80px" } }, /* @__PURE__ */ React.createElement(
+      "p",
+      {
+        "data-testid": "promo-text",
+        style: {
+          fontFamily: "Vazirmatn, sans-serif",
+          color: "#fff",
+          lineHeight: 1.8,
+          fontSize: "14px",
+          fontWeight: 800,
+          textAlign: "center",
+          whiteSpace: "pre-line",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textShadow: "0 1px 10px rgba(0,0,0,0.45)"
+        }
+      },
+      shown
+    ), isAdmin && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: () => {
+          setDraft(text || DEFAULT_PROMO_TEXT);
+          setError("");
+          setEditing(true);
+        },
+        "aria-label": "\u0648\u06CC\u0631\u0627\u06CC\u0634 \u0645\u062A\u0646 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC",
+        className: "absolute rounded-full flex items-center justify-center",
+        style: { top: "8px", left: "8px", width: "28px", height: "28px", background: "rgba(11,11,13,0.4)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff" }
+      },
+      /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5" })
+    ))
+  );
+}
+function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlanConfirmed, chapterVisibility, chapterTitles, promoText, isAdmin, onSavePromoText }) {
+  const chapterName = (key) => (chapterTitles == null ? void 0 : chapterTitles[key]) || DEFAULT_CHAPTER_TITLES[key];
+  const silverChapterNames = ["basic", "advanced", "extra"].map(chapterName).join("\u060C ");
+  const goldChapterNames = ["fight", "partner", "focus"].map(chapterName).join("\u060C ");
   const goldUnlocked = Boolean((chapterVisibility == null ? void 0 : chapterVisibility.fight) || (chapterVisibility == null ? void 0 : chapterVisibility.partner) || (chapterVisibility == null ? void 0 : chapterVisibility.focus));
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [error, setError] = useState("");
@@ -4346,7 +4563,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       }
     },
     /* @__PURE__ */ React.createElement("div", { className: "w-full h-full rounded-full overflow-hidden", style: { background: "#0B0B0D" } }, /* @__PURE__ */ React.createElement("img", { src: badgeSrc, alt: plan, className: "w-full h-full object-cover" }))
-  )), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black mb-1" }, badgeLabel), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "280px" }, className: "text-xs leading-6" }, "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0631\u0648 \u0628\u0627 \u06CC\u06A9\u06CC \u0627\u0632 \u0627\u06CC\u0646 \u062F\u0648 \u067E\u0644\u0646 \u0628\u0627\u0632 \u06A9\u0646")), /* @__PURE__ */ React.createElement(
+  )), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black mb-3" }, badgeLabel), /* @__PURE__ */ React.createElement(PromoBanner, { text: promoText, isAdmin, onSave: onSavePromoText }), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "280px" }, className: "text-xs leading-6" }, "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0631\u0648 \u0628\u0627 \u06CC\u06A9\u06CC \u0627\u0632 \u0627\u06CC\u0646 \u062F\u0648 \u067E\u0644\u0646 \u0628\u0627\u0632 \u06A9\u0646")), /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "rounded-2xl p-5 mb-5",
@@ -4369,7 +4586,9 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
         style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
         className: "text-xs leading-6 text-center mb-5"
       },
-      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (\u067E\u0627\u06CC\u0647 \u06AF\u0627\u0631\u062F\u060C \u0636\u0631\u0628\u0627\u062A\u060C \u062C\u0627\u0628\u062C\u0627\u06CC\u06CC)"
+      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
+      silverChapterNames,
+      ")"
     ),
     plan === "silver" || plan === "gold" ? /* @__PURE__ */ React.createElement(
       "div",
@@ -4416,7 +4635,9 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
         style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
         className: "text-xs leading-6 text-center mb-5"
       },
-      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (\u062A\u06A9\u0646\u06CC\u06A9\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC\u060C \u0627\u0633\u067E\u0627\u0631\u06CC\u0646\u06AF\u060C \u0642\u0627\u0644\u0628 \u0627\u0633\u062A\u0627\u06CC\u0644)"
+      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
+      goldChapterNames,
+      ")"
     ),
     plan === "gold" ? /* @__PURE__ */ React.createElement(
       "div",
@@ -4774,6 +4995,7 @@ function App() {
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
   const [realMemberCount, setRealMemberCount] = useState(null);
+  const [promoText, setPromoText] = useState("");
   const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
   const [chapterTitles, setChapterTitles] = useState({});
   const [supportMessages, setSupportMessages] = useState([]);
@@ -4868,7 +5090,24 @@ function App() {
     apiFetchMemberCount().then(setMemberCount);
     apiFetchChapterVisibility().then(setChapterVisibility);
     apiFetchChapterTitles().then(setChapterTitles);
+    apiFetchPromoText().then(setPromoText);
   };
+  const handleSavePromoText = async (text) => {
+    const saved = await apiSetPromoText(authToken, text);
+    setPromoText(saved);
+  };
+  useEffect(() => {
+    if (step !== "profile" && step !== "subscription" || !authToken) return;
+    apiFetchPlanStatus(authToken).then((status) => {
+      if (!status) return;
+      setAuthUser((u) => {
+        if (!u || u.plan === status.plan && (u.planExpiresAt || null) === (status.planExpiresAt || null)) return u;
+        const next = __spreadProps(__spreadValues({}, u), { plan: status.plan, planExpiresAt: status.planExpiresAt });
+        saveSession(authToken, next);
+        return next;
+      });
+    });
+  }, [step, authToken]);
   const loadAdminStats = () => {
     if (!(authUser == null ? void 0 : authUser.isAdmin) || !authToken) return;
     apiFetchAdminStats(authToken).then((stats) => {
@@ -5304,6 +5543,12 @@ function App() {
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         memberCount,
         realMemberCount,
+        accountName: profileName,
+        accountContact: authUser == null ? void 0 : authUser.identifier,
+        onOpenAccount: () => {
+          setMenuOpen(false);
+          setStep("profile");
+        },
         onSetMemberCount: handleSetMemberCount,
         chapterVisibility,
         onToggleChapterVisibility: handleToggleChapterVisibility,
@@ -5528,6 +5773,9 @@ function App() {
         nextLesson,
         reminder,
         onSetReminder: handleSetReminder,
+        plan: (authUser == null ? void 0 : authUser.plan) || "none",
+        planExpiresAt: (authUser == null ? void 0 : authUser.planExpiresAt) || null,
+        accountContact: authUser == null ? void 0 : authUser.identifier,
         badgeUnlocked: {
           basic: CURRICULUM_BASIC.every((it) => effectiveCompleted[`basic-${it.n}`]),
           advanced: CURRICULUM_ADVANCED.every((it) => effectiveCompleted[`advanced-${it.n}`]),
@@ -5545,6 +5793,10 @@ function App() {
         authToken,
         isLoggedIn: Boolean(authToken),
         chapterVisibility,
+        chapterTitles,
+        promoText,
+        isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
+        onSavePromoText: handleSavePromoText,
         onPlanConfirmed: (newPlan, expiresAt) => {
           setAuthUser((u) => {
             const next = __spreadProps(__spreadValues({}, u), { plan: newPlan, planExpiresAt: expiresAt || (u == null ? void 0 : u.planExpiresAt) || null });
