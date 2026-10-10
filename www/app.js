@@ -241,7 +241,7 @@ async function apiVerifyOtp(rawIdentifier, method, code, deviceId, force) {
   }
   return data;
 }
-const ACCOUNT_DATA_KEYS = ["last-lesson", "reminder", "completed-lessons", "practice-seconds", "profile-info"];
+const ACCOUNT_DATA_KEYS = ["last-lesson", "reminder", "completed-lessons", "practice-seconds", "profile-info", "sync-pending"];
 function accountKey(identifier, base) {
   return `acct:${identifier}:${base}`;
 }
@@ -303,6 +303,46 @@ async function apiPasswordLogin(phone, password, deviceId, force) {
 async function apiResetPassword(proofToken, password, deviceId, phone) {
   if (DEMO_MODE) return demoAuthResult(phone);
   return apiAuthPost("reset-password", { proofToken, password, deviceId });
+}
+async function apiFetchProgress(token) {
+  if (DEMO_MODE) return null;
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/progress`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) {
+      triggerAuthFailure();
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.ok ? data.progress : null;
+  } catch (e) {
+    return null;
+  }
+}
+async function apiPutProgress(token, payload) {
+  if (DEMO_MODE) return null;
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/progress`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload)
+    });
+    if (res.status === 401) {
+      triggerAuthFailure();
+      return null;
+    }
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.ok ? data.progress : null;
+  } catch (e) {
+    return null;
+  }
+}
+function mergePendingSync(base, partial) {
+  const next = __spreadValues({}, base);
+  if (partial.completed) next.completed = __spreadValues(__spreadValues({}, base.completed || {}), partial.completed);
+  if (partial.practiceSeconds !== void 0) next.practiceSeconds = Math.max(base.practiceSeconds || 0, partial.practiceSeconds);
+  if (partial.lastLesson !== void 0) next.lastLesson = partial.lastLesson;
+  if (partial.profile !== void 0) next.profile = __spreadValues(__spreadValues({}, base.profile || {}), partial.profile);
+  return next;
 }
 async function apiCheckSession(token, deviceId) {
   if (DEMO_MODE) return true;
@@ -5114,6 +5154,17 @@ function App() {
     setPromoText(saved);
   };
   useEffect(() => {
+    const onHidden = () => {
+      if (document.hidden) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+        flushSync();
+      }
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, []);
+  useEffect(() => {
     if (step !== "profile" && step !== "subscription" || !authToken) return;
     apiFetchPlanStatus(authToken).then((status) => {
       if (!status) return;
@@ -5149,6 +5200,10 @@ function App() {
     if (was !== "ok" && appConnectivity === "ok") {
       loadPublicData();
       loadAdminStats();
+      if (accountIdRef.current && loadedAccountRef.current === accountIdRef.current) {
+        if (!serverSyncedRef.current) reconcileProgress(accountIdRef.current);
+        else flushSync();
+      }
     }
   }, [appConnectivity]);
   const handleRenameLesson = async (curriculumKey, n, newTitle) => {
@@ -5320,8 +5375,93 @@ function App() {
     if (!id || loadedAccountRef.current !== id) return;
     return AppStorage.set(accountKey(id, base), value);
   };
+  const authTokenRef = useRef(null);
+  authTokenRef.current = authToken;
+  const completedRef = useRef({});
+  completedRef.current = completedLessons;
+  const practiceRef = useRef(0);
+  practiceRef.current = practiceSeconds;
+  const lastLessonRef = useRef(null);
+  lastLessonRef.current = lastLesson;
+  const profileNameRef = useRef("");
+  profileNameRef.current = profileName;
+  const profileImageRef = useRef(null);
+  profileImageRef.current = profileImage;
+  const syncPendingRef = useRef({});
+  const syncTimerRef = useRef(null);
+  const syncingRef = useRef(false);
+  const serverSyncedRef = useRef(false);
+  const persistPending = () => saveAccountData("sync-pending", JSON.stringify(syncPendingRef.current));
+  const flushSync = async () => {
+    const id = accountIdRef.current;
+    const token = authTokenRef.current;
+    if (!id || !token || loadedAccountRef.current !== id || syncingRef.current) return;
+    if (Object.keys(syncPendingRef.current).length === 0) return;
+    syncingRef.current = true;
+    const sent = syncPendingRef.current;
+    syncPendingRef.current = {};
+    const result = await apiPutProgress(token, sent);
+    syncingRef.current = false;
+    if (accountIdRef.current !== id) return;
+    if (!result) syncPendingRef.current = mergePendingSync(sent, syncPendingRef.current);
+    persistPending();
+    if (result && Object.keys(syncPendingRef.current).length > 0) scheduleSync(300);
+  };
+  const scheduleSync = (delay = 1500, keepExisting = false) => {
+    if (keepExisting && syncTimerRef.current) return;
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      syncTimerRef.current = null;
+      flushSync();
+    }, delay);
+  };
+  const queueSync = (partial, delay = 1500, keepExisting = false) => {
+    syncPendingRef.current = mergePendingSync(syncPendingRef.current, partial);
+    persistPending();
+    scheduleSync(delay, keepExisting);
+  };
+  const reconcileProgress = async (id) => {
+    var _a2, _b2;
+    const token = authTokenRef.current;
+    if (!token || accountIdRef.current !== id) return;
+    if (Object.keys(syncPendingRef.current).length > 0) await flushSync();
+    const server = await apiFetchProgress(token);
+    if (!server || accountIdRef.current !== id) return;
+    const mergedCompleted = __spreadValues(__spreadValues({}, server.completed), completedRef.current);
+    const mergedPractice = Math.max(server.practiceSeconds || 0, practiceRef.current);
+    const mergedLast = server.lastLesson || lastLessonRef.current;
+    const mergedName = ((_a2 = server.profile) == null ? void 0 : _a2.name) || profileNameRef.current;
+    const mergedImage = profileImageRef.current;
+    setCompletedLessons(mergedCompleted);
+    saveAccountData("completed-lessons", JSON.stringify(mergedCompleted));
+    setPracticeSeconds(mergedPractice);
+    lastPersistedPracticeRef.current = mergedPractice;
+    saveAccountData("practice-seconds", String(mergedPractice));
+    if (mergedLast) {
+      setLastLesson(mergedLast);
+      saveAccountData("last-lesson", JSON.stringify(mergedLast));
+    }
+    setProfileName(mergedName || "");
+    setProfileImage(mergedImage || null);
+    if (mergedName || mergedImage) saveAccountData("profile-info", JSON.stringify({ name: mergedName || "", image: mergedImage || null }));
+    const push = {};
+    const onlyLocal = Object.keys(mergedCompleted).filter((key) => {
+      var _a3;
+      return !((_a3 = server.completed) == null ? void 0 : _a3[key]);
+    });
+    if (onlyLocal.length > 0) push.completed = Object.fromEntries(onlyLocal.map((key) => [key, true]));
+    if (mergedPractice > (server.practiceSeconds || 0)) push.practiceSeconds = mergedPractice;
+    if (!server.lastLesson && mergedLast) push.lastLesson = mergedLast;
+    if (!((_b2 = server.profile) == null ? void 0 : _b2.name) && mergedName) push.profile = { name: mergedName };
+    serverSyncedRef.current = true;
+    if (Object.keys(push).length > 0) queueSync(push, 200);
+  };
   useEffect(() => {
     loadedAccountRef.current = null;
+    serverSyncedRef.current = false;
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = null;
+    syncPendingRef.current = {};
     setRemindersLoaded(false);
     setCompletedLessons({});
     setPracticeSeconds(0);
@@ -5337,7 +5477,7 @@ function App() {
     let cancelled = false;
     (async () => {
       await purgeLegacyAccountData();
-      const [lastRaw, reminderRaw, completedRaw, practiceRaw, profileRaw] = await Promise.all(
+      const [lastRaw, reminderRaw, completedRaw, practiceRaw, profileRaw, pendingRaw] = await Promise.all(
         ACCOUNT_DATA_KEYS.map((key) => AppStorage.get(accountKey(accountId, key)))
       );
       if (cancelled) return;
@@ -5360,8 +5500,16 @@ function App() {
       const profile = parse(profileRaw);
       if (profile == null ? void 0 : profile.name) setProfileName(profile.name);
       if (profile == null ? void 0 : profile.image) setProfileImage(profile.image);
+      const pending = parse(pendingRaw);
+      if (pending && typeof pending === "object") syncPendingRef.current = pending;
       loadedAccountRef.current = accountId;
       setRemindersLoaded(true);
+      completedRef.current = completed && typeof completed === "object" ? completed : {};
+      practiceRef.current = seconds;
+      lastLessonRef.current = (last == null ? void 0 : last.curriculumKey) && (last == null ? void 0 : last.n) ? last : null;
+      profileNameRef.current = (profile == null ? void 0 : profile.name) || "";
+      profileImageRef.current = (profile == null ? void 0 : profile.image) || null;
+      reconcileProgress(accountId);
     })();
     return () => {
       cancelled = true;
@@ -5403,6 +5551,7 @@ function App() {
       if (next - lastPersistedPracticeRef.current >= 10) {
         lastPersistedPracticeRef.current = next;
         saveAccountData("practice-seconds", String(next));
+        queueSync({ practiceSeconds: next }, 3e4, true);
       }
       return next;
     });
@@ -5413,6 +5562,7 @@ function App() {
   const handleNameChange = (name) => {
     setProfileName(name);
     saveProfileInfo({ name, image: profileImage });
+    queueSync({ profile: { name } });
   };
   const handleImageChange = (image) => {
     setProfileImage(image);
@@ -5428,6 +5578,7 @@ function App() {
     const record = { curriculumKey, n: item.n };
     setLastLesson(record);
     saveAccountData("last-lesson", JSON.stringify(record));
+    queueSync({ lastLesson: record });
     setActiveLesson({ curriculumKey, item });
     setStep("lesson");
   };
@@ -5439,6 +5590,7 @@ function App() {
     const updated = __spreadProps(__spreadValues({}, completedLessons), { [lessonKey]: true });
     setCompletedLessons(updated);
     await saveAccountData("completed-lessons", JSON.stringify(updated));
+    queueSync({ completed: { [lessonKey]: true } });
   };
   const handleSendOtp = async () => {
     if (DEMO_MODE) {
@@ -5496,7 +5648,10 @@ function App() {
     }, 2e4);
     return () => clearInterval(id);
   }, [authToken, deviceId]);
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = null;
+    await Promise.race([flushSync(), new Promise((resolve) => setTimeout(resolve, 2500))]);
     setAuthToken(null);
     setAuthUser(null);
     setLegacyAuth(false);
