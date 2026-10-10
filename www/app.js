@@ -241,6 +241,13 @@ async function apiVerifyOtp(rawIdentifier, method, code, deviceId, force) {
   }
   return data;
 }
+const ACCOUNT_DATA_KEYS = ["last-lesson", "reminder", "completed-lessons", "practice-seconds", "profile-info"];
+function accountKey(identifier, base) {
+  return `acct:${identifier}:${base}`;
+}
+async function purgeLegacyAccountData() {
+  for (const key of ACCOUNT_DATA_KEYS) await AppStorage.remove(key);
+}
 function toLatinDigits(input) {
   return String(input != null ? input : "").replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 1776)).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 1632));
 }
@@ -3261,7 +3268,7 @@ function ReplayIcon({ className }) {
 function ShrinkIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" }));
 }
-function VideoPlayer({ src, onComplete, onTick }) {
+function VideoPlayer({ src, onComplete, onTick, storageScope }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const barRef = useRef(null);
@@ -3298,7 +3305,7 @@ function VideoPlayer({ src, onComplete, onTick }) {
   playingRef.current = playing;
   showControlsRef.current = showControls;
   speedMenuOpenRef.current = speedMenuOpen;
-  const posKey = `video-pos:${src}`;
+  const posKey = storageScope ? accountKey(storageScope, `video-pos:${src}`) : `video-pos:${src}`;
   const netState = useConnectivity();
   const prevNetStateRef = useRef(netState);
   const [slowBuffer, setSlowBuffer] = useState(false);
@@ -3988,7 +3995,7 @@ function setScreenCaptureBlocked(blocked) {
   else (_d = PS.disable) == null ? void 0 : _d.call(PS).catch(() => {
   });
 }
-function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
+function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accountId, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
   const connectivityState = useConnectivity();
   const fileRef = useRef(null);
   const isHi = HIGHLIGHT_YELLOW.has(item.n);
@@ -4129,7 +4136,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, onUpl
       },
       "\u0627\u0646\u0635\u0631\u0627\u0641"
     )
-  ), videoSrc ? /* @__PURE__ */ React.createElement(VideoPlayer, { src: videoSrc, onComplete, onTick: onPracticeTick }) : uploading ? /* @__PURE__ */ React.createElement(
+  ), videoSrc ? /* @__PURE__ */ React.createElement(VideoPlayer, { src: videoSrc, onComplete, onTick: onPracticeTick, storageScope: accountId }) : uploading ? /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "relative w-full rounded-xl flex flex-col items-center justify-center gap-3 border",
@@ -4859,6 +4866,16 @@ function nextReminderDate(timeStr) {
   return target;
 }
 let browserReminderTimer = null;
+async function cancelReminder() {
+  var _a2, _b2;
+  clearTimeout(browserReminderTimer);
+  const LocalNotifications = (_b2 = (_a2 = window.Capacitor) == null ? void 0 : _a2.Plugins) == null ? void 0 : _b2.LocalNotifications;
+  if (!LocalNotifications) return;
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id: REMINDER_NOTIFICATION_ID }] });
+  } catch (e) {
+  }
+}
 async function armReminder(timeStr, next, askPermission) {
   var _a2, _b2;
   if (!/^\d{1,2}:\d{2}$/.test(String(timeStr || ""))) return "invalid";
@@ -5294,23 +5311,62 @@ function App() {
   const curriculumFocusMerged = CURRICULUM_FOCUS.map((it) => __spreadProps(__spreadValues({}, it), {
     t: lessonTitles[`focus-${it.n}`] || it.t
   }));
+  const accountId = (authUser == null ? void 0 : authUser.identifier) || null;
+  const accountIdRef = useRef(null);
+  accountIdRef.current = accountId;
+  const loadedAccountRef = useRef(null);
+  const saveAccountData = (base, value) => {
+    const id = accountIdRef.current;
+    if (!id || loadedAccountRef.current !== id) return;
+    return AppStorage.set(accountKey(id, base), value);
+  };
   useEffect(() => {
+    loadedAccountRef.current = null;
+    setRemindersLoaded(false);
+    setCompletedLessons({});
+    setPracticeSeconds(0);
+    lastPersistedPracticeRef.current = 0;
+    setProfileName("");
+    setProfileImage(null);
+    setLastLesson(null);
+    setReminder({ enabled: false, time: "18:00" });
+    if (!accountId) {
+      cancelReminder();
+      return;
+    }
+    let cancelled = false;
     (async () => {
-      const [lastRaw, reminderRaw] = await Promise.all([AppStorage.get("last-lesson"), AppStorage.get("reminder")]);
-      try {
-        if (lastRaw) {
-          const parsed = JSON.parse(lastRaw);
-          if ((parsed == null ? void 0 : parsed.curriculumKey) && (parsed == null ? void 0 : parsed.n)) setLastLesson(parsed);
+      await purgeLegacyAccountData();
+      const [lastRaw, reminderRaw, completedRaw, practiceRaw, profileRaw] = await Promise.all(
+        ACCOUNT_DATA_KEYS.map((key) => AppStorage.get(accountKey(accountId, key)))
+      );
+      if (cancelled) return;
+      const parse = (raw) => {
+        try {
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
         }
-        if (reminderRaw) {
-          const parsed = JSON.parse(reminderRaw);
-          if (parsed == null ? void 0 : parsed.time) setReminder({ enabled: Boolean(parsed.enabled), time: parsed.time });
-        }
-      } catch (e) {
-      }
+      };
+      const last = parse(lastRaw);
+      if ((last == null ? void 0 : last.curriculumKey) && (last == null ? void 0 : last.n)) setLastLesson(last);
+      const savedReminder = parse(reminderRaw);
+      if (savedReminder == null ? void 0 : savedReminder.time) setReminder({ enabled: Boolean(savedReminder.enabled), time: savedReminder.time });
+      const completed = parse(completedRaw);
+      if (completed && typeof completed === "object") setCompletedLessons(completed);
+      const seconds = Number(practiceRaw) || 0;
+      setPracticeSeconds(seconds);
+      lastPersistedPracticeRef.current = seconds;
+      const profile = parse(profileRaw);
+      if (profile == null ? void 0 : profile.name) setProfileName(profile.name);
+      if (profile == null ? void 0 : profile.image) setProfileImage(profile.image);
+      loadedAccountRef.current = accountId;
       setRemindersLoaded(true);
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId]);
   const availableChapterKeys = [
     "basic",
     "advanced",
@@ -5338,55 +5394,21 @@ function App() {
     if (status !== "scheduled") return status;
     const next = { enabled: true, time };
     setReminder(next);
-    AppStorage.set("reminder", JSON.stringify(next));
+    saveAccountData("reminder", JSON.stringify(next));
     return status;
   };
-  useEffect(() => {
-    (async () => {
-      const value = await AppStorage.get("completed-lessons");
-      if (value) {
-        try {
-          setCompletedLessons(JSON.parse(value));
-        } catch (e) {
-        }
-      }
-    })();
-  }, []);
-  useEffect(() => {
-    (async () => {
-      const value = await AppStorage.get("practice-seconds");
-      if (value) {
-        const seconds = Number(value) || 0;
-        setPracticeSeconds(seconds);
-        lastPersistedPracticeRef.current = seconds;
-      }
-    })();
-  }, []);
   const handlePracticeTick = () => {
     setPracticeSeconds((s) => {
       const next = s + 1;
       if (next - lastPersistedPracticeRef.current >= 10) {
         lastPersistedPracticeRef.current = next;
-        AppStorage.set("practice-seconds", String(next));
+        saveAccountData("practice-seconds", String(next));
       }
       return next;
     });
   };
-  useEffect(() => {
-    (async () => {
-      const value = await AppStorage.get("profile-info");
-      if (value) {
-        try {
-          const info = JSON.parse(value);
-          if (info.name) setProfileName(info.name);
-          if (info.image) setProfileImage(info.image);
-        } catch (e) {
-        }
-      }
-    })();
-  }, []);
   const saveProfileInfo = async (next) => {
-    await AppStorage.set("profile-info", JSON.stringify(next));
+    await saveAccountData("profile-info", JSON.stringify(next));
   };
   const handleNameChange = (name) => {
     setProfileName(name);
@@ -5405,7 +5427,7 @@ function App() {
     }
     const record = { curriculumKey, n: item.n };
     setLastLesson(record);
-    AppStorage.set("last-lesson", JSON.stringify(record));
+    saveAccountData("last-lesson", JSON.stringify(record));
     setActiveLesson({ curriculumKey, item });
     setStep("lesson");
   };
@@ -5416,7 +5438,7 @@ function App() {
     if (!canCompleteLesson(completedLessons, videos, activeLesson.curriculumKey, activeLesson.item.n)) return;
     const updated = __spreadProps(__spreadValues({}, completedLessons), { [lessonKey]: true });
     setCompletedLessons(updated);
-    await AppStorage.set("completed-lessons", JSON.stringify(updated));
+    await saveAccountData("completed-lessons", JSON.stringify(updated));
   };
   const handleSendOtp = async () => {
     if (DEMO_MODE) {
@@ -5754,6 +5776,7 @@ function App() {
         curriculumKey: activeLesson.curriculumKey,
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         authToken,
+        accountId,
         onUploaded: (url) => setVideos((v) => __spreadProps(__spreadValues({}, v), { [lessonKey]: url })),
         onRename: (newTitle) => handleRenameLesson(activeLesson.curriculumKey, activeLesson.item.n, newTitle),
         onComplete: handleLessonComplete,
