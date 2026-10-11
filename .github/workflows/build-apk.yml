@@ -29,6 +29,11 @@ jobs:
         # از legacy-peer-deps استفاده می‌کنیم تا این تضادهای غیرواقعی باعث شکست نصب نشن
         run: npm install --legacy-peer-deps
 
+      - name: Localize web assets (Tailwind CSS, React, fonts)
+        # اختیاریه و اگه هر مرحله‌اش شکست بخوره، اپ مثل قبل از CDN استفاده می‌کنه (ساخت APK خراب نمی‌شه)
+        continue-on-error: true
+        run: node scripts/localize-assets.js
+
       - name: Add Android platform (first time only)
         run: |
           if [ ! -d "android" ]; then
