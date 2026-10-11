@@ -880,6 +880,7 @@ async function apiCheckPlanStatus(token) {
 }
 function useFonts() {
   useEffect(() => {
+    if (window.__LOCAL_FONTS__) return;
     if (document.getElementById(FONT_LINK_ID)) return;
     const link = document.createElement("link");
     link.id = FONT_LINK_ID;
@@ -3247,7 +3248,12 @@ const CONTROLS_HIDE_MS = 3e3;
 const DOUBLE_TAP_MS = 280;
 const videoPosterCache = /* @__PURE__ */ new Map();
 const POSTER_MAX_WIDTH = 640;
-function captureVideoPoster(src, isCancelled) {
+const POSTER_PROBE_TIMEOUT_MS = 4e3;
+function shouldCapturePoster() {
+  const memory = typeof navigator !== "undefined" ? navigator.deviceMemory : void 0;
+  return !(memory && memory <= 2);
+}
+function captureVideoPoster(src, isCancelled, timeoutMs = 15e3) {
   return new Promise((resolve) => {
     const probe = document.createElement("video");
     let settled = false;
@@ -3266,7 +3272,7 @@ function captureVideoPoster(src, isCancelled) {
       }
       resolve(value);
     };
-    timer = setTimeout(() => finish(null), 15e3);
+    timer = setTimeout(() => finish(null), timeoutMs);
     probe.crossOrigin = "anonymous";
     probe.muted = true;
     probe.playsInline = true;
@@ -3322,6 +3328,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
   const endedRef = useRef(false);
   const pendingSeekRef = useRef(0);
   const speedRef = useRef(1);
+  const playIntentRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -3339,6 +3346,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
   const [flash, setFlash] = useState(null);
   const [resumeNote, setResumeNote] = useState("");
   const [poster, setPoster] = useState(() => videoPosterCache.get(src) || null);
+  const [mediaReady, setMediaReady] = useState(() => videoPosterCache.has(src) || !shouldCapturePoster());
   const playingRef = useRef(false);
   const showControlsRef = useRef(true);
   const speedMenuOpenRef = useRef(false);
@@ -3377,17 +3385,33 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
   useEffect(() => {
     const cached = videoPosterCache.get(src);
     setPoster(cached || null);
-    if (cached) return;
+    if (cached || !shouldCapturePoster()) {
+      setMediaReady(true);
+      return;
+    }
+    setMediaReady(false);
+    playIntentRef.current = false;
     let cancelled = false;
-    captureVideoPoster(src, () => cancelled).then((url) => {
-      if (!url) return;
-      videoPosterCache.set(src, url);
-      if (!cancelled) setPoster(url);
+    captureVideoPoster(src, () => cancelled, POSTER_PROBE_TIMEOUT_MS).then((url) => {
+      if (cancelled) return;
+      if (url) {
+        videoPosterCache.set(src, url);
+        setPoster(url);
+      }
+      setMediaReady(true);
     });
     return () => {
       cancelled = true;
     };
   }, [src]);
+  useEffect(() => {
+    var _a2, _b2, _c;
+    if (mediaReady && playIntentRef.current) {
+      playIntentRef.current = false;
+      (_c = (_b2 = (_a2 = videoRef.current) == null ? void 0 : _a2.play()) == null ? void 0 : _b2.catch) == null ? void 0 : _c.call(_b2, () => {
+      });
+    }
+  }, [mediaReady]);
   const applySpeed = (value) => {
     speedRef.current = value;
     setSpeed(value);
@@ -3455,6 +3479,10 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
     var _a2, _b2;
     const v = videoRef.current;
     if (!v) return;
+    if (!mediaReady) {
+      playIntentRef.current = true;
+      return;
+    }
     if (v.ended) v.currentTime = 0;
     if (v.paused || v.ended) {
       (_b2 = (_a2 = v.play()) == null ? void 0 : _a2.catch) == null ? void 0 : _b2.call(_a2, () => {
@@ -3672,7 +3700,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
       "video",
       {
         ref: videoRef,
-        src: `${src}#t=0.1`,
+        src: mediaReady ? `${src}#t=0.1` : void 0,
         poster: poster || void 0,
         preload: "metadata",
         style: { width: "100%", height: "100%", objectFit: "contain", display: "block" },
@@ -3794,7 +3822,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
         "\u062A\u0644\u0627\u0634 \u0645\u062C\u062F\u062F"
       )
     ),
-    buffering && !error && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" } }, /* @__PURE__ */ React.createElement(
+    (buffering || !mediaReady) && !error && /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" } }, /* @__PURE__ */ React.createElement(
       "div",
       {
         style: {
@@ -4430,6 +4458,49 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
 function CheckIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "none", stroke: "currentColor", strokeWidth: "2.2", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("path", { d: "M20 6L9 17l-5-5" }));
 }
+const PLAN_TONES = {
+  silver: {
+    background: "linear-gradient(145deg, #3b4150 0%, #1e2129 46%, #2f3541 100%)",
+    border: "1px solid rgba(214,226,245,0.6)",
+    shadow: "0 0 26px rgba(160,190,255,0.30), 0 8px 30px rgba(0,0,0,0.5), inset 0 0 18px rgba(255,255,255,0.07)",
+    glow: "rgba(170,200,255,0.5)",
+    shine: "rgba(255,255,255,0.24)",
+    spark: "#EAF1FF"
+  },
+  gold: {
+    background: "linear-gradient(145deg, #5e4510 0%, #2a1f0a 46%, #4d3811 100%)",
+    border: "1px solid rgba(255,214,102,0.7)",
+    shadow: "0 0 28px rgba(255,170,40,0.34), 0 8px 30px rgba(0,0,0,0.5), inset 0 0 18px rgba(255,214,102,0.10)",
+    glow: "rgba(255,190,70,0.55)",
+    shine: "rgba(255,236,170,0.28)",
+    spark: "#FFE9A8"
+  }
+};
+const PLAN_CARD_CSS = `
+  .plan-glow { position: absolute; inset: 0; pointer-events: none; animation: planGlow 3.6s ease-in-out infinite; will-change: opacity; }
+  .plan-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; pointer-events: none; transform: translateX(-140%) skewX(-18deg); animation: planShine 5.5s ease-in-out infinite; will-change: transform; }
+  .plan-spark { position: absolute; pointer-events: none; font-size: 12px; opacity: 0; animation: planSpark 3s ease-in-out infinite; }
+  .plan-float { display: inline-block; animation: planFloat 2.6s ease-in-out infinite; }
+  .plan-cta { animation: planCta 2.6s ease-in-out infinite; will-change: transform; }
+  @keyframes planGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  @keyframes planShine { 0% { transform: translateX(-140%) skewX(-18deg); } 55%, 100% { transform: translateX(380%) skewX(-18deg); } }
+  @keyframes planSpark { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.15); } }
+  @keyframes planFloat { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
+  @keyframes planCta { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+  @media (prefers-reduced-motion: reduce) {
+    .plan-glow, .plan-shine, .plan-spark, .plan-float, .plan-cta { animation: none !important; }
+    .plan-glow { opacity: 0.8; }
+  }
+`;
+function PlanCard({ tone, delay = 0, className = "", children }) {
+  const t = PLAN_TONES[tone];
+  const sparks = [
+    { top: "14px", right: "18px", d: 0 },
+    { top: "64px", left: "16px", d: 1.1 },
+    { bottom: "96px", right: "26px", d: 2 }
+  ];
+  return /* @__PURE__ */ React.createElement("div", { "data-testid": `plan-card-${tone}`, className: `relative rounded-2xl overflow-hidden ${className}`, style: { background: t.background, border: t.border, boxShadow: t.shadow } }, /* @__PURE__ */ React.createElement("div", { className: "plan-glow", style: { background: `radial-gradient(ellipse at 50% -15%, ${t.glow}, transparent 64%)`, animationDelay: `${delay}s` } }), /* @__PURE__ */ React.createElement("div", { className: "plan-shine", style: { background: `linear-gradient(90deg, transparent, ${t.shine}, transparent)`, animationDelay: `${delay}s` } }), sparks.map((sp, i) => /* @__PURE__ */ React.createElement("span", { key: i, className: "plan-spark", style: { top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, color: t.spark, animationDelay: `${sp.d + delay}s` } }, "\u2726")), /* @__PURE__ */ React.createElement("div", { className: "relative p-5" }, children));
+}
 const DEFAULT_PROMO_TEXT = "\u{1F525} \u062A\u062E\u0641\u06CC\u0641 \u0648\u06CC\u0698\u0647\u200C\u06CC \u0622\u063A\u0627\u0632\u06CC\u0646!\n\u0647\u0645\u06CC\u0646 \u062D\u0627\u0644\u0627 \u0627\u0634\u062A\u0631\u0627\u06A9\u062A \u0631\u0648 \u0628\u06AF\u06CC\u0631 \u0648 \u0645\u0633\u06CC\u0631 \u0642\u0647\u0631\u0645\u0627\u0646\u06CC \u0631\u0648 \u0634\u0631\u0648\u0639 \u06A9\u0646";
 const PROMO_TEXT_MAX = 100;
 function PromoBanner({ text, isAdmin, onSave }) {
@@ -4458,21 +4529,27 @@ function PromoBanner({ text, isAdmin, onSave }) {
       style: {
         background: "linear-gradient(120deg, #5B21B6 0%, #C026D3 52%, #06B6D4 100%)",
         border: "1px solid rgba(255,255,255,0.28)",
-        animation: "promoGlow 3.2s ease-in-out infinite"
+        // درخشش ثابت (سبک برای گوشی)؛ «زنده بودن» از لایه‌های متحرک زیر میاد که فقط opacity/transform عوض می‌کنن
+        boxShadow: "0 0 30px rgba(192,38,211,0.50), 0 0 60px rgba(91,33,182,0.32), inset 0 0 18px rgba(255,255,255,0.12)"
       }
     },
     /* @__PURE__ */ React.createElement("style", null, `
-        @keyframes promoGlow {
-          0%, 100% { box-shadow: 0 0 22px rgba(192,38,211,0.50), 0 0 46px rgba(91,33,182,0.35), inset 0 0 16px rgba(255,255,255,0.10); }
-          50% { box-shadow: 0 0 34px rgba(6,182,212,0.60), 0 0 66px rgba(192,38,211,0.42), inset 0 0 22px rgba(255,255,255,0.18); }
-        }
+        @keyframes promoPulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.95; } }
         @keyframes promoShine { 0% { transform: translateX(-130%) skewX(-18deg); } 60%, 100% { transform: translateX(260%) skewX(-18deg); } }
+        @media (prefers-reduced-motion: reduce) { .promo-anim { animation: none !important; } }
       `),
     /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: "absolute top-0 bottom-0 pointer-events-none",
-        style: { width: "40%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)", animation: "promoShine 4.5s ease-in-out infinite" }
+        className: "promo-anim absolute inset-0 pointer-events-none",
+        style: { background: "radial-gradient(ellipse at 50% 120%, rgba(6,182,212,0.75), transparent 62%)", animation: "promoPulse 3.2s ease-in-out infinite", willChange: "opacity" }
+      }
+    ),
+    /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "promo-anim absolute top-0 bottom-0 pointer-events-none",
+        style: { width: "40%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)", animation: "promoShine 4.5s ease-in-out infinite", willChange: "transform" }
       }
     ),
     editing ? /* @__PURE__ */ React.createElement("div", { className: "relative p-3" }, /* @__PURE__ */ React.createElement(
@@ -4610,118 +4687,111 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onPlan
       }
     },
     /* @__PURE__ */ React.createElement("div", { className: "w-full h-full rounded-full overflow-hidden", style: { background: "#0B0B0D" } }, /* @__PURE__ */ React.createElement("img", { src: badgeSrc, alt: plan, className: "w-full h-full object-cover" }))
-  )), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black mb-3" }, badgeLabel), /* @__PURE__ */ React.createElement(PromoBanner, { text: promoText, isAdmin, onSave: onSavePromoText }), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "280px" }, className: "text-xs leading-6" }, "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0631\u0648 \u0628\u0627 \u06CC\u06A9\u06CC \u0627\u0632 \u0627\u06CC\u0646 \u062F\u0648 \u067E\u0644\u0646 \u0628\u0627\u0632 \u06A9\u0646")), /* @__PURE__ */ React.createElement(
+  )), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xl font-black mb-3" }, badgeLabel), /* @__PURE__ */ React.createElement(PromoBanner, { text: promoText, isAdmin, onSave: onSavePromoText }), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "280px" }, className: "text-xs leading-6" }, "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u062F\u0648\u0631\u0647\u200C\u0647\u0627\u06CC \u0622\u0645\u0648\u0632\u0634\u06CC \u0631\u0648 \u0628\u0627 \u06CC\u06A9\u06CC \u0627\u0632 \u0627\u06CC\u0646 \u062F\u0648 \u067E\u0644\u0646 \u0628\u0627\u0632 \u06A9\u0646")), /* @__PURE__ */ React.createElement("style", null, PLAN_CARD_CSS), /* @__PURE__ */ React.createElement(PlanCard, { tone: "silver", className: "mb-5" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 0 12px rgba(190,215,255,0.55)" }, className: "text-base font-black" }, /* @__PURE__ */ React.createElement("span", { className: "plan-float" }, "\u{1F948}"), " \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC")), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-base font-bold text-center mb-4" }, "(\u06F1\u06F2 \u0645\u0627\u0647\u0647)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#FFFFFF", textShadow: "0 0 14px rgba(190,215,255,0.65)" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B5BAC6" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#3DE08A", background: "rgba(31,168,85,0.18)", border: "1px solid rgba(61,224,138,0.35)" },
+      className: "text-[11px] font-bold rounded-full px-3 py-1"
+    },
+    "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
+  )), /* @__PURE__ */ React.createElement(
+    "p",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
+      className: "text-xs leading-6 text-center mb-5"
+    },
+    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
+    silverChapterNames,
+    ")"
+  ), plan === "silver" || plan === "gold" ? /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "rounded-2xl p-5 mb-5",
-      style: { background: "linear-gradient(160deg,#1c1c1e,#17161A)", border: "1px solid rgba(192,192,192,0.35)" }
+      className: "rounded-xl py-3 text-center",
+      style: { background: "rgba(192,192,192,0.12)", border: "1px solid rgba(192,192,192,0.4)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u{1F948} \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC")),
-    /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-base font-bold text-center mb-4" }, "(\u06F1\u06F2 \u0645\u0627\u0647\u0647)"),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
-      "span",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#1FA855", background: "rgba(31,168,85,0.12)" },
-        className: "text-[11px] font-bold rounded-full px-3 py-1"
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DADADA" }, className: "text-sm font-bold" }, "\u0639\u0636\u0648\u06CC\u062A \u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u062A\u0648 \u0641\u0639\u0627\u0644\u0647 \u2713"),
+    planExpiresAt && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0645\u0639\u062A\u0628\u0631 \u062A\u0627 ", formatExpiryDate(planExpiresAt))
+  ) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => handleBuy("silver"),
+      disabled: loadingPlan === "silver",
+      style: {
+        fontFamily: "Vazirmatn, sans-serif",
+        background: loadingPlan === "silver" ? "#1f3a28" : "linear-gradient(135deg, #1FA855, #2fd37a)",
+        color: loadingPlan === "silver" ? "#5a7a63" : "#F3EEE6",
+        boxShadow: loadingPlan === "silver" ? "none" : "0 0 18px rgba(47,211,122,0.5)"
       },
-      "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
-    )),
-    /* @__PURE__ */ React.createElement(
-      "p",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
-        className: "text-xs leading-6 text-center mb-5"
+      className: `w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "silver" ? "" : "plan-cta"}`
+    },
+    loadingPlan === "silver" ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0628\u0647 \u062F\u0631\u06AF\u0627\u0647\u2026" : "\u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC"
+  )), /* @__PURE__ */ React.createElement(PlanCard, { tone: "gold", delay: 1.4, className: "mb-3" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#FFF1CC", textShadow: "0 0 14px rgba(255,190,70,0.7)" }, className: "text-base font-black" }, /* @__PURE__ */ React.createElement("span", { className: "plan-float" }, "\u{1F3C5}"), " \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC")), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-base font-bold text-center mb-4" }, "(\u06F1\u06F2 \u0645\u0627\u0647\u0647)"), /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      style: {
+        fontFamily: "Oswald, sans-serif",
+        background: "linear-gradient(90deg, #FFE08A, #FFB347)",
+        WebkitBackgroundClip: "text",
+        backgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        color: "#FFD36B",
+        filter: "drop-shadow(0 0 10px rgba(255,170,40,0.55))"
       },
-      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
-      silverChapterNames,
-      ")"
-    ),
-    plan === "silver" || plan === "gold" ? /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "rounded-xl py-3 text-center",
-        style: { background: "rgba(192,192,192,0.12)", border: "1px solid rgba(192,192,192,0.4)" }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DADADA" }, className: "text-sm font-bold" }, "\u0639\u0636\u0648\u06CC\u062A \u0646\u0642\u0631\u0647\u200C\u0627\u06CC \u062A\u0648 \u0641\u0639\u0627\u0644\u0647 \u2713"),
-      planExpiresAt && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0645\u0639\u062A\u0628\u0631 \u062A\u0627 ", formatExpiryDate(planExpiresAt))
-    ) : /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => handleBuy("silver"),
-        disabled: loadingPlan === "silver",
-        style: {
-          fontFamily: "Vazirmatn, sans-serif",
-          background: loadingPlan === "silver" ? "#1f3a28" : "#1FA855",
-          color: loadingPlan === "silver" ? "#5a7a63" : "#F3EEE6"
-        },
-        className: "w-full rounded-xl py-3.5 font-bold text-sm transition-colors"
-      },
-      loadingPlan === "silver" ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0628\u0647 \u062F\u0631\u06AF\u0627\u0647\u2026" : "\u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0646\u0642\u0631\u0647\u200C\u0627\u06CC"
-    )
-  ), /* @__PURE__ */ React.createElement(
+      className: "text-3xl font-black"
+    },
+    "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"
+  ), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#C9B98E" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
+    "span",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#FFD36B", background: "rgba(232,179,61,0.18)", border: "1px solid rgba(255,214,102,0.4)" },
+      className: "text-[11px] font-bold rounded-full px-3 py-1"
+    },
+    "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
+  )), /* @__PURE__ */ React.createElement(
+    "p",
+    {
+      style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
+      className: "text-xs leading-6 text-center mb-5"
+    },
+    "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
+    goldChapterNames,
+    ")"
+  ), plan === "gold" ? /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "rounded-2xl p-5 mb-3",
-      style: { background: "linear-gradient(160deg,#221c14,#17161A)", border: "1px solid rgba(232,179,61,0.35)" }
+      className: "rounded-xl py-3 text-center",
+      style: { background: "rgba(232,179,61,0.12)", border: "1px solid rgba(232,179,61,0.4)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "text-center mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, "\u{1F3C5} \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC")),
-    /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-base font-bold text-center mb-4" }, "(\u06F1\u06F2 \u0645\u0627\u0647\u0647)"),
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-baseline justify-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#696469", textDecoration: "line-through" }, className: "text-lg" }, ORIGINAL_PRICE_DISPLAY), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-3xl font-black" }, "\u06F1,\u06F4\u06F9\u06F0,\u06F0\u06F0\u06F0"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062A\u0648\u0645\u0627\u0646")),
-    /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
-      "span",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" },
-        className: "text-[11px] font-bold rounded-full px-3 py-1"
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-sm font-bold" }, "\u0639\u0636\u0648\u06CC\u062A \u0637\u0644\u0627\u06CC\u06CC \u062A\u0648 \u0641\u0639\u0627\u0644\u0647 \u2713"),
+    planExpiresAt && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0645\u0639\u062A\u0628\u0631 \u062A\u0627 ", formatExpiryDate(planExpiresAt))
+  ) : goldUnlocked ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => handleBuy("gold"),
+      disabled: loadingPlan === "gold",
+      style: {
+        fontFamily: "Vazirmatn, sans-serif",
+        background: loadingPlan === "gold" ? "#4a3a1f" : "linear-gradient(135deg, #E8B33D, #FFD36B)",
+        color: loadingPlan === "gold" ? "#8a7550" : "#17161A",
+        boxShadow: loadingPlan === "gold" ? "none" : "0 0 18px rgba(255,190,70,0.55)"
       },
-      "\u062A\u062E\u0641\u06CC\u0641 \u0622\u063A\u0627\u0632\u06CC\u0646"
-    )),
-    /* @__PURE__ */ React.createElement(
-      "p",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" },
-        className: "text-xs leading-6 text-center mb-5"
+      className: `w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "gold" ? "" : "plan-cta"}`
+    },
+    loadingPlan === "gold" ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0628\u0647 \u062F\u0631\u06AF\u0627\u0647\u2026" : "\u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC"
+  ) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      disabled: true,
+      style: {
+        fontFamily: "Vazirmatn, sans-serif",
+        background: "#5c564e",
+        color: "#9a948a",
+        cursor: "not-allowed"
       },
-      "\u062F\u0633\u062A\u0631\u0633\u06CC \u0628\u0647 \u06F3 \u0641\u0635\u0644 (",
-      goldChapterNames,
-      ")"
-    ),
-    plan === "gold" ? /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        className: "rounded-xl py-3 text-center",
-        style: { background: "rgba(232,179,61,0.12)", border: "1px solid rgba(232,179,61,0.4)" }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-sm font-bold" }, "\u0639\u0636\u0648\u06CC\u062A \u0637\u0644\u0627\u06CC\u06CC \u062A\u0648 \u0641\u0639\u0627\u0644\u0647 \u2713"),
-      planExpiresAt && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, "\u0645\u0639\u062A\u0628\u0631 \u062A\u0627 ", formatExpiryDate(planExpiresAt))
-    ) : goldUnlocked ? /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => handleBuy("gold"),
-        disabled: loadingPlan === "gold",
-        style: {
-          fontFamily: "Vazirmatn, sans-serif",
-          background: loadingPlan === "gold" ? "#4a3a1f" : "#E8B33D",
-          color: loadingPlan === "gold" ? "#8a7550" : "#17161A"
-        },
-        className: "w-full rounded-xl py-3.5 font-bold text-sm transition-colors"
-      },
-      loadingPlan === "gold" ? "\u062F\u0631 \u062D\u0627\u0644 \u0627\u062A\u0635\u0627\u0644 \u0628\u0647 \u062F\u0631\u06AF\u0627\u0647\u2026" : "\u062E\u0631\u06CC\u062F \u0627\u0634\u062A\u0631\u0627\u06A9 \u0637\u0644\u0627\u06CC\u06CC"
-    ) : /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        disabled: true,
-        style: {
-          fontFamily: "Vazirmatn, sans-serif",
-          background: "#5c564e",
-          color: "#9a948a",
-          cursor: "not-allowed"
-        },
-        className: "w-full rounded-xl py-3.5 font-bold text-sm"
-      },
-      "\u0628\u0647\u200C\u0632\u0648\u062F\u06CC \u0641\u0639\u0627\u0644 \u0645\u06CC\u200C\u0634\u0647"
-    )
-  ), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-xs text-center mt-2" }, error), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-5" }, "\u067E\u0631\u062F\u0627\u062E\u062A \u0627\u0632 \u0637\u0631\u06CC\u0642 \u062F\u0631\u06AF\u0627\u0647 \u0627\u0645\u0646 \u0632\u0631\u06CC\u0646\u200C\u067E\u0627\u0644 \u0627\u0646\u062C\u0627\u0645 \u0645\u06CC\u200C\u0634\u0648\u062F."));
+      className: "w-full rounded-xl py-3.5 font-bold text-sm"
+    },
+    "\u0628\u0647\u200C\u0632\u0648\u062F\u06CC \u0641\u0639\u0627\u0644 \u0645\u06CC\u200C\u0634\u0647"
+  )), error && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-xs text-center mt-2" }, error), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center leading-6 mt-5" }, "\u067E\u0631\u062F\u0627\u062E\u062A \u0627\u0632 \u0637\u0631\u06CC\u0642 \u062F\u0631\u06AF\u0627\u0647 \u0627\u0645\u0646 \u0632\u0631\u06CC\u0646\u200C\u067E\u0627\u0644 \u0627\u0646\u062C\u0627\u0645 \u0645\u06CC\u200C\u0634\u0648\u062F."));
 }
 function ComingSoonScreen({ title, onBack }) {
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col items-center justify-center px-8 text-center", dir: "rtl" }, /* @__PURE__ */ React.createElement(
