@@ -63,14 +63,21 @@ const DEMO_MODE = API_BASE_URL.includes("YOUR_SERVER_URL");
 const DEMO_ADMIN_IDENTIFIERS = ["yazdannaseri98@gmail.com", "yazdannaseri76@gmail.com"];
 const NETWORK_OFFLINE_MESSAGE = "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u062F\u0633\u062A\u06AF\u0627\u0647 \u0631\u0627 \u0686\u06A9 \u06A9\u0646\u06CC\u062F";
 const NETWORK_WEAK_MESSAGE = "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A\u061B \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646\u06CC\u062F";
+const NETWORK_VPN_HINT = "\u0627\u06AF\u0647 \u0641\u06CC\u0644\u062A\u0631\u0634\u06A9\u0646 \u0631\u0648\u0634\u0646\u0647\u060C \u062E\u0627\u0645\u0648\u0634\u0634 \u06A9\u0646";
+const NETWORK_BLOCKED_MESSAGE = "\u0641\u06CC\u0644\u062A\u0631\u0634\u06A9\u0646 \u0631\u0627 \u062E\u0627\u0645\u0648\u0634 \u06A9\u0646\u06CC\u062F";
+const NETWORK_BLOCKED_DETAIL = "\u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0633\u0631\u0648\u0631 \u0628\u0631\u0642\u0631\u0627\u0631 \u0646\u0634\u062F\u061B \u0641\u06CC\u0644\u062A\u0631\u0634\u06A9\u0646 \u0631\u0627 \u062E\u0627\u0645\u0648\u0634 \u06A9\u0646\u06CC\u062F \u0648 \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646\u06CC\u062F";
+const NETWORK_OFFLINE_ERROR = `${NETWORK_OFFLINE_MESSAGE}\u061B ${NETWORK_VPN_HINT}`;
+const NETWORK_WEAK_ERROR = `${NETWORK_WEAK_MESSAGE} (${NETWORK_VPN_HINT})`;
 const API_TIMEOUT_MS = 2e4;
 const API_VOICE_TIMEOUT_MS = 6e4;
 const CONNECTIVITY_PROBE_INTERVAL_MS = 4e3;
 const connectivity = {
   offlineFlag: typeof navigator !== "undefined" && navigator.onLine === false,
   timeoutFlag: false,
+  blockedFlag: false,
+  // سرور جواب داده ولی «صفحه‌ی بلاک/فیلتر» بوده (مثلاً با فیلترشکن)
   state: "ok",
-  // "ok" | "weak" | "offline"
+  // "ok" | "weak" | "offline" | "blocked"
   listeners: /* @__PURE__ */ new Set(),
   probeTimer: null
 };
@@ -89,6 +96,7 @@ function isSlowEffectiveType() {
 }
 function computeConnectivityState() {
   if (connectivity.offlineFlag) return "offline";
+  if (connectivity.blockedFlag) return "blocked";
   if (connectivity.timeoutFlag || isSlowEffectiveType()) return "weak";
   return "ok";
 }
@@ -104,9 +112,24 @@ function markNetworkFailure(kind) {
   refreshConnectivityState();
   startConnectivityProbe();
 }
+function markNetworkBlocked() {
+  connectivity.offlineFlag = false;
+  connectivity.timeoutFlag = false;
+  connectivity.blockedFlag = true;
+  refreshConnectivityState();
+  startConnectivityProbe();
+}
+function isBlockedResponse(res) {
+  var _a2, _b2;
+  const type = ((_b2 = (_a2 = res.headers) == null ? void 0 : _a2.get) == null ? void 0 : _b2.call(_a2, "content-type")) || "";
+  if (/json/i.test(type)) return false;
+  const s = res.status;
+  return s >= 200 && s < 400 && s !== 204 || s === 403 || s === 407 || s === 451;
+}
 function markNetworkSuccess() {
   connectivity.offlineFlag = false;
   connectivity.timeoutFlag = false;
+  connectivity.blockedFlag = false;
   refreshConnectivityState();
 }
 async function pingServer(timeoutMs = 6e3) {
@@ -118,7 +141,11 @@ async function pingServer(timeoutMs = 6e3) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await fetch(`${API_BASE_URL}/`, { mode: "no-cors", cache: "no-store", signal: controller.signal });
+    const res = await fetch(`${API_BASE_URL}/settings/member-count`, { cache: "no-store", signal: controller.signal });
+    if (isBlockedResponse(res)) {
+      markNetworkBlocked();
+      return false;
+    }
     markNetworkSuccess();
     return true;
   } catch (err) {
@@ -132,9 +159,9 @@ function startConnectivityProbe() {
   if (connectivity.probeTimer || DEMO_MODE) return;
   const run = async () => {
     connectivity.probeTimer = null;
-    if (!connectivity.offlineFlag && !connectivity.timeoutFlag) return;
+    if (!connectivity.offlineFlag && !connectivity.timeoutFlag && !connectivity.blockedFlag) return;
     await pingServer();
-    if ((connectivity.offlineFlag || connectivity.timeoutFlag) && !connectivity.probeTimer) {
+    if ((connectivity.offlineFlag || connectivity.timeoutFlag || connectivity.blockedFlag) && !connectivity.probeTimer) {
       connectivity.probeTimer = setTimeout(run, CONNECTIVITY_PROBE_INTERVAL_MS);
     }
   };
@@ -158,19 +185,26 @@ if (typeof window !== "undefined") {
 async function apiFetch(url, options = {}) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     markNetworkFailure("offline");
-    throw new NetworkError(NETWORK_OFFLINE_MESSAGE, false);
+    throw new NetworkError(NETWORK_OFFLINE_ERROR, false);
   }
   const timeoutMs = String(url).includes("/voice") ? API_VOICE_TIMEOUT_MS : API_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, __spreadProps(__spreadValues({}, options), { signal: controller.signal }));
+    if (isBlockedResponse(res)) {
+      markNetworkBlocked();
+      const err = new NetworkError(NETWORK_BLOCKED_DETAIL, false);
+      err.blocked = true;
+      throw err;
+    }
     markNetworkSuccess();
     return res;
   } catch (err) {
+    if (err == null ? void 0 : err.isNetworkError) throw err;
     const timedOut = (err == null ? void 0 : err.name) === "AbortError";
     markNetworkFailure(timedOut ? "timeout" : "offline");
-    throw new NetworkError(timedOut ? NETWORK_WEAK_MESSAGE : NETWORK_OFFLINE_MESSAGE, timedOut);
+    throw new NetworkError(timedOut ? NETWORK_WEAK_ERROR : NETWORK_OFFLINE_ERROR, timedOut);
   } finally {
     clearTimeout(timer);
   }
@@ -482,15 +516,15 @@ async function apiFetchVideos() {
   if (DEMO_MODE) return {};
   try {
     const res = await apiFetch(`${API_BASE_URL}/videos`);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return {};
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
     const videos = {};
     for (const [key, url] of Object.entries(data.videos || {})) {
       videos[key] = toAbsoluteVideoUrl(url);
     }
     return videos;
   } catch (e) {
-    return {};
+    return null;
   }
 }
 async function apiUploadVideo(curriculumKey, n, file, token) {
@@ -1016,7 +1050,7 @@ function NetworkBanner() {
     }
   }, [state]);
   if (state === "ok" && !recovered) return null;
-  const view = state === "offline" ? { bg: "#4a1015", border: "#D91E2B", text: NETWORK_OFFLINE_MESSAGE, icon: true } : state === "weak" ? { bg: "#4a3a0e", border: "#E8B33D", text: "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A", icon: true } : { bg: "#10361f", border: "#2e9d57", text: "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0648\u0635\u0644 \u0634\u062F", icon: false };
+  const view = state === "blocked" ? { bg: "#4a1015", border: "#D91E2B", text: NETWORK_BLOCKED_MESSAGE, sub: "\u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0633\u0631\u0648\u0631 \u0628\u0631\u0642\u0631\u0627\u0631 \u0646\u0634\u062F", icon: true } : state === "offline" ? { bg: "#4a1015", border: "#D91E2B", text: NETWORK_OFFLINE_MESSAGE, sub: NETWORK_VPN_HINT, icon: true } : state === "weak" ? { bg: "#4a3a0e", border: "#E8B33D", text: "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A", sub: NETWORK_VPN_HINT, icon: true } : { bg: "#10361f", border: "#2e9d57", text: "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0648\u0635\u0644 \u0634\u062F", icon: false };
   return /* @__PURE__ */ React.createElement(
     "div",
     {
@@ -1025,8 +1059,8 @@ function NetworkBanner() {
       className: "shrink-0 flex items-center justify-center gap-2 px-3 py-1.5",
       style: { background: view.bg, borderBottom: `1px solid ${view.border}`, fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 12 }
     },
-    view.icon && /* @__PURE__ */ React.createElement(WifiOffIcon, { className: "w-4 h-4" }),
-    /* @__PURE__ */ React.createElement("span", null, view.text)
+    view.icon && /* @__PURE__ */ React.createElement(WifiOffIcon, { className: "w-4 h-4 shrink-0" }),
+    /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center text-center" }, /* @__PURE__ */ React.createElement("span", null, view.text), view.sub && /* @__PURE__ */ React.createElement("span", { style: { fontSize: 10, opacity: 0.8 } }, view.sub))
   );
 }
 function PhoneMock({ children, bgImage }) {
@@ -3840,8 +3874,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
         }
       },
       netState !== "ok" && /* @__PURE__ */ React.createElement(WifiOffIcon, { className: "w-7 h-7", style: { color: "#D91E2B" } }),
-      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 13 } }, netState === "offline" ? NETWORK_OFFLINE_MESSAGE : netState === "weak" ? "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A" : "\u067E\u062E\u0634 \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u0645\u0634\u06A9\u0644 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F. \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646."),
-      netState !== "ok" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", fontSize: 11 } }, "\u0648\u0642\u062A\u06CC \u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0648\u0635\u0644 \u0634\u062F\u060C \u067E\u062E\u0634 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u062F\u0627\u0645\u0647 \u067E\u06CC\u062F\u0627 \u0645\u06CC\u200C\u06A9\u0646\u0647"),
+      /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 13 } }, netState === "blocked" ? NETWORK_BLOCKED_MESSAGE : netState === "offline" ? NETWORK_OFFLINE_MESSAGE : netState === "weak" ? "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A" : "\u067E\u062E\u0634 \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u0645\u0634\u06A9\u0644 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F. \u062F\u0648\u0628\u0627\u0631\u0647 \u0627\u0645\u062A\u062D\u0627\u0646 \u06A9\u0646."),
+      netState !== "blocked" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", fontSize: 11 } }, NETWORK_VPN_HINT),
+      netState !== "ok" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", fontSize: 11 } }, "\u0648\u0642\u062A\u06CC \u0627\u062A\u0635\u0627\u0644 \u0628\u0631\u0642\u0631\u0627\u0631 \u0634\u062F\u060C \u067E\u062E\u0634 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u062F\u0627\u0645\u0647 \u067E\u06CC\u062F\u0627 \u0645\u06CC\u200C\u06A9\u0646\u0647"),
       /* @__PURE__ */ React.createElement(
         "button",
         {
@@ -3863,7 +3898,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
           animation: "vpSpin 0.8s linear infinite"
         }
       }
-    ), (netState === "offline" || slowBuffer || netState === "weak") && /* @__PURE__ */ React.createElement(
+    ), (netState === "offline" || netState === "blocked" || slowBuffer || netState === "weak") && /* @__PURE__ */ React.createElement(
       "span",
       {
         style: {
@@ -3876,7 +3911,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope }) {
           padding: "3px 12px"
         }
       },
-      netState === "offline" ? NETWORK_OFFLINE_MESSAGE : "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A"
+      netState === "blocked" ? NETWORK_BLOCKED_MESSAGE : netState === "offline" ? NETWORK_OFFLINE_MESSAGE : "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A"
     )),
     !error && /* @__PURE__ */ React.createElement(
       "div",
@@ -4092,7 +4127,7 @@ function setScreenCaptureBlocked(blocked) {
   else (_d = PS.disable) == null ? void 0 : _d.call(PS).catch(() => {
   });
 }
-function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accountId, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
+function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accountId, videosStatus, onRetryVideos, onUploaded, onRename, onComplete, onPracticeTick, onBack }) {
   const connectivityState = useConnectivity();
   const fileRef = useRef(null);
   const isHi = HIGHLIGHT_YELLOW.has(item.n);
@@ -4255,8 +4290,34 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
       style: { aspectRatio: "16 / 9", background: "#141317", borderColor: "#2a292e" }
     },
     /* @__PURE__ */ React.createElement(WifiOffIcon, { className: "w-8 h-8", style: { color: "#D91E2B" } }),
-    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm" }, connectivityState === "weak" ? "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A" : NETWORK_OFFLINE_MESSAGE),
-    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, "\u0648\u0642\u062A\u06CC \u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0648\u0635\u0644 \u0634\u062F\u060C \u0648\u06CC\u062F\u06CC\u0648 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC \u0645\u06CC\u200C\u0634\u0647")
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm" }, connectivityState === "blocked" ? NETWORK_BLOCKED_MESSAGE : connectivityState === "weak" ? "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u0636\u0639\u06CC\u0641 \u0627\u0633\u062A" : NETWORK_OFFLINE_MESSAGE),
+    connectivityState !== "blocked" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs" }, NETWORK_VPN_HINT),
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs" }, "\u0648\u0642\u062A\u06CC \u0627\u062A\u0635\u0627\u0644 \u0628\u0631\u0642\u0631\u0627\u0631 \u0634\u062F\u060C \u0648\u06CC\u062F\u06CC\u0648 \u062E\u0648\u062F\u06A9\u0627\u0631 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC \u0645\u06CC\u200C\u0634\u0647")
+  ) : videosStatus === "loading" ? /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "relative w-full rounded-xl flex flex-col items-center justify-center gap-2 border px-4 text-center",
+      style: { aspectRatio: "16 / 9", background: "#141317", borderColor: "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-sm" }, "\u062F\u0631 \u062D\u0627\u0644 \u062F\u0631\u06CC\u0627\u0641\u062A \u0644\u06CC\u0633\u062A \u0648\u06CC\u062F\u06CC\u0648\u0647\u0627\u2026")
+  ) : videosStatus === "error" ? /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      "data-testid": "videos-load-failed",
+      className: "relative w-full rounded-xl flex flex-col items-center justify-center gap-2 border px-4 text-center",
+      style: { aspectRatio: "16 / 9", background: "#141317", borderColor: "#2a292e" }
+    },
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm" }, "\u0644\u06CC\u0633\u062A \u0648\u06CC\u062F\u06CC\u0648\u0647\u0627 \u062F\u0631\u06CC\u0627\u0641\u062A \u0646\u0634\u062F"),
+    /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs leading-6" }, "\u0627\u06CC\u0646\u062A\u0631\u0646\u062A \u062F\u0633\u062A\u06AF\u0627\u0647 \u0631\u0627 \u0686\u06A9 \u06A9\u0646\u06CC\u062F \u0648 ", NETWORK_VPN_HINT),
+    /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: onRetryVideos,
+        style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" },
+        className: "rounded-lg px-5 py-2 text-xs font-bold"
+      },
+      "\u062A\u0644\u0627\u0634 \u062F\u0648\u0628\u0627\u0631\u0647"
+    )
   ) : isAdmin ? /* @__PURE__ */ React.createElement(
     "button",
     {
@@ -5151,6 +5212,7 @@ function App() {
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
   const [realMemberCount, setRealMemberCount] = useState(null);
+  const [videosStatus, setVideosStatus] = useState("loading");
   const [promoText, setPromoText] = useState("");
   const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
   const [chapterTitles, setChapterTitles] = useState({});
@@ -5240,8 +5302,22 @@ function App() {
       onAuthFailure = null;
     };
   }, []);
+  const loadVideoList = () => {
+    apiFetchVideos().then((list) => {
+      if (list) {
+        setVideos(list);
+        setVideosStatus("ok");
+      } else {
+        setVideosStatus((prev) => prev === "ok" ? "ok" : "error");
+      }
+    });
+  };
+  const handleRetryVideos = () => {
+    setVideosStatus("loading");
+    loadVideoList();
+  };
   const loadPublicData = () => {
-    apiFetchVideos().then(setVideos);
+    loadVideoList();
     apiFetchLessonTitles().then(setLessonTitles);
     apiFetchMemberCount().then(setMemberCount);
     apiFetchChapterVisibility().then(setChapterVisibility);
@@ -6031,6 +6107,8 @@ function App() {
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         authToken,
         accountId,
+        videosStatus,
+        onRetryVideos: handleRetryVideos,
         onUploaded: (url) => setVideos((v) => __spreadProps(__spreadValues({}, v), { [lessonKey]: url })),
         onRename: (newTitle) => handleRenameLesson(activeLesson.curriculumKey, activeLesson.item.n, newTitle),
         onComplete: handleLessonComplete,
