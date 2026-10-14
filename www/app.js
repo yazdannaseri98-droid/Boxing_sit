@@ -618,13 +618,18 @@ async function apiFetchUsers(token) {
   return { users: data.users || [], total: data.total || 0 };
 }
 async function apiFetchAdminStats(token) {
-  if (DEMO_MODE) return { totalUsers: 1 };
+  if (DEMO_MODE) return { totalUsers: 1, guestUsers: 0, registeredUsers: 1, activeSubscriptions: 0 };
   try {
     const res = await apiFetch(`${API_BASE_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 401) triggerAuthFailure();
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) return null;
-    return { totalUsers: Number(data.totalUsers) || 0 };
+    return {
+      totalUsers: Number(data.totalUsers) || 0,
+      guestUsers: Number(data.guestUsers) || 0,
+      registeredUsers: Number(data.registeredUsers) || 0,
+      activeSubscriptions: Number(data.activeSubscriptions) || 0
+    };
   } catch (e) {
     return null;
   }
@@ -1963,7 +1968,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
       className: "rounded-2xl p-4",
       style: { background: "linear-gradient(135deg,#2a1013,#17161A)", border: "1px solid rgba(217,30,43,0.35)" }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold mb-1" }, "\u062C\u0644\u0633\u0647 \u0628\u0639\u062F\u06CC"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, nextSessionTitle), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, reminderDayWord, " \xB7 ", reminderTime)), /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-11 h-11 object-contain shrink-0" })),
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-bold mb-1" }, "\u062A\u0646\u0638\u06CC\u0645 \u06CC\u0627\u062F\u0622\u0648\u0631 \u0631\u0648\u0632\u0627\u0646\u0647"), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-bold" }, nextSessionTitle), /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, reminderDayWord, " \xB7 ", reminderTime)), /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-11 h-11 object-contain shrink-0" })),
     /* @__PURE__ */ React.createElement("div", { className: "mt-3 pt-3", style: { borderTop: "1px solid rgba(217,30,43,0.2)" } }, showTimePicker ? /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -2899,7 +2904,23 @@ function InfoScreen({ title, items, paragraph, onBack }) {
     );
   })));
 }
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
+function AdminStatsRows({ stats }) {
+  const rows = [
+    { key: "guest", label: "\u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u0645\u0647\u0645\u0627\u0646", hint: "\u0648\u0631\u0648\u062F \u0628\u0627 \u0631\u0645\u0632 \u06CC\u06A9\u0628\u0627\u0631 \u0645\u0635\u0631\u0641", value: stats == null ? void 0 : stats.guestUsers, color: "#E8B33D" },
+    { key: "registered", label: "\u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u062B\u0627\u0628\u062A", hint: "\u062B\u0628\u062A\u200C\u0646\u0627\u0645\u200C\u0634\u062F\u0647", value: stats == null ? void 0 : stats.registeredUsers, color: "#5FD3E8" },
+    { key: "subscribed", label: "\u0627\u0634\u062A\u0631\u0627\u06A9 \u0641\u0639\u0627\u0644", hint: "\u062E\u0631\u06CC\u062F\u0627\u0631\u0627\u0646 \u0627\u0634\u062A\u0631\u0627\u06A9", value: stats == null ? void 0 : stats.activeSubscriptions, color: "#22c55e" }
+  ];
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      "data-testid": "admin-stats",
+      className: "w-full mt-3 pt-3 flex flex-col gap-2",
+      style: { borderTop: "1px solid rgba(95,211,232,0.25)" }
+    },
+    rows.map((r) => /* @__PURE__ */ React.createElement("div", { key: r.key, "data-testid": `admin-stat-${r.key}`, className: "flex items-center justify-between gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "flex items-center gap-2 min-w-0" }, /* @__PURE__ */ React.createElement("span", { className: "rounded-full shrink-0", style: { width: "8px", height: "8px", background: r.color } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }, className: "text-xs font-bold whitespace-nowrap" }, r.label), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[10px] truncate" }, r.hint)), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: r.color }, className: "text-sm font-bold shrink-0" }, r.value == null ? "\u2014" : Number(r.value).toLocaleString("en-US"))))
+  );
+}
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [savingCount, setSavingCount] = useState(false);
@@ -3060,7 +3081,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
       /* @__PURE__ */ React.createElement(
         "div",
         {
-          className: "flex items-center justify-between rounded-xl px-3 py-3 mb-4",
+          className: "flex flex-wrap items-center justify-between rounded-xl px-3 py-3 mb-4",
           style: {
             background: "rgba(95,211,232,0.08)",
             border: "1px solid rgba(95,211,232,0.4)",
@@ -3110,7 +3131,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             }
           },
           /* @__PURE__ */ React.createElement(PencilIcon, { className: "w-3.5 h-3.5", style: { color: "#5FD3E8" } })
-        )), isAdmin && /* @__PURE__ */ React.createElement("span", { "data-testid": "real-member-count", style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[10px] whitespace-nowrap" }, "\u06A9\u0627\u0631\u0628\u0631\u0627\u0646 \u0648\u0627\u0642\u0639\u06CC:", " ", /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#5FD3E8" }, className: "font-bold" }, realMemberCount == null ? "\u2014" : Number(realMemberCount).toLocaleString("en-US")))))
+        )))), isAdmin && /* @__PURE__ */ React.createElement(AdminStatsRows, { stats: adminStats })
       ),
       /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, menuItems.map((item) => {
         const Icon = item.icon;
@@ -3175,7 +3196,7 @@ function TelegramLogo({ className }) {
 }
 function ContactUs() {
   const row = { fontFamily: "Oswald, sans-serif", color: "#DAD6CE", letterSpacing: "0.02em" };
-  return /* @__PURE__ */ React.createElement("div", { "data-testid": "contact-us", className: "mt-4 mb-4 flex flex-col items-center text-center" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs font-bold mb-2" }, "\u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0645\u0627"), /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { "data-testid": "contact-us", className: "mt-4 mb-4 flex flex-col items-start text-right" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs font-bold mb-2" }, "\u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0645\u0627"), /* @__PURE__ */ React.createElement(
     "a",
     {
       href: `mailto:${CONTACT_EMAIL}`,
@@ -3318,7 +3339,7 @@ const DEFAULT_CHAPTER_TITLES = {
 };
 const INVITE_SHARE_TITLE = "\u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC";
 const INVITE_SHARE_TEXT = "\u{1F947}\u0627\u0648\u0644\u06CC\u0646 \u0627\u067E\u0644\u06CC\u06A9\u06CC\u0634\u0646 \u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647 \u0627\u06CC \u{1F947}\n\u062D\u062A\u0645\u0627 \u0627\u0645\u062A\u062D\u0627\u0646\u0634 \u06A9\u0646 \u{1F339}";
-const INVITE_SHARE_URL = "https://YOUR_APP_LINK";
+const INVITE_SHARE_URL = "http://cafebazaar.ir/app/?id=ir.naseri.boxingapp&ref=share";
 function PlayIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "currentColor" }, /* @__PURE__ */ React.createElement("path", { d: "M8 5v14l11-7z" }));
 }
@@ -5247,6 +5268,7 @@ function App() {
   const [lessonTitles, setLessonTitles] = useState({});
   const [memberCount, setMemberCount] = useState(0);
   const [realMemberCount, setRealMemberCount] = useState(null);
+  const [adminStats, setAdminStats] = useState(null);
   const [videosStatus, setVideosStatus] = useState("loading");
   const [promoText, setPromoText] = useState("");
   const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
@@ -5389,14 +5411,20 @@ function App() {
   const loadAdminStats = () => {
     if (!(authUser == null ? void 0 : authUser.isAdmin) || !authToken) return;
     apiFetchAdminStats(authToken).then((stats) => {
-      if (stats) setRealMemberCount(stats.totalUsers);
+      if (stats) {
+        setRealMemberCount(stats.totalUsers);
+        setAdminStats(stats);
+      }
     });
   };
   useEffect(() => {
     loadPublicData();
   }, []);
   useEffect(() => {
-    if (!(authUser == null ? void 0 : authUser.isAdmin)) setRealMemberCount(null);
+    if (!(authUser == null ? void 0 : authUser.isAdmin)) {
+      setRealMemberCount(null);
+      setAdminStats(null);
+    }
     loadAdminStats();
   }, [authUser == null ? void 0 : authUser.isAdmin, authToken]);
   useEffect(() => {
@@ -5930,6 +5958,7 @@ function App() {
         isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin),
         memberCount,
         realMemberCount,
+        adminStats,
         accountName: profileName,
         accountContact: authUser == null ? void 0 : authUser.identifier,
         onOpenAccount: () => {
