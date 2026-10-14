@@ -3160,8 +3160,43 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
         },
         /* @__PURE__ */ React.createElement(LogoutIcon, { className: "w-5 h-5", style: { color: "#D91E2B" } }),
         /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }, className: "text-sm font-bold" }, "\u062E\u0631\u0648\u062C \u0627\u0632 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC")
-      )
+      ),
+      /* @__PURE__ */ React.createElement(ContactUs, null)
     )
+  ));
+}
+const CONTACT_EMAIL = "Naseri.boxing.academy@gmail.com";
+const CONTACT_TELEGRAM_ID = "@Nasseri_boxing_academy";
+function GmailLogo({ className }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 48 36", className, "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("rect", { x: "0", y: "0", width: "48", height: "36", rx: "4", fill: "#FFFFFF" }), /* @__PURE__ */ React.createElement("path", { d: "M0 6.5 V33 a3 3 0 0 0 3 3 H9 V14.5 Z", fill: "#4285F4" }), /* @__PURE__ */ React.createElement("path", { d: "M48 6.5 V33 a3 3 0 0 1 -3 3 H39 V14.5 Z", fill: "#34A853" }), /* @__PURE__ */ React.createElement("path", { d: "M0 6.5 a3 3 0 0 1 3 -3.5 h1.2 L24 17.5 L43.8 3 H45 a3 3 0 0 1 3 3.5 L39 14.5 L24 25.5 L9 14.5 Z", fill: "#EA4335" }), /* @__PURE__ */ React.createElement("path", { d: "M48 6.5 L39 14.5 V8 Z", fill: "#FBBC04" }), /* @__PURE__ */ React.createElement("path", { d: "M0 6.5 L9 14.5 V8 Z", fill: "#C5221F" }));
+}
+function TelegramLogo({ className }) {
+  return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "12", fill: "#2AABEE" }), /* @__PURE__ */ React.createElement("path", { d: "M5.2 11.6 L18.6 6.2 L16.3 17.6 L12.2 14.6 L9.7 17 L9.3 13.2 Z", fill: "#FFFFFF" }), /* @__PURE__ */ React.createElement("path", { d: "M9.3 13.2 L16.1 8.3 L10.2 14.3 Z", fill: "#C8DAEA" }));
+}
+function ContactUs() {
+  const row = { fontFamily: "Oswald, sans-serif", color: "#DAD6CE", letterSpacing: "0.02em" };
+  return /* @__PURE__ */ React.createElement("div", { "data-testid": "contact-us", className: "mt-4 mb-4 flex flex-col items-center text-center" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs font-bold mb-2" }, "\u0627\u0631\u062A\u0628\u0627\u0637 \u0628\u0627 \u0645\u0627"), /* @__PURE__ */ React.createElement(
+    "a",
+    {
+      href: `mailto:${CONTACT_EMAIL}`,
+      "data-testid": "contact-email",
+      className: "flex items-center gap-2 py-1.5",
+      style: { textDecoration: "none" }
+    },
+    /* @__PURE__ */ React.createElement(GmailLogo, { className: "w-5 h-4 shrink-0" }),
+    /* @__PURE__ */ React.createElement("span", { dir: "ltr", style: row, className: "text-xs break-all" }, CONTACT_EMAIL)
+  ), /* @__PURE__ */ React.createElement(
+    "a",
+    {
+      href: `https://t.me/${CONTACT_TELEGRAM_ID.slice(1)}`,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      "data-testid": "contact-telegram",
+      className: "flex items-center gap-2 py-1.5",
+      style: { textDecoration: "none" }
+    },
+    /* @__PURE__ */ React.createElement(TelegramLogo, { className: "w-5 h-5 shrink-0" }),
+    /* @__PURE__ */ React.createElement("span", { dir: "ltr", style: row, className: "text-xs" }, CONTACT_TELEGRAM_ID)
   ));
 }
 const CURRICULUM_BASIC = [
