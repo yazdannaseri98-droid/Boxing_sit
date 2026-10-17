@@ -1418,13 +1418,6 @@ function SplashScreen({ onStart, loading }) {
         className: "text-3xl font-black mb-3"
       },
       tr("\u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC NASERI")
-    ), /* @__PURE__ */ React.createElement(
-      "p",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "260px" },
-        className: "text-sm leading-7"
-      },
-      tr("\u062A\u0645\u0631\u06CC\u0646 \u0628\u0627 \u0645\u062A\u062F \u0628\u0627\u0634\u06AF\u0627\u0647\u200C\u0647\u0627\u06CC \u062D\u0631\u0641\u0647\u200C\u0627\u06CC NASERI\u060C \u0632\u06CC\u0631 \u0646\u0638\u0631 \u0645\u0631\u0628\u06CC\u200C\u0647\u0627\u06CC \u0631\u0633\u0645\u06CC")
     )),
     /* @__PURE__ */ React.createElement("div", { className: "relative px-6 pb-8" }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
@@ -3580,8 +3573,6 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
         textShadow: "0 0 14px rgba(217,30,43,0.35)"
       }
     },
-    /* @__PURE__ */ React.createElement("span", { style: { color: "#F3EEE6" } }, "BOXING ACADEMY"),
-    " ",
     /* @__PURE__ */ React.createElement(
       "span",
       {
@@ -3593,8 +3584,10 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
           WebkitTextFillColor: "transparent"
         }
       },
-      "NASERI"
-    )
+      "Naseri"
+    ),
+    " ",
+    /* @__PURE__ */ React.createElement("span", { style: { color: "#F3EEE6" } }, "Boxing Academy")
   ), /* @__PURE__ */ React.createElement("div", { className: "w-12 flex items-center justify-end shrink-0" }, /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "NASERI", className: "w-12 h-12 object-contain" }))), /* @__PURE__ */ React.createElement(RopeDivider, null), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-6 mt-4" }, /* @__PURE__ */ React.createElement(
     TrainingWindow,
     {
