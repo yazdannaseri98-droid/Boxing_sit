@@ -2220,7 +2220,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
     /* @__PURE__ */ React.createElement("span", { style: { color: "#B7B3AB", fontWeight: 700 } }, row.label),
     row.value
   ))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2.5 mb-6" }, stats.map((s, i) => {
-    const c = ["#D91E2B", "#E8B33D", "#5FD3E8"][i % 3];
+    const c = "#4DA3FF";
     return /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -6630,9 +6630,9 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       disabled: loadingPlan === "silver",
       style: {
         fontFamily: "Vazirmatn, sans-serif",
-        background: loadingPlan === "silver" ? "#1f3a28" : "linear-gradient(135deg, #7A4300, #B86A00)",
+        background: loadingPlan === "silver" ? "#1f3a28" : "linear-gradient(135deg, #1FA855, #2fd37a)",
         color: loadingPlan === "silver" ? "#5a7a63" : "#F3EEE6",
-        boxShadow: loadingPlan === "silver" ? "none" : "0 0 18px rgba(255,170,40,0.55)"
+        boxShadow: loadingPlan === "silver" ? "none" : "0 0 18px rgba(47,211,122,0.5)"
       },
       className: `w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "silver" ? "" : "plan-cta"}`
     },
@@ -6681,9 +6681,9 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       disabled: loadingPlan === "gold",
       style: {
         fontFamily: "Vazirmatn, sans-serif",
-        background: loadingPlan === "gold" ? "#a58a4a" : "linear-gradient(135deg, #7A4300, #B86A00)",
-        color: loadingPlan === "gold" ? "#f3e7c4" : "#FFF6D8",
-        boxShadow: loadingPlan === "gold" ? "none" : "0 0 20px rgba(184,106,0,0.6)"
+        background: loadingPlan === "gold" ? "#8E949E" : "linear-gradient(135deg, #6B7280, #9CA3AF)",
+        color: "#FFFFFF",
+        boxShadow: loadingPlan === "gold" ? "none" : "0 0 16px rgba(120,128,140,0.5)"
       },
       className: `w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "gold" ? "" : "plan-cta"}`
     },
@@ -6694,8 +6694,8 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       disabled: true,
       style: {
         fontFamily: "Vazirmatn, sans-serif",
-        background: "rgba(90,63,6,0.35)",
-        color: "#4A3508",
+        background: "rgba(107,114,128,0.45)",
+        color: "#3F4650",
         cursor: "not-allowed"
       },
       className: "w-full rounded-xl py-3.5 font-bold text-sm"
@@ -6755,22 +6755,24 @@ function BottomTabs({ active, onNavigate }) {
         {
           className: "rounded-full flex items-center justify-center",
           style: {
-            width: "44px",
-            height: "44px",
-            background: active === "profile" ? "#D91E2B" : "#17161A",
-            border: `2px solid ${active === "profile" ? "#F3EEE6" : "#2a292e"}`,
-            boxShadow: active === "profile" ? "0 0 14px rgba(217,30,43,0.5)" : "none"
+            width: "46px",
+            height: "46px",
+            background: active === "profile" ? "linear-gradient(145deg, #7CC4FF, #1E6FD9)" : "linear-gradient(145deg, #1B2A3E, #101A28)",
+            border: `1.5px solid ${active === "profile" ? "#D6ECFF" : "rgba(77,163,255,0.55)"}`,
+            boxShadow: active === "profile" ? "0 0 18px rgba(77,163,255,0.8), inset 0 0 8px rgba(255,255,255,0.35)" : "0 0 10px rgba(77,163,255,0.3), inset 0 0 6px rgba(77,163,255,0.15)",
+            transition: "all .2s"
           }
         },
-        /* @__PURE__ */ React.createElement(UserIcon, { className: "w-5 h-5", style: { color: active === "profile" ? "#F3EEE6" : "#55535a" } })
+        /* @__PURE__ */ React.createElement(UserIcon, { className: "w-5 h-5", style: { color: active === "profile" ? "#FFFFFF" : "#6FB8FF" } })
       ),
       /* @__PURE__ */ React.createElement(
         "span",
         {
           style: {
             fontFamily: "Vazirmatn, sans-serif",
-            color: active === "profile" ? "#F3EEE6" : "#55535a",
-            fontSize: "9px"
+            color: active === "profile" ? "#D6ECFF" : "#6FB8FF",
+            fontSize: "9px",
+            fontWeight: 700
           }
         },
         tr("\u067E\u0646\u0644 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC")
@@ -6821,11 +6823,12 @@ function BottomTabs({ active, onNavigate }) {
         {
           className: "rounded-full flex items-center justify-center",
           style: {
-            width: "44px",
-            height: "44px",
-            background: active === "subscription" ? "#D91E2B" : "#17161A",
-            border: `2px solid ${active === "subscription" ? "#F3EEE6" : "#2a292e"}`,
-            boxShadow: active === "subscription" ? "0 0 14px rgba(217,30,43,0.5)" : "none"
+            width: "46px",
+            height: "46px",
+            background: active === "subscription" ? "linear-gradient(145deg, #FFE28A, #E0A020)" : "linear-gradient(145deg, #2E2410, #1A140A)",
+            border: `1.5px solid ${active === "subscription" ? "#FFF3C4" : "rgba(232,179,61,0.55)"}`,
+            boxShadow: active === "subscription" ? "0 0 18px rgba(255,200,80,0.85), inset 0 0 8px rgba(255,255,255,0.45)" : "0 0 10px rgba(232,179,61,0.3), inset 0 0 6px rgba(232,179,61,0.15)",
+            transition: "all .2s"
           }
         },
         /* @__PURE__ */ React.createElement(
@@ -6835,8 +6838,8 @@ function BottomTabs({ active, onNavigate }) {
               fontFamily: "Oswald, sans-serif",
               fontSize: "12px",
               fontWeight: "700",
-              letterSpacing: "0.03em",
-              color: active === "subscription" ? "#F3EEE6" : "#55535a"
+              letterSpacing: "0.05em",
+              color: active === "subscription" ? "#4A2E00" : "#F0C24D"
             }
           },
           "VIP"
@@ -6847,8 +6850,9 @@ function BottomTabs({ active, onNavigate }) {
         {
           style: {
             fontFamily: "Vazirmatn, sans-serif",
-            color: active === "subscription" ? "#F3EEE6" : "#55535a",
-            fontSize: "9px"
+            color: active === "subscription" ? "#FFE9A8" : "#F0C24D",
+            fontSize: "9px",
+            fontWeight: 700
           }
         },
         tr("\u0627\u0634\u062A\u0631\u0627\u06A9")
