@@ -3,10 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>باکس ایران | Boxing App</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <title>آموزش بوکس حرفه‌ای</title>
+  <!-- نسخه‌ی وب نصب‌شدنی (PWA) برای آیفون و هر مرورگر دیگه -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0B0B0D" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Naseri Boxing" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <script src="vendor-tailwind.js"></script>
+  <script src="vendor-react.js"></script>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #0B0B0D; overscroll-behavior: none; }
     #root { min-height: 100%; }
@@ -33,5 +41,11 @@
 <body>
   <div id="root"></div>
   <script src="app.js"></script>
+  <script>
+    // فقط روی وب (نه داخل اپ اندروید/iOS که با Capacitor ساخته شده)
+    if ("serviceWorker" in navigator && /^https?:/.test(location.protocol) && !(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())) {
+      window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+    }
+  </script>
 </body>
 </html>
