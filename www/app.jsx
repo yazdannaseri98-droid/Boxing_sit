@@ -5545,6 +5545,474 @@ function AdminStatsRows({ stats }) {
   );
 }
 
+function MenuPlanIcon({ className, style }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} style={style} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="3.5" width="14" height="17.5" rx="2.2" fill="currentColor" fillOpacity="0.2"/><path d="M9 3.5V2.6h6v.9M8.6 9.2h6.8M8.6 13h6.8M8.6 16.8h4"/><circle cx="6.9" cy="9.2" r=".5"/><circle cx="6.9" cy="13" r=".5"/>
+    </svg>
+  );
+}
+
+// ---------- برنامه‌های تمرینی ----------
+// سه نوع برنامه: interval (تایمر کار/استراحت قدم‌به‌قدم)، amrap (شمارش معکوس + شمارنده‌ی دور)، list (ست و تکرار + تایمر استراحت)
+const PG_PREP = 10;
+function pgBuildSteps(p) {
+  const steps = [{ type: "prep", name: "آماده شو", dur: PG_PREP }];
+  const blocks = p.blocks || [];
+  blocks.forEach((b, bi) => {
+    for (let r = 1; r <= b.rounds; r++) {
+      b.ex.forEach((ex, ei) => {
+        steps.push({ type: "work", name: ex, dur: b.work, round: r, rounds: b.rounds });
+        const lastOfBlock = r === b.rounds && ei === b.ex.length - 1;
+        if (!lastOfBlock && b.rest > 0) steps.push({ type: "rest", name: "استراحت", dur: b.rest, next: null });
+      });
+    }
+    if (b.restAfter && bi < blocks.length - 1) steps.push({ type: "rest", name: "استراحت", dur: b.restAfter, next: null });
+  });
+  steps.forEach((s, i) => {
+    if (s.type === "rest") {
+      const nx = steps.slice(i + 1).find((x) => x.type === "work");
+      s.next = nx ? nx.name : null;
+    }
+  });
+  return steps;
+}
+const pgTotal = (steps) => steps.reduce((a, s) => a + s.dur, 0);
+const pgMin = (steps) => Math.max(1, Math.round(pgTotal(steps) / 60));
+
+const PG_SAFETY = "قبل از شروع ۵ دقیقه گرم کن (چرخش مفاصل، طناب سبک). اگه بیماری قلبی/مفصلی داری یا درد داری، با پزشک مشورت کن. تمرین رو با تکنیک درست انجام بده، نه با سرعت بی‌پروا.";
+
+const PG_DATA = [
+  {
+    id: "tabata", icon: "⚡", color: "#FF5A36", title: "تاباتا",
+    desc: "هر حرکت ۲۰ ثانیه تمام قدرت، ۱۰ ثانیه استراحت؛ ۸ دور = ۴ دقیقه. کوتاه ولی خیلی سنگین.",
+    programs: [
+      { id: "tb-full", name: "تاباتا تمام‌بدن", level: "متوسط", mode: "interval", desc: "۴ بلوک ۴ دقیقه‌ای؛ بین بلوک‌ها ۶۰ ثانیه استراحت.",
+        blocks: [
+          { ex: ["پرش اسکات", "کوهنورد (Mountain Climber)"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["شنا", "پلانک‌جک"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["لانج جهشی", "بالا آوردن زانو"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["برپی", "دراز و نشست"], work: 20, rest: 10, rounds: 4 },
+        ] },
+      { id: "tb-legs", name: "تاباتا پا و باسن", level: "متوسط", mode: "interval", desc: "۳ بلوک؛ پاها رو خسته می‌کنه.",
+        blocks: [
+          { ex: ["اسکات وزن بدن", "لانج متناوب"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["اسکات پرشی", "پل باسن"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["اسکی‌باز (Skater)", "دیوار‌نشین (Wall Sit)"], work: 20, rest: 10, rounds: 4 },
+        ] },
+      { id: "tb-upper", name: "تاباتا بالاتنه و شکم", level: "مبتدی", mode: "interval", desc: "شنا و حرکات شکم؛ اگه شنا سخته روی زانو انجام بده.",
+        blocks: [
+          { ex: ["شنا (روی زانو هم اوکیه)", "پلانک"], work: 20, rest: 10, rounds: 4, restAfter: 45 },
+          { ex: ["دراز و نشست", "کوهنورد"], work: 20, rest: 10, rounds: 4, restAfter: 45 },
+          { ex: ["شنا الماسی", "بالا آوردن پا"], work: 20, rest: 10, rounds: 4 },
+        ] },
+      { id: "tb-box", name: "تاباتا بوکس", level: "پیشرفته", mode: "interval", desc: "ضربه‌های سریع و کاندیشنینگ مخصوص بوکسور.",
+        blocks: [
+          { ex: ["جَب-کراس سریع (شَدو)", "برپی"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["هوک و آپرکات (شَدو)", "پرش اسکات"], work: 20, rest: 10, rounds: 4, restAfter: 60 },
+          { ex: ["حرکت پا + جَب (سایه‌بوکس)", "کوهنورد"], work: 20, rest: 10, rounds: 4 },
+        ] },
+    ],
+  },
+  {
+    id: "hiit", icon: "🔥", color: "#E8B33D", title: "HIIT (تمرین تناوبی شدید)",
+    desc: "تناوب بین تلاش شدید و استراحت کوتاه. چربی‌سوزی بالا در زمان کم.",
+    programs: [
+      { id: "hiit-beg", name: "HIIT مبتدی ۱۵ دقیقه", level: "مبتدی", mode: "interval", desc: "۳۰ ثانیه کار / ۳۰ ثانیه استراحت، ۳ دور ۵ حرکتی.",
+        blocks: [{ ex: ["جامپینگ‌جک", "اسکات وزن بدن", "شنا روی زانو", "کوهنورد آرام", "پلانک"], work: 30, rest: 30, rounds: 3 }] },
+      { id: "hiit-mid", name: "HIIT متوسط ۲۰ دقیقه", level: "متوسط", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۴ دور ۵ حرکتی.",
+        blocks: [{ ex: ["برپی", "اسکات پرشی", "شنا", "کوهنورد", "لانج جهشی"], work: 40, rest: 20, rounds: 4 }] },
+      { id: "hiit-adv", name: "HIIT پیشرفته ۲۵ دقیقه", level: "پیشرفته", mode: "interval", desc: "۴۵ ثانیه کار / ۱۵ ثانیه استراحت، ۵ دور ۵ حرکتی.",
+        blocks: [{ ex: ["برپی با شنا", "پرش جعبه‌ای (یا اسکات پرشی)", "شنا انفجاری", "کوهنورد سریع", "دراز و نشست V"], work: 45, rest: 15, rounds: 5 }] },
+      { id: "hiit-sprint", name: "HIIT دویدن (اسپرینت)", level: "متوسط", mode: "interval", desc: "۳۰ ثانیه دوی سریع / ۹۰ ثانیه راه رفتن، ۸ دور.",
+        blocks: [{ ex: ["دوی سریع"], work: 30, rest: 90, rounds: 8 }] },
+    ],
+  },
+  {
+    id: "crossfit", icon: "🏋️", color: "#B08CFF", title: "کراس‌فیت",
+    desc: "تمرین‌های عملکردی با شدت بالا و متنوع (WOD). با شمارش دور یا زمان انجام می‌شن.",
+    programs: [
+      { id: "cf-amrap", name: "AMRAP ۱۲ دقیقه", level: "متوسط", mode: "amrap", total: 720,
+        desc: "تا ۱۲ دقیقه هر چند دور که می‌تونی. دورها رو بشمار.",
+        items: ["۱۰ اسکات هوایی", "۱۰ شنا", "۱۰ دراز و نشست", "۱۰ پرش اسکات"] },
+      { id: "cf-cindy", name: "WOD «سیندی» ۲۰ دقیقه", level: "پیشرفته", mode: "amrap", total: 1200,
+        desc: "WOD معروف کراس‌فیت: ۲۰ دقیقه AMRAP.",
+        items: ["۵ بارفیکس (یا بارفیکس کمکی)", "۱۰ شنا", "۱۵ اسکات هوایی"] },
+      { id: "cf-emom", name: "EMOM ۱۰ دقیقه", level: "متوسط", mode: "interval", desc: "هر دقیقه یک حرکت: اون رو ۴۰ ثانیه انجام بده و ۲۰ ثانیه استراحت کن.",
+        blocks: [{ ex: ["۱۲ برپی", "۱۵ اسکات پرشی", "۱۰ شنا", "۲۰ کوهنورد", "۱۵ لانج"], work: 40, rest: 20, rounds: 2 }] },
+      { id: "cf-chipper", name: "چیپر (۵ حرکت پشت‌سرهم)", level: "پیشرفته", mode: "list", desc: "هر حرکت رو به ترتیب تموم کن، زمانت رو یادداشت کن و دفعه بعد بشکونش.",
+        items: ["۵۰ جامپینگ‌جک", "۴۰ اسکات هوایی", "۳۰ دراز و نشست", "۲۰ شنا", "۱۰ برپی"], rest: 0 },
+    ],
+  },
+  {
+    id: "fitness", icon: "💪", color: "#3DE08A", title: "فیتنس و تمام‌بدن",
+    desc: "برنامه‌های عمومی برای تناسب اندام، قدرت پایه و آمادگی جسمانی.",
+    programs: [
+      { id: "ft-circuit", name: "سیرکویت تمام‌بدن (۲۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۳ دور ۶ حرکتی.",
+        blocks: [{ ex: ["اسکات", "شنا (زانو هم اوکیه)", "لانج متناوب", "پلانک", "جامپینگ‌جک", "پل باسن"], work: 40, rest: 20, rounds: 3 }] },
+      { id: "ft-home", name: "تمرین خانگی بدون وسیله", level: "مبتدی", mode: "list", desc: "۳ ست از هر حرکت، بین ست‌ها ۶۰ ثانیه استراحت.", rest: 60,
+        items: ["اسکات — ۳×۱۵", "شنا — ۳×۱۰", "لانج — ۳×۱۲ برای هر پا", "پلانک — ۳×۳۰ ثانیه", "پل باسن — ۳×۱۵", "دراز و نشست — ۳×۱۵"] },
+      { id: "ft-core", name: "شکم و مرکز بدن (۱۰ دقیقه)", level: "متوسط", mode: "interval", desc: "۴۵ ثانیه کار / ۱۵ ثانیه استراحت.",
+        blocks: [{ ex: ["پلانک", "دراز و نشست دوچرخه‌ای", "بالا آوردن پا", "پلانک کناری راست", "پلانک کناری چپ", "کوهنورد"], work: 45, rest: 15, rounds: 2 }] },
+    ],
+  },
+  {
+    id: "bodybuilding", icon: "🏆", color: "#FF7A45", title: "بدنسازی (با وزنه)",
+    desc: "برنامه‌های تقسیم‌بندی‌شده برای افزایش حجم و قدرت. وزنه رو طوری انتخاب کن که ۲-۳ تکرار آخر سخت باشه.",
+    programs: [
+      { id: "bb-full", name: "تمام‌بدن ۳ روز در هفته", level: "مبتدی", mode: "list", desc: "شنبه / دوشنبه / چهارشنبه. بین ست‌ها ۹۰ ثانیه استراحت.", rest: 90,
+        items: ["اسکات با هالتر — ۳×۸", "پرس سینه — ۳×۸", "زیربغل سیم‌کش — ۳×۱۰", "پرس سرشانه — ۳×۱۰", "جلو بازو — ۲×۱۲", "پشت بازو — ۲×۱۲", "پلانک — ۳×۴۵ ثانیه"] },
+      { id: "bb-push", name: "روز Push (سینه، شانه، پشت بازو)", level: "متوسط", mode: "list", desc: "بین ست‌ها ۹۰ ثانیه.", rest: 90,
+        items: ["پرس سینه هالتر — ۴×۸", "پرس بالا سینه دمبل — ۳×۱۰", "پرس سرشانه — ۴×۱۰", "نشر از جانب — ۳×۱۵", "پشت بازو سیم‌کش — ۳×۱۲", "دیپ — ۳×۱۰"] },
+      { id: "bb-pull", name: "روز Pull (پشت، جلو بازو)", level: "متوسط", mode: "list", desc: "بین ست‌ها ۹۰ ثانیه.", rest: 90,
+        items: ["بارفیکس (یا لت‌پول) — ۴×۸", "زیربغل هالتر خم — ۴×۸", "زیربغل سیم‌کش — ۳×۱۰", "فِیس‌پول — ۳×۱۵", "جلو بازو هالتر — ۳×۱۰", "جلو بازو چکشی — ۳×۱۲"] },
+      { id: "bb-legs", name: "روز Legs (پا)", level: "متوسط", mode: "list", desc: "بین ست‌ها ۱۲۰ ثانیه.", rest: 120,
+        items: ["اسکات — ۴×۸", "پرس پا — ۴×۱۰", "رومانیایی ددلیفت — ۳×۱۰", "جلو پا — ۳×۱۲", "پشت پا — ۳×۱۲", "ساق پا — ۴×۱۵"] },
+    ],
+  },
+  {
+    id: "cardio", icon: "🏃", color: "#5FD3E8", title: "ورزش‌های هوازی",
+    desc: "تقویت قلب و ریه و چربی‌سوزی؛ پایه‌ی آمادگی بوکسور.",
+    programs: [
+      { id: "cd-walkrun", name: "راه رفتن/دویدن مبتدی (۲۵ دقیقه)", level: "مبتدی", mode: "interval", desc: "۱ دقیقه دویدن آرام، ۲ دقیقه راه رفتن؛ ۸ بار.",
+        blocks: [{ ex: ["دویدن آرام"], work: 60, rest: 120, rounds: 8 }] },
+      { id: "cd-rope", name: "طناب‌زنی تناوبی (۱۵ دقیقه)", level: "متوسط", mode: "interval", desc: "۶۰ ثانیه طناب / ۳۰ ثانیه استراحت، ۱۰ دور.",
+        blocks: [{ ex: ["طناب‌زنی"], work: 60, rest: 30, rounds: 10 }] },
+      { id: "cd-liss", name: "هوازی ملایم (۳۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "حرکت پیوسته با شدت متوسط؛ باید بتونی صحبت کنی.",
+        blocks: [{ ex: ["راه سریع / دوی نرم / دوچرخه"], work: 1800, rest: 0, rounds: 1 }] },
+      { id: "cd-stairs", name: "پله و پرش (۱۲ دقیقه)", level: "متوسط", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت.",
+        blocks: [{ ex: ["بالا رفتن از پله", "پرش اسکات", "زانو بالا (درجا)"], work: 40, rest: 20, rounds: 4 }] },
+    ],
+  },
+  {
+    id: "boxing", icon: "🥊", color: "#D91E2B", title: "کاندیشنینگ بوکس",
+    desc: "تمرین‌های آمادگی مخصوص بوکسور: استقامت راند، سرعت دست و پا و قدرت مرکز بدن.",
+    programs: [
+      { id: "bx-rounds", name: "۶ راند سایه‌بوکسینگ", level: "مبتدی", mode: "interval", desc: "۳ دقیقه راند / ۱ دقیقه استراحت. هر راند روی یک تمرکز.",
+        blocks: [{ ex: ["راند ۱: جَب و حرکت پا", "راند ۲: جَب-کراس", "راند ۳: هوک", "راند ۴: دفاع و ضدحمله", "راند ۵: ترکیب‌ها", "راند ۶: تمام قدرت"], work: 180, rest: 60, rounds: 1 }] },
+      { id: "bx-circuit", name: "سیرکویت کاندیشنینگ", level: "متوسط", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۴ دور.",
+        blocks: [{ ex: ["طناب", "برپی", "سایه‌بوکس سریع", "اسکات پرشی", "پلانک", "چرخش روسی (شکم)"], work: 40, rest: 20, rounds: 4 }] },
+      { id: "bx-speed", name: "سرعت دست و پا", level: "متوسط", mode: "interval", desc: "۳۰ ثانیه حداکثر سرعت / ۳۰ ثانیه استراحت، ۳ دور.",
+        blocks: [{ ex: ["جَب سریع", "نردبان چابکی (یا جابه‌جایی پا)", "کراس-هوک سریع", "پرش طناب دوبل"], work: 30, rest: 30, rounds: 3 }] },
+      { id: "bx-neck", name: "گردن و شانه (محافظ ضربه)", level: "مبتدی", mode: "list", desc: "برای مقاومت در برابر ضربه. بین ست‌ها ۶۰ ثانیه.", rest: 60,
+        items: ["پل گردن (ملایم) — ۳×۱۰ ثانیه", "شراگ شانه — ۳×۱۵", "نشر از جانب — ۳×۱۵", "چرخش شانه با کش — ۳×۱۵"] },
+    ],
+  },
+  {
+    id: "calisthenics", icon: "🤸", color: "#2EC4B6", title: "تمرین با وزن بدن",
+    desc: "قدرت و کنترل بدن بدون وسیله — هر جا و هر زمان.",
+    programs: [
+      { id: "cal-beg", name: "پایه (۳ روز در هفته)", level: "مبتدی", mode: "list", desc: "۳ ست، بین ست‌ها ۶۰ ثانیه.", rest: 60,
+        items: ["شنا — ۳×۸", "اسکات — ۳×۱۵", "بارفیکس منفی/کمکی — ۳×۵", "دیپ روی صندلی — ۳×۱۰", "پلانک — ۳×۳۰ ثانیه"] },
+      { id: "cal-adv", name: "پیشرفته", level: "پیشرفته", mode: "list", desc: "۴ ست، بین ست‌ها ۹۰ ثانیه.", rest: 90,
+        items: ["شنا یک‌دست/الماسی — ۴×۱۰", "بارفیکس — ۴×۸", "دیپ موازی — ۴×۱۰", "اسکات تک‌پا (پیستول) — ۴×۶", "اِل‌سیت — ۴×۱۵ ثانیه"] },
+    ],
+  },
+  {
+    id: "recovery", icon: "🧘", color: "#8FA3B8", title: "کشش و ریکاوری",
+    desc: "بعد از تمرین یا روزهای استراحت؛ انعطاف و جلوگیری از آسیب.",
+    programs: [
+      { id: "rc-full", name: "کشش تمام‌بدن (۱۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "هر حرکت ۳۰ ثانیه، ۱۰ ثانیه تعویض.",
+        blocks: [{ ex: ["کشش گردن", "کشش شانه", "کشش سینه", "کشش پشت (گربه-گاو)", "کشش جلو ران", "کشش پشت ران", "کشش ساق", "کشش باسن"], work: 30, rest: 10, rounds: 2 }] },
+      { id: "rc-warm", name: "گرم‌کردن (۵ دقیقه)", level: "مبتدی", mode: "interval", desc: "قبل از هر تمرین. ۳۰ ثانیه برای هر حرکت.",
+        blocks: [{ ex: ["چرخش گردن و شانه", "چرخش مچ و آرنج", "چرخش کمر", "زانو بالا (درجا)", "پاشنه به باسن", "جامپینگ‌جک سبک"], work: 30, rest: 5, rounds: 1 }] },
+    ],
+  },
+];
+
+const PG_LEVEL_COLOR = { "مبتدی": "#3DE08A", "متوسط": "#E8B33D", "پیشرفته": "#D91E2B" };
+const fmtMMSS = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+
+// پخش‌کننده‌ی تایمر مشترک: لیستی از مرحله‌ها (steps) رو یکی‌یکی اجرا می‌کنه
+function ProgramPlayer({ title, steps, onExit, extra }) {
+  const [idx, setIdx] = useState(0);
+  const [left, setLeft] = useState(steps[0] ? steps[0].dur : 0);
+  const [mode, setMode] = useState("idle"); // idle | running | paused | done
+  const audioRef = useRef(null);
+  const endRef = useRef(0);
+  const idxRef = useRef(0);
+  const modeRef = useRef("idle");
+  const lastTickRef = useRef(-1);
+  const getAudio = () => { if (!audioRef.current) audioRef.current = makeTimerAudio(); return audioRef.current; };
+  const beep = (fn) => { try { fn(getAudio()); } catch {} };
+  const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+  const setM = (m) => { modeRef.current = m; setMode(m); };
+
+  const enter = (i) => {
+    idxRef.current = i;
+    setIdx(i);
+    const s = steps[i];
+    endRef.current = Date.now() + s.dur * 1000;
+    lastTickRef.current = -1;
+    setLeft(s.dur);
+    if (s.type === "work") { beep((a) => a.bell(1)); buzz(300); }
+    else if (s.type === "rest") { beep((a) => a.bell(2)); buzz([150, 80, 150]); }
+  };
+
+  useEffect(() => {
+    if (mode !== "running") return undefined;
+    const id = setInterval(() => {
+      if (modeRef.current !== "running") return;
+      const rem = (endRef.current - Date.now()) / 1000;
+      const whole = Math.ceil(rem);
+      if (rem <= 0) {
+        const n = idxRef.current + 1;
+        if (n >= steps.length) { setLeft(0); setM("done"); beep((a) => a.bell(3)); buzz([300, 120, 300, 120, 600]); }
+        else enter(n);
+        return;
+      }
+      setLeft(rem);
+      if (whole <= 3 && whole !== lastTickRef.current) { lastTickRef.current = whole; beep((a) => a.tick()); }
+    }, 100);
+    return () => clearInterval(id);
+  }, [mode]);
+
+  useEffect(() => () => { modeRef.current = "idle"; try { audioRef.current && audioRef.current.close(); } catch {} }, []);
+
+  const start = () => { beep((a) => a.unlock()); enter(0); setM("running"); };
+  const pause = () => { endRef.current = endRef.current - Date.now(); setM("paused"); };   // باقیمونده رو نگه می‌داره
+  const resume = () => { beep((a) => a.unlock()); endRef.current = Date.now() + endRef.current; setM("running"); };
+  const skip = () => { const n = idxRef.current + 1; if (n >= steps.length) { setM("done"); setLeft(0); beep((a) => a.bell(3)); } else enter(n); };
+  const prev = () => { enter(Math.max(0, idxRef.current - 1)); };
+  const reset = () => { setM("idle"); setIdx(0); setLeft(steps[0] ? steps[0].dur : 0); };
+
+  const s = steps[idx] || steps[0];
+  const colorOf = { prep: "#5FD3E8", work: "#D91E2B", rest: "#3DE08A" };
+  const col = mode === "done" ? "#E8B33D" : colorOf[s.type] || "#D91E2B";
+  const nextWork = s.type === "rest" ? s.next : (steps.slice(idx + 1).find((x) => x.type === "work") || {}).name;
+  const R = 104, C = 2 * Math.PI * R;
+  const prog = s ? 1 - Math.min(1, Math.max(0, left / s.dur)) : 1;
+  const workSteps = steps.filter((x) => x.type === "work");
+  const workDone = steps.slice(0, idx).filter((x) => x.type === "work").length;
+
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6 flex flex-col" dir={APP_DIR}
+      style={{ background: mode !== "idle" ? `radial-gradient(ellipse at 50% 28%, ${col}33 0%, rgba(11,11,13,0) 65%)` : undefined, transition: "background .4s" }}>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={onExit} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{"› بازگشت"}</button>
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>
+      </div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-center text-base font-black mb-2">{title}</div>
+
+      <div className="flex flex-col items-center my-2">
+        <div className="relative" style={{ width: 240, height: 240 }}>
+          <svg width="240" height="240" viewBox="0 0 240 240" style={{ transform: "rotate(-90deg)" }}>
+            <circle cx="120" cy="120" r={R} stroke="#222127" strokeWidth="12" fill="none" />
+            <circle cx="120" cy="120" r={R} stroke={col} strokeWidth="12" fill="none" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - (mode === "idle" ? 0 : prog))} style={{ filter: `drop-shadow(0 0 8px ${col})` }} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: col }} className="text-xs font-black mb-1">
+              {mode === "done" ? "تمرین تموم شد 🎉" : mode === "idle" ? "آماده؟" : s.type === "prep" ? "آماده‌سازی" : s.type === "rest" ? "استراحت" : "تمرین"}
+            </div>
+            <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", textShadow: `0 0 18px ${col}88` }} className="text-5xl font-bold">{mode === "idle" ? fmtMMSS(steps[0].dur) : fmtMMSS(left)}</div>
+          </div>
+        </div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-center text-lg font-black mt-3 leading-8 min-h-[3.5rem]">
+          {mode === "idle" ? "برای شروع بزن" : mode === "done" ? "آفرین! یه کم کشش بده." : s.type === "rest" ? (s.next ? `بعدی: ${s.next}` : "نفس بگیر") : s.name}
+        </div>
+        {mode !== "idle" && mode !== "done" && s.type === "work" && s.rounds > 1 && (
+          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`دور ${s.round} از ${s.rounds}`}</div>
+        )}
+        {mode !== "idle" && mode !== "done" && nextWork && s.type === "work" && (
+          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{`بعدی: ${nextWork}`}</div>
+        )}
+        {workSteps.length > 1 && <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{`${Math.min(workDone + (s && s.type === "work" ? 1 : 0), workSteps.length)} / ${workSteps.length} حرکت`}</div>}
+      </div>
+
+      <div className="flex items-center justify-center gap-3 mt-3">
+        {mode === "idle" && (
+          <button onClick={start} className="rounded-2xl px-10 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff", boxShadow: "0 0 18px rgba(47,211,122,0.5)" }}>شروع</button>
+        )}
+        {mode === "running" && (<>
+          <button onClick={prev} className="rounded-2xl px-4 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>قبلی</button>
+          <button onClick={pause} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" }}>توقف</button>
+          <button onClick={skip} className="rounded-2xl px-4 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>بعدی</button>
+        </>)}
+        {mode === "paused" && (<>
+          <button onClick={resume} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>ادامه</button>
+          <button onClick={reset} className="rounded-2xl px-5 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>از اول</button>
+        </>)}
+        {mode === "done" && (
+          <button onClick={reset} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" }}>دوباره</button>
+        )}
+      </div>
+      {extra}
+    </div>
+  );
+}
+
+// پیش‌نمایش ترتیب حرکت‌ها (قبل از شروع)
+function ProgramMoveList({ steps }) {
+  const works = steps.filter((x) => x.type === "work");
+  return (
+    <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">{`حرکت‌ها (${works.length})`}</div>
+      <div className="flex flex-col gap-1">
+        {works.map((w, i) => (
+          <div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${w.name} — ${w.dur >= 60 ? Math.round(w.dur / 60) + " دقیقه" : w.dur + " ثانیه"}`}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// AMRAP: شمارش معکوس کل زمان + شمارنده‌ی دور
+function AmrapPlayer({ program, onExit }) {
+  const steps = useMemo(() => [{ type: "prep", name: "آماده شو", dur: PG_PREP }, { type: "work", name: "AMRAP", dur: program.total, round: 1, rounds: 1 }], [program]);
+  const [rounds, setRounds] = useState(0);
+  const extra = (
+    <div className="mt-4 rounded-xl p-3" style={{ background: "#17161A", border: "1px solid #B08CFF" }}>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B08CFF" }} className="text-xs font-black mb-2">در هر دور:</div>
+      {program.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7">{it}</div>))}
+      <div className="flex items-center justify-center gap-4 mt-3">
+        <button onClick={() => setRounds((r) => Math.max(0, r - 1))} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#2a292e", color: "#F3EEE6" }}>−</button>
+        <div style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" }}>{" دور"}</span></div>
+        <button onClick={() => setRounds((r) => r + 1)} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#B08CFF", color: "#0B0B0D" }}>+</button>
+      </div>
+    </div>
+  );
+  return <ProgramPlayer title={program.name} steps={steps} onExit={onExit} extra={extra} />;
+}
+
+// برنامه‌ی ست و تکرار: چک‌لیست + تایمر استراحت
+function ListWorkout({ program, onExit }) {
+  const [done, setDone] = useState({});
+  const [restLeft, setRestLeft] = useState(0);
+  const audioRef = useRef(null);
+  const restSec = program.rest || 60;
+  useEffect(() => {
+    if (restLeft <= 0) return undefined;
+    const id = setTimeout(() => {
+      const n = restLeft - 1;
+      if (n <= 3 && n > 0) { try { (audioRef.current || (audioRef.current = makeTimerAudio())).tick(); } catch {} }
+      if (n === 0) { try { (audioRef.current || (audioRef.current = makeTimerAudio())).bell(1); navigator.vibrate && navigator.vibrate(300); } catch {} }
+      setRestLeft(n);
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [restLeft]);
+  useEffect(() => () => { try { audioRef.current && audioRef.current.close(); } catch {} }, []);
+  const startRest = () => { try { (audioRef.current || (audioRef.current = makeTimerAudio())).unlock(); } catch {} setRestLeft(restSec); };
+  const count = Object.values(done).filter(Boolean).length;
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+      <button onClick={onExit} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block mb-3">{"› بازگشت"}</button>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black mb-1">{program.name}</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-3">{program.desc}</div>
+      <div className="flex flex-col gap-2 mb-4">
+        {program.items.map((it, i) => (
+          <button key={i} onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-center gap-3 rounded-xl px-3 py-3 text-right"
+            style={{ background: done[i] ? "rgba(61,224,138,0.12)" : "#17161A", border: `1px solid ${done[i] ? "#3DE08A" : "#2a292e"}` }}>
+            <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 24, height: 24, border: `2px solid ${done[i] ? "#3DE08A" : "#55535a"}`, background: done[i] ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 14 }}>{done[i] ? "✓" : ""}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: done[i] ? "#8A8790" : "#F3EEE6", textDecoration: done[i] ? "line-through" : "none" }} className="text-sm font-bold">{it}</span>
+          </button>
+        ))}
+      </div>
+      <div className="rounded-2xl p-4 text-center" style={{ background: "#17161A", border: "1px solid #3DE08A", boxShadow: "0 0 14px rgba(61,224,138,0.3)" }}>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3DE08A" }} className="text-xs font-black mb-1">{`تایمر استراحت بین ست‌ها (${restSec} ثانیه)`}</div>
+        <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-4xl font-bold mb-2">{fmtMMSS(restLeft || restSec)}</div>
+        {restLeft > 0 ? (
+          <button onClick={() => setRestLeft(0)} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" }}>لغو</button>
+        ) : (
+          <button onClick={startRest} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>شروع استراحت</button>
+        )}
+      </div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs text-center mt-3">{`${count} از ${program.items.length} حرکت انجام شد`}</div>
+    </div>
+  );
+}
+
+function ProgramsScreen({ onBack }) {
+  const [cat, setCat] = useState(null);
+  const [prog, setProg] = useState(null);
+  const [playing, setPlaying] = useState(false);
+
+  const hdr = (backFn, title) => (
+    <div className="flex items-center justify-between mb-3">
+      <button onClick={backFn} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{"› بازگشت"}</button>
+      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black">{title}</span>
+    </div>
+  );
+
+  // ۱) پخش‌کننده
+  if (prog && playing) {
+    if (prog.mode === "amrap") return <AmrapPlayer program={prog} onExit={() => setPlaying(false)} />;
+    if (prog.mode === "list") return <ListWorkout program={prog} onExit={() => setPlaying(false)} />;
+    return <ProgramPlayer title={prog.name} steps={pgBuildSteps(prog)} onExit={() => setPlaying(false)} />;
+  }
+
+  // ۲) جزئیات برنامه
+  if (prog) {
+    const steps = prog.mode === "interval" ? pgBuildSteps(prog) : null;
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+        {hdr(() => setProg(null), cat.title)}
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-1">{prog.name}</div>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `${PG_LEVEL_COLOR[prog.level]}22`, color: PG_LEVEL_COLOR[prog.level], border: `1px solid ${PG_LEVEL_COLOR[prog.level]}` }}>{prog.level}</span>
+          {steps && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>}
+          {prog.mode === "amrap" && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`${Math.round(prog.total / 60)} دقیقه`}</span>}
+        </div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{prog.desc}</div>
+        {steps && <ProgramMoveList steps={steps} />}
+        {prog.mode !== "interval" && (
+          <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">{prog.mode === "amrap" ? "حرکت‌های هر دور" : "حرکت‌ها"}</div>
+            {prog.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${it}`}</div>))}
+          </div>
+        )}
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mb-4">{PG_SAFETY}</div>
+        <button onClick={() => setPlaying(true)} className="w-full rounded-xl py-3.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `linear-gradient(135deg, ${cat.color}, ${cat.color}CC)`, color: "#fff", boxShadow: `0 0 18px ${cat.color}77` }}>شروع تمرین</button>
+      </div>
+    );
+  }
+
+  // ۳) لیست برنامه‌های یک سیستم
+  if (cat) {
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+        {hdr(() => setCat(null), "برنامه‌های تمرینی")}
+        <div className="flex items-center gap-3 mb-2">
+          <span style={{ fontSize: 30 }}>{cat.icon}</span>
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: cat.color }} className="text-lg font-black">{cat.title}</span>
+        </div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{cat.desc}</div>
+        <div className="flex flex-col gap-2.5">
+          {cat.programs.map((p) => (
+            <button key={p.id} onClick={() => setProg(p)} className="rounded-xl px-4 py-3.5 text-right flex items-center justify-between gap-3" style={{ background: "#17161A", border: `1px solid ${cat.color}`, boxShadow: `0 0 12px ${cat.color}44` }}>
+              <span className="flex flex-col gap-1">
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black">{p.name}</span>
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: PG_LEVEL_COLOR[p.level] }} className="text-[11px] font-bold">{p.level}</span>
+              </span>
+              <span style={{ color: cat.color, fontSize: 22 }}>{"‹"}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ۴) لیست سیستم‌های تمرینی (باکس‌ها)
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={onBack} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{"› بازگشت"}</button>
+      </div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xl font-black mb-1">برنامه‌های تمرینی</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-4">سیستم تمرینی مورد نظرت رو انتخاب کن و با تایمر همراه تمرین کن.</div>
+      <div className="grid grid-cols-2 gap-3">
+        {PG_DATA.map((c) => (
+          <button key={c.id} onClick={() => setCat(c)} className="rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 118, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
+            <span style={{ fontSize: 34, filter: `drop-shadow(0 0 6px ${c.color})` }}>{c.icon}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black leading-5">{c.title}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: c.color }} className="text-[10px] font-bold">{`${c.programs.length} برنامه`}</span>
+          </button>
+        ))}
+      </div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mt-5">{PG_SAFETY}</div>
+    </div>
+  );
+}
+
 function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
@@ -5560,6 +6028,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     { color: "#E8B33D", key: "info-tips", label: tr("نکات کلیدی"), icon: MenuTipIcon },
     { color: "#5FD3E8", key: "info-coach", label: tr("کمک مربی"), icon: MenuCoachIcon },
     { color: "#D91E2B", key: "timer", label: tr("تایمر تمرین"), icon: MenuTimerIcon },
+    { color: "#3DE08A", key: "programs", label: tr("برنامه‌های تمرینی"), icon: MenuPlanIcon },
     { color: "#FFB547", key: "reminder", label: tr("یادآور روزانه"), icon: MenuBellIcon },
     { color: "#B08CFF", key: "info-faq", label: tr("سوالات متداول"), icon: MenuQuestionIcon },
     { color: "#FF7A45", key: "info-gear", label: tr("وسایل بوکس"), icon: MenuGloveIcon },
@@ -8887,6 +9356,7 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
     case "lesson":
       return { type: "step", step: `curriculum-${activeLesson?.curriculumKey || "basic"}` };
     case "timer":
+    case "programs":
     case "reminder":
     case "info-gear":
     case "info-tips":
@@ -9893,6 +10363,9 @@ function App() {
               onDisable={handleDisableReminder}
               onBack={() => { setStep("home"); setMenuOpen(true); }}
             />
+          )}
+          {step === "programs" && (
+            <ProgramsScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />
           )}
           {step === "timer" && (
             <TimerScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />
