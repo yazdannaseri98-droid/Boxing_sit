@@ -4347,8 +4347,8 @@ function ExerciseClip({ name, exVideos, height = 170 }) {
       preload: "auto",
       controlsList: "nodownload noplaybackrate",
       disablePictureInPicture: true,
-      className: "w-full rounded-xl mb-2",
-      style: { maxHeight: height, objectFit: "contain", background: "#000", border: "1px solid #2a292e" }
+      className: "rounded-xl mb-2",
+      style: { display: "block", width: "100%", height: "auto", maxHeight: "55vh", objectFit: "contain", background: "transparent", border: "1px solid #2a292e" }
     }
   );
 }
