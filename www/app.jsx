@@ -5553,6 +5553,109 @@ function MenuPlanIcon({ className, style }) {
   );
 }
 
+// ---------- ویدیوی حرکت‌ها (ادمین آپلود می‌کنه؛ تکراری و بی‌صدا پخش می‌شه) ----------
+// کلید ویدیو از «اسم اصلی» حرکت ساخته می‌شه تا یه حرکت (مثلاً «برپی») که تو چند برنامه هست، یه بار آپلود بشه.
+function pgCore(name) {
+  return String(name || "")
+    .replace(/\(.*?\)/g, " ")
+    .split("—")[0]
+    .replace(/^[\s\d۰-۹]+/, "")
+    .replace(/[\d۰-۹]+\s*(دقیقه|ثانیه)?/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function pgKey(name) {
+  const core = pgCore(name);
+  let h = 5381;
+  for (let i = 0; i < core.length; i++) h = ((h * 33) ^ core.charCodeAt(i)) >>> 0;
+  return "e" + h.toString(36);
+}
+async function apiFetchExerciseVideos() {
+  if (DEMO_MODE) return {};
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/exercise-videos`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
+    const out = {};
+    for (const [k, url] of Object.entries(data.videos || {})) out[k] = toAbsoluteVideoUrl(url);
+    return out;
+  } catch {
+    return null;
+  }
+}
+async function apiUploadExerciseVideo(key, file, token) {
+  const form = new FormData();
+  form.append("video", file);
+  const res = await apiFetch(`${API_BASE_URL}/exercise-videos/${key}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("آپلود ویدیو با خطا مواجه شد"));
+  return toAbsoluteVideoUrl(data.url);
+}
+async function apiDeleteExerciseVideo(key, token) {
+  const res = await apiFetch(`${API_BASE_URL}/exercise-videos/${key}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("ذخیره انجام نشد"));
+}
+
+// ویدیوی تکرارشونده‌ی یه حرکت (بی‌صدا، خودکار، حلقه‌ای)
+function ExerciseClip({ name, exVideos, height = 170 }) {
+  const url = exVideos && exVideos[pgKey(name)];
+  if (!url) return null;
+  return (
+    <video key={url} src={url} autoPlay loop muted playsInline preload="auto" controlsList="nodownload noplaybackrate" disablePictureInPicture
+      className="w-full rounded-xl mb-2" style={{ maxHeight: height, objectFit: "contain", background: "#000", border: "1px solid #2a292e" }} />
+  );
+}
+
+// پنل ادمین: آپلود/جایگزینی/حذف ویدیوی هر حرکت یک برنامه
+function ExerciseVideoAdmin({ names, exVideos, authToken, onChanged }) {
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const uniq = [];
+  const seen = new Set();
+  names.forEach((n) => { const k = pgKey(n); if (!seen.has(k)) { seen.add(k); uniq.push({ k, label: pgCore(n) || n }); } });
+  const pick = (k) => {
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = "video/*";
+    input.onchange = async () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      setErr(""); setBusy(k);
+      try { const url = await apiUploadExerciseVideo(k, f, authToken); onChanged(k, url); }
+      catch (e) { setErr(e.message || "خطا"); }
+      finally { setBusy(""); }
+    };
+    input.click();
+  };
+  const del = async (k) => {
+    setErr(""); setBusy(k);
+    try { await apiDeleteExerciseVideo(k, authToken); onChanged(k, null); }
+    catch (e) { setErr(e.message || "خطا"); }
+    finally { setBusy(""); }
+  };
+  return (
+    <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px dashed #E8B33D" }}>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">ویدیوی حرکت‌ها (فقط ادمین)</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[10px] leading-4 mb-2">ویدیو کوتاه (۵ تا ۱۰ ثانیه) بذار؛ توی اپ بی‌صدا و تکراری پخش می‌شه. ویدیوی هر حرکت توی همه‌ی برنامه‌ها مشترکه.</div>
+      {uniq.map(({ k, label }) => (
+        <div key={k} className="flex items-center justify-between gap-2 py-1.5" style={{ borderTop: "1px solid #2a292e" }}>
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs flex-1">{label}</span>
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: exVideos && exVideos[k] ? "#3DE08A" : "#8A8790" }} className="text-[10px]">{exVideos && exVideos[k] ? "دارد ✓" : "ندارد"}</span>
+          <button disabled={busy === k} onClick={() => pick(k)} className="rounded-lg px-2.5 py-1 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#E8B33D", color: "#0B0B0D", opacity: busy === k ? 0.6 : 1 }}>
+            {busy === k ? "..." : exVideos && exVideos[k] ? "جایگزینی" : "آپلود"}
+          </button>
+          {exVideos && exVideos[k] && (
+            <button disabled={busy === k} onClick={() => del(k)} className="rounded-lg px-2 py-1 text-[11px] font-bold" style={{ background: "#3a1418", color: "#FF6B76" }}>حذف</button>
+          )}
+        </div>
+      ))}
+      {err && <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }} className="text-xs mt-2">{err}</div>}
+    </div>
+  );
+}
+
 // ---------- برنامه‌های تمرینی ----------
 // سه نوع برنامه: interval (تایمر کار/استراحت قدم‌به‌قدم)، amrap (شمارش معکوس + شمارنده‌ی دور)، list (ست و تکرار + تایمر استراحت)
 const PG_PREP = 10;
@@ -5724,7 +5827,7 @@ const PG_LEVEL_COLOR = { "مبتدی": "#3DE08A", "متوسط": "#E8B33D", "پی
 const fmtMMSS = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 
 // پخش‌کننده‌ی تایمر مشترک: لیستی از مرحله‌ها (steps) رو یکی‌یکی اجرا می‌کنه
-function ProgramPlayer({ title, steps, onExit, extra }) {
+function ProgramPlayer({ title, steps, onExit, extra, exVideos }) {
   const [idx, setIdx] = useState(0);
   const [left, setLeft] = useState(steps[0] ? steps[0].dur : 0);
   const [mode, setMode] = useState("idle"); // idle | running | paused | done
@@ -5807,6 +5910,11 @@ function ProgramPlayer({ title, steps, onExit, extra }) {
             <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", textShadow: `0 0 18px ${col}88` }} className="text-5xl font-bold">{mode === "idle" ? fmtMMSS(steps[0].dur) : fmtMMSS(left)}</div>
           </div>
         </div>
+        {mode !== "idle" && mode !== "done" && (
+          <div className="w-full mt-3">
+            <ExerciseClip name={s.type === "work" ? s.name : (s.type === "rest" ? s.next : (steps.find((x) => x.type === "work") || {}).name)} exVideos={exVideos} />
+          </div>
+        )}
         <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-center text-lg font-black mt-3 leading-8 min-h-[3.5rem]">
           {mode === "idle" ? "برای شروع بزن" : mode === "done" ? "آفرین! یه کم کشش بده." : s.type === "rest" ? (s.next ? `بعدی: ${s.next}` : "نفس بگیر") : s.name}
         </div>
@@ -5857,13 +5965,13 @@ function ProgramMoveList({ steps }) {
 }
 
 // AMRAP: شمارش معکوس کل زمان + شمارنده‌ی دور
-function AmrapPlayer({ program, onExit }) {
+function AmrapPlayer({ program, onExit, exVideos }) {
   const steps = useMemo(() => [{ type: "prep", name: "آماده شو", dur: PG_PREP }, { type: "work", name: "AMRAP", dur: program.total, round: 1, rounds: 1 }], [program]);
   const [rounds, setRounds] = useState(0);
   const extra = (
     <div className="mt-4 rounded-xl p-3" style={{ background: "#17161A", border: "1px solid #B08CFF" }}>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B08CFF" }} className="text-xs font-black mb-2">در هر دور:</div>
-      {program.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7">{it}</div>))}
+      {program.items.map((it, i) => (<div key={i}><ExerciseClip name={it} exVideos={exVideos} height={120} /><div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7">{it}</div></div>))}
       <div className="flex items-center justify-center gap-4 mt-3">
         <button onClick={() => setRounds((r) => Math.max(0, r - 1))} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#2a292e", color: "#F3EEE6" }}>−</button>
         <div style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" }}>{" دور"}</span></div>
@@ -5871,11 +5979,11 @@ function AmrapPlayer({ program, onExit }) {
       </div>
     </div>
   );
-  return <ProgramPlayer title={program.name} steps={steps} onExit={onExit} extra={extra} />;
+  return <ProgramPlayer title={program.name} steps={steps} onExit={onExit} extra={extra} exVideos={exVideos} />;
 }
 
 // برنامه‌ی ست و تکرار: چک‌لیست + تایمر استراحت
-function ListWorkout({ program, onExit }) {
+function ListWorkout({ program, onExit, exVideos }) {
   const [done, setDone] = useState({});
   const [restLeft, setRestLeft] = useState(0);
   const audioRef = useRef(null);
@@ -5900,11 +6008,14 @@ function ListWorkout({ program, onExit }) {
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-3">{program.desc}</div>
       <div className="flex flex-col gap-2 mb-4">
         {program.items.map((it, i) => (
-          <button key={i} onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="flex items-center gap-3 rounded-xl px-3 py-3 text-right"
+          <div key={i}>
+          <ExerciseClip name={it} exVideos={exVideos} height={150} />
+          <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-right"
             style={{ background: done[i] ? "rgba(61,224,138,0.12)" : "#17161A", border: `1px solid ${done[i] ? "#3DE08A" : "#2a292e"}` }}>
             <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 24, height: 24, border: `2px solid ${done[i] ? "#3DE08A" : "#55535a"}`, background: done[i] ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 14 }}>{done[i] ? "✓" : ""}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: done[i] ? "#8A8790" : "#F3EEE6", textDecoration: done[i] ? "line-through" : "none" }} className="text-sm font-bold">{it}</span>
           </button>
+          </div>
         ))}
       </div>
       <div className="rounded-2xl p-4 text-center" style={{ background: "#17161A", border: "1px solid #3DE08A", boxShadow: "0 0 14px rgba(61,224,138,0.3)" }}>
@@ -5921,7 +6032,10 @@ function ListWorkout({ program, onExit }) {
   );
 }
 
-function ProgramsScreen({ onBack }) {
+function ProgramsScreen({ onBack, isAdmin, authToken }) {
+  const [exVideos, setExVideos] = useState({});
+  useEffect(() => { let alive = true; apiFetchExerciseVideos().then((m) => { if (alive && m) setExVideos(m); }); return () => { alive = false; }; }, []);
+  const onVideoChanged = (k, url) => setExVideos((m) => { const n = { ...m }; if (url) n[k] = url; else delete n[k]; return n; });
   const [cat, setCat] = useState(null);
   const [prog, setProg] = useState(null);
   const [playing, setPlaying] = useState(false);
@@ -5935,9 +6049,9 @@ function ProgramsScreen({ onBack }) {
 
   // ۱) پخش‌کننده
   if (prog && playing) {
-    if (prog.mode === "amrap") return <AmrapPlayer program={prog} onExit={() => setPlaying(false)} />;
-    if (prog.mode === "list") return <ListWorkout program={prog} onExit={() => setPlaying(false)} />;
-    return <ProgramPlayer title={prog.name} steps={pgBuildSteps(prog)} onExit={() => setPlaying(false)} />;
+    if (prog.mode === "amrap") return <AmrapPlayer program={prog} onExit={() => setPlaying(false)} exVideos={exVideos} />;
+    if (prog.mode === "list") return <ListWorkout program={prog} onExit={() => setPlaying(false)} exVideos={exVideos} />;
+    return <ProgramPlayer title={prog.name} steps={pgBuildSteps(prog)} onExit={() => setPlaying(false)} exVideos={exVideos} />;
   }
 
   // ۲) جزئیات برنامه
@@ -5959,6 +6073,12 @@ function ProgramsScreen({ onBack }) {
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">{prog.mode === "amrap" ? "حرکت‌های هر دور" : "حرکت‌ها"}</div>
             {prog.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${it}`}</div>))}
           </div>
+        )}
+        {isAdmin && (
+          <ExerciseVideoAdmin
+            names={prog.mode === "interval" ? pgBuildSteps(prog).filter((x) => x.type === "work").map((x) => x.name) : prog.items}
+            exVideos={exVideos} authToken={authToken} onChanged={onVideoChanged}
+          />
         )}
         <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mb-4">{PG_SAFETY}</div>
         <button onClick={() => setPlaying(true)} className="w-full rounded-xl py-3.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `linear-gradient(135deg, ${cat.color}, ${cat.color}CC)`, color: "#fff", boxShadow: `0 0 18px ${cat.color}77` }}>شروع تمرین</button>
@@ -10365,7 +10485,7 @@ function App() {
             />
           )}
           {step === "programs" && (
-            <ProgramsScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />
+            <ProgramsScreen isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} onBack={() => { setStep("home"); setMenuOpen(true); }} />
           )}
           {step === "timer" && (
             <TimerScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />

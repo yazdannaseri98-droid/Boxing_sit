@@ -4295,6 +4295,109 @@ function AdminStatsRows({ stats }) {
 function MenuPlanIcon({ className, style }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, style, fill: "none", stroke: "currentColor", strokeWidth: "1.7", strokeLinecap: "round", strokeLinejoin: "round" }, /* @__PURE__ */ React.createElement("rect", { x: "5", y: "3.5", width: "14", height: "17.5", rx: "2.2", fill: "currentColor", fillOpacity: "0.2" }), /* @__PURE__ */ React.createElement("path", { d: "M9 3.5V2.6h6v.9M8.6 9.2h6.8M8.6 13h6.8M8.6 16.8h4" }), /* @__PURE__ */ React.createElement("circle", { cx: "6.9", cy: "9.2", r: ".5" }), /* @__PURE__ */ React.createElement("circle", { cx: "6.9", cy: "13", r: ".5" }));
 }
+function pgCore(name) {
+  return String(name || "").replace(/\(.*?\)/g, " ").split("\u2014")[0].replace(/^[\s\d۰-۹]+/, "").replace(/[\d۰-۹]+\s*(دقیقه|ثانیه)?/g, " ").replace(/\s+/g, " ").trim();
+}
+function pgKey(name) {
+  const core = pgCore(name);
+  let h = 5381;
+  for (let i = 0; i < core.length; i++) h = (h * 33 ^ core.charCodeAt(i)) >>> 0;
+  return "e" + h.toString(36);
+}
+async function apiFetchExerciseVideos() {
+  if (DEMO_MODE) return {};
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/exercise-videos`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
+    const out = {};
+    for (const [k, url] of Object.entries(data.videos || {})) out[k] = toAbsoluteVideoUrl(url);
+    return out;
+  } catch {
+    return null;
+  }
+}
+async function apiUploadExerciseVideo(key, file, token) {
+  const form = new FormData();
+  form.append("video", file);
+  const res = await apiFetch(`${API_BASE_URL}/exercise-videos/${key}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("\u0622\u067E\u0644\u0648\u062F \u0648\u06CC\u062F\u06CC\u0648 \u0628\u0627 \u062E\u0637\u0627 \u0645\u0648\u0627\u062C\u0647 \u0634\u062F"));
+  return toAbsoluteVideoUrl(data.url);
+}
+async function apiDeleteExerciseVideo(key, token) {
+  const res = await apiFetch(`${API_BASE_URL}/exercise-videos/${key}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("\u0630\u062E\u06CC\u0631\u0647 \u0627\u0646\u062C\u0627\u0645 \u0646\u0634\u062F"));
+}
+function ExerciseClip({ name, exVideos, height = 170 }) {
+  const url = exVideos && exVideos[pgKey(name)];
+  if (!url) return null;
+  return /* @__PURE__ */ React.createElement(
+    "video",
+    {
+      key: url,
+      src: url,
+      autoPlay: true,
+      loop: true,
+      muted: true,
+      playsInline: true,
+      preload: "auto",
+      controlsList: "nodownload noplaybackrate",
+      disablePictureInPicture: true,
+      className: "w-full rounded-xl mb-2",
+      style: { maxHeight: height, objectFit: "contain", background: "#000", border: "1px solid #2a292e" }
+    }
+  );
+}
+function ExerciseVideoAdmin({ names, exVideos, authToken, onChanged }) {
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const uniq = [];
+  const seen = /* @__PURE__ */ new Set();
+  names.forEach((n) => {
+    const k = pgKey(n);
+    if (!seen.has(k)) {
+      seen.add(k);
+      uniq.push({ k, label: pgCore(n) || n });
+    }
+  });
+  const pick = (k) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "video/*";
+    input.onchange = async () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      setErr("");
+      setBusy(k);
+      try {
+        const url = await apiUploadExerciseVideo(k, f, authToken);
+        onChanged(k, url);
+      } catch (e) {
+        setErr(e.message || "\u062E\u0637\u0627");
+      } finally {
+        setBusy("");
+      }
+    };
+    input.click();
+  };
+  const del = async (k) => {
+    setErr("");
+    setBusy(k);
+    try {
+      await apiDeleteExerciseVideo(k, authToken);
+      onChanged(k, null);
+    } catch (e) {
+      setErr(e.message || "\u062E\u0637\u0627");
+    } finally {
+      setBusy("");
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#17161A", border: "1px dashed #E8B33D" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-black mb-2" }, "\u0648\u06CC\u062F\u06CC\u0648\u06CC \u062D\u0631\u06A9\u062A\u200C\u0647\u0627 (\u0641\u0642\u0637 \u0627\u062F\u0645\u06CC\u0646)"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[10px] leading-4 mb-2" }, "\u0648\u06CC\u062F\u06CC\u0648 \u06A9\u0648\u062A\u0627\u0647 (\u06F5 \u062A\u0627 \u06F1\u06F0 \u062B\u0627\u0646\u06CC\u0647) \u0628\u0630\u0627\u0631\u061B \u062A\u0648\u06CC \u0627\u067E \u0628\u06CC\u200C\u0635\u062F\u0627 \u0648 \u062A\u06A9\u0631\u0627\u0631\u06CC \u067E\u062E\u0634 \u0645\u06CC\u200C\u0634\u0647. \u0648\u06CC\u062F\u06CC\u0648\u06CC \u0647\u0631 \u062D\u0631\u06A9\u062A \u062A\u0648\u06CC \u0647\u0645\u0647\u200C\u06CC \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627 \u0645\u0634\u062A\u0631\u06A9\u0647."), uniq.map(({ k, label }) => /* @__PURE__ */ React.createElement("div", { key: k, className: "flex items-center justify-between gap-2 py-1.5", style: { borderTop: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-xs flex-1" }, label), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: exVideos && exVideos[k] ? "#3DE08A" : "#8A8790" }, className: "text-[10px]" }, exVideos && exVideos[k] ? "\u062F\u0627\u0631\u062F \u2713" : "\u0646\u062F\u0627\u0631\u062F"), /* @__PURE__ */ React.createElement("button", { disabled: busy === k, onClick: () => pick(k), className: "rounded-lg px-2.5 py-1 text-[11px] font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: "#E8B33D", color: "#0B0B0D", opacity: busy === k ? 0.6 : 1 } }, busy === k ? "..." : exVideos && exVideos[k] ? "\u062C\u0627\u06CC\u06AF\u0632\u06CC\u0646\u06CC" : "\u0622\u067E\u0644\u0648\u062F"), exVideos && exVideos[k] && /* @__PURE__ */ React.createElement("button", { disabled: busy === k, onClick: () => del(k), className: "rounded-lg px-2 py-1 text-[11px] font-bold", style: { background: "#3a1418", color: "#FF6B76" } }, "\u062D\u0630\u0641"))), err && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }, className: "text-xs mt-2" }, err));
+}
 const PG_PREP = 10;
 function pgBuildSteps(p) {
   const steps = [{ type: "prep", name: "\u0622\u0645\u0627\u062F\u0647 \u0634\u0648", dur: PG_PREP }];
@@ -4684,7 +4787,7 @@ const fmtMMSS = (sec) => {
   const s = Math.max(0, Math.ceil(sec));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
-function ProgramPlayer({ title, steps, onExit, extra }) {
+function ProgramPlayer({ title, steps, onExit, extra, exVideos }) {
   const [idx, setIdx] = useState(0);
   const [left, setLeft] = useState(steps[0] ? steps[0].dur : 0);
   const [mode, setMode] = useState("idle");
@@ -4806,7 +4909,7 @@ function ProgramPlayer({ title, steps, onExit, extra }) {
     },
     /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("button", { onClick: onExit, style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }, className: "text-sm rounded-lg px-3 py-1.5 font-bold inline-block" }, "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `\u062D\u062F\u0648\u062F ${pgMin(steps)} \u062F\u0642\u06CC\u0642\u0647`)),
     /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-center text-base font-black mb-2" }, title),
-    /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center my-2" }, /* @__PURE__ */ React.createElement("div", { className: "relative", style: { width: 240, height: 240 } }, /* @__PURE__ */ React.createElement("svg", { width: "240", height: "240", viewBox: "0 0 240 240", style: { transform: "rotate(-90deg)" } }, /* @__PURE__ */ React.createElement("circle", { cx: "120", cy: "120", r: R, stroke: "#222127", strokeWidth: "12", fill: "none" }), /* @__PURE__ */ React.createElement("circle", { cx: "120", cy: "120", r: R, stroke: col, strokeWidth: "12", fill: "none", strokeLinecap: "round", strokeDasharray: C, strokeDashoffset: C * (1 - (mode === "idle" ? 0 : prog)), style: { filter: `drop-shadow(0 0 8px ${col})` } })), /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center px-6 text-center" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: col }, className: "text-xs font-black mb-1" }, mode === "done" ? "\u062A\u0645\u0631\u06CC\u0646 \u062A\u0645\u0648\u0645 \u0634\u062F \u{1F389}" : mode === "idle" ? "\u0622\u0645\u0627\u062F\u0647\u061F" : s.type === "prep" ? "\u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC" : s.type === "rest" ? "\u0627\u0633\u062A\u0631\u0627\u062D\u062A" : "\u062A\u0645\u0631\u06CC\u0646"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", textShadow: `0 0 18px ${col}88` }, className: "text-5xl font-bold" }, mode === "idle" ? fmtMMSS(steps[0].dur) : fmtMMSS(left)))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-center text-lg font-black mt-3 leading-8 min-h-[3.5rem]" }, mode === "idle" ? "\u0628\u0631\u0627\u06CC \u0634\u0631\u0648\u0639 \u0628\u0632\u0646" : mode === "done" ? "\u0622\u0641\u0631\u06CC\u0646! \u06CC\u0647 \u06A9\u0645 \u06A9\u0634\u0634 \u0628\u062F\u0647." : s.type === "rest" ? s.next ? `\u0628\u0639\u062F\u06CC: ${s.next}` : "\u0646\u0641\u0633 \u0628\u06AF\u06CC\u0631" : s.name), mode !== "idle" && mode !== "done" && s.type === "work" && s.rounds > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `\u062F\u0648\u0631 ${s.round} \u0627\u0632 ${s.rounds}`), mode !== "idle" && mode !== "done" && nextWork && s.type === "work" && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, `\u0628\u0639\u062F\u06CC: ${nextWork}`), workSteps.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, `${Math.min(workDone + (s && s.type === "work" ? 1 : 0), workSteps.length)} / ${workSteps.length} \u062D\u0631\u06A9\u062A`)),
+    /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center my-2" }, /* @__PURE__ */ React.createElement("div", { className: "relative", style: { width: 240, height: 240 } }, /* @__PURE__ */ React.createElement("svg", { width: "240", height: "240", viewBox: "0 0 240 240", style: { transform: "rotate(-90deg)" } }, /* @__PURE__ */ React.createElement("circle", { cx: "120", cy: "120", r: R, stroke: "#222127", strokeWidth: "12", fill: "none" }), /* @__PURE__ */ React.createElement("circle", { cx: "120", cy: "120", r: R, stroke: col, strokeWidth: "12", fill: "none", strokeLinecap: "round", strokeDasharray: C, strokeDashoffset: C * (1 - (mode === "idle" ? 0 : prog)), style: { filter: `drop-shadow(0 0 8px ${col})` } })), /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center px-6 text-center" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: col }, className: "text-xs font-black mb-1" }, mode === "done" ? "\u062A\u0645\u0631\u06CC\u0646 \u062A\u0645\u0648\u0645 \u0634\u062F \u{1F389}" : mode === "idle" ? "\u0622\u0645\u0627\u062F\u0647\u061F" : s.type === "prep" ? "\u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC" : s.type === "rest" ? "\u0627\u0633\u062A\u0631\u0627\u062D\u062A" : "\u062A\u0645\u0631\u06CC\u0646"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", textShadow: `0 0 18px ${col}88` }, className: "text-5xl font-bold" }, mode === "idle" ? fmtMMSS(steps[0].dur) : fmtMMSS(left)))), mode !== "idle" && mode !== "done" && /* @__PURE__ */ React.createElement("div", { className: "w-full mt-3" }, /* @__PURE__ */ React.createElement(ExerciseClip, { name: s.type === "work" ? s.name : s.type === "rest" ? s.next : (steps.find((x) => x.type === "work") || {}).name, exVideos })), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-center text-lg font-black mt-3 leading-8 min-h-[3.5rem]" }, mode === "idle" ? "\u0628\u0631\u0627\u06CC \u0634\u0631\u0648\u0639 \u0628\u0632\u0646" : mode === "done" ? "\u0622\u0641\u0631\u06CC\u0646! \u06CC\u0647 \u06A9\u0645 \u06A9\u0634\u0634 \u0628\u062F\u0647." : s.type === "rest" ? s.next ? `\u0628\u0639\u062F\u06CC: ${s.next}` : "\u0646\u0641\u0633 \u0628\u06AF\u06CC\u0631" : s.name), mode !== "idle" && mode !== "done" && s.type === "work" && s.rounds > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `\u062F\u0648\u0631 ${s.round} \u0627\u0632 ${s.rounds}`), mode !== "idle" && mode !== "done" && nextWork && s.type === "work" && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, `\u0628\u0639\u062F\u06CC: ${nextWork}`), workSteps.length > 1 && /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs mt-1" }, `${Math.min(workDone + (s && s.type === "work" ? 1 : 0), workSteps.length)} / ${workSteps.length} \u062D\u0631\u06A9\u062A`)),
     /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-3 mt-3" }, mode === "idle" && /* @__PURE__ */ React.createElement("button", { onClick: start, className: "rounded-2xl px-10 py-3.5 text-base", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff", boxShadow: "0 0 18px rgba(47,211,122,0.5)" } }, "\u0634\u0631\u0648\u0639"), mode === "running" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { onClick: prev, className: "rounded-2xl px-4 py-3.5 text-sm", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" } }, "\u0642\u0628\u0644\u06CC"), /* @__PURE__ */ React.createElement("button", { onClick: pause, className: "rounded-2xl px-8 py-3.5 text-base", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" } }, "\u062A\u0648\u0642\u0641"), /* @__PURE__ */ React.createElement("button", { onClick: skip, className: "rounded-2xl px-4 py-3.5 text-sm", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" } }, "\u0628\u0639\u062F\u06CC")), mode === "paused" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { onClick: resume, className: "rounded-2xl px-8 py-3.5 text-base", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" } }, "\u0627\u062F\u0627\u0645\u0647"), /* @__PURE__ */ React.createElement("button", { onClick: reset, className: "rounded-2xl px-5 py-3.5 text-sm", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" } }, "\u0627\u0632 \u0627\u0648\u0644")), mode === "done" && /* @__PURE__ */ React.createElement("button", { onClick: reset, className: "rounded-2xl px-8 py-3.5 text-base", style: { fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" } }, "\u062F\u0648\u0628\u0627\u0631\u0647")),
     extra
   );
@@ -4815,13 +4918,13 @@ function ProgramMoveList({ steps }) {
   const works = steps.filter((x) => x.type === "work");
   return /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#17161A", border: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-black mb-2" }, `\u062D\u0631\u06A9\u062A\u200C\u0647\u0627 (${works.length})`), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-1" }, works.map((w, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }, className: "text-xs leading-6" }, `${i + 1}. ${w.name} \u2014 ${w.dur >= 60 ? Math.round(w.dur / 60) + " \u062F\u0642\u06CC\u0642\u0647" : w.dur + " \u062B\u0627\u0646\u06CC\u0647"}`))));
 }
-function AmrapPlayer({ program, onExit }) {
+function AmrapPlayer({ program, onExit, exVideos }) {
   const steps = useMemo(() => [{ type: "prep", name: "\u0622\u0645\u0627\u062F\u0647 \u0634\u0648", dur: PG_PREP }, { type: "work", name: "AMRAP", dur: program.total, round: 1, rounds: 1 }], [program]);
   const [rounds, setRounds] = useState(0);
-  const extra = /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl p-3", style: { background: "#17161A", border: "1px solid #B08CFF" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B08CFF" }, className: "text-xs font-black mb-2" }, "\u062F\u0631 \u0647\u0631 \u062F\u0648\u0631:"), program.items.map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm leading-7" }, it)), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-4 mt-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setRounds((r) => Math.max(0, r - 1)), className: "rounded-xl w-11 h-11 text-xl font-black", style: { background: "#2a292e", color: "#F3EEE6" } }, "\u2212"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D" }, className: "text-3xl font-bold w-24 text-center" }, rounds, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" } }, " \u062F\u0648\u0631")), /* @__PURE__ */ React.createElement("button", { onClick: () => setRounds((r) => r + 1), className: "rounded-xl w-11 h-11 text-xl font-black", style: { background: "#B08CFF", color: "#0B0B0D" } }, "+")));
-  return /* @__PURE__ */ React.createElement(ProgramPlayer, { title: program.name, steps, onExit, extra });
+  const extra = /* @__PURE__ */ React.createElement("div", { className: "mt-4 rounded-xl p-3", style: { background: "#17161A", border: "1px solid #B08CFF" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B08CFF" }, className: "text-xs font-black mb-2" }, "\u062F\u0631 \u0647\u0631 \u062F\u0648\u0631:"), program.items.map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i }, /* @__PURE__ */ React.createElement(ExerciseClip, { name: it, exVideos, height: 120 }), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm leading-7" }, it))), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-4 mt-3" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setRounds((r) => Math.max(0, r - 1)), className: "rounded-xl w-11 h-11 text-xl font-black", style: { background: "#2a292e", color: "#F3EEE6" } }, "\u2212"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#E8B33D" }, className: "text-3xl font-bold w-24 text-center" }, rounds, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" } }, " \u062F\u0648\u0631")), /* @__PURE__ */ React.createElement("button", { onClick: () => setRounds((r) => r + 1), className: "rounded-xl w-11 h-11 text-xl font-black", style: { background: "#B08CFF", color: "#0B0B0D" } }, "+")));
+  return /* @__PURE__ */ React.createElement(ProgramPlayer, { title: program.name, steps, onExit, extra, exVideos });
 }
-function ListWorkout({ program, onExit }) {
+function ListWorkout({ program, onExit, exVideos }) {
   const [done, setDone] = useState({});
   const [restLeft, setRestLeft] = useState(0);
   const audioRef = useRef(null);
@@ -4861,31 +4964,54 @@ function ListWorkout({ program, onExit }) {
     setRestLeft(restSec);
   };
   const count = Object.values(done).filter(Boolean).length;
-  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, /* @__PURE__ */ React.createElement("button", { onClick: onExit, style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }, className: "text-sm rounded-lg px-3 py-1.5 font-bold inline-block mb-3" }, "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black mb-1" }, program.name), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs leading-6 mb-3" }, program.desc), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 mb-4" }, program.items.map((it, i) => /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, /* @__PURE__ */ React.createElement("button", { onClick: onExit, style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }, className: "text-sm rounded-lg px-3 py-1.5 font-bold inline-block mb-3" }, "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black mb-1" }, program.name), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs leading-6 mb-3" }, program.desc), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2 mb-4" }, program.items.map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i }, /* @__PURE__ */ React.createElement(ExerciseClip, { name: it, exVideos, height: 150 }), /* @__PURE__ */ React.createElement(
     "button",
     {
-      key: i,
       onClick: () => setDone((d) => ({ ...d, [i]: !d[i] })),
-      className: "flex items-center gap-3 rounded-xl px-3 py-3 text-right",
+      className: "w-full flex items-center gap-3 rounded-xl px-3 py-3 text-right",
       style: { background: done[i] ? "rgba(61,224,138,0.12)" : "#17161A", border: `1px solid ${done[i] ? "#3DE08A" : "#2a292e"}` }
     },
     /* @__PURE__ */ React.createElement("span", { className: "rounded-full flex items-center justify-center shrink-0", style: { width: 24, height: 24, border: `2px solid ${done[i] ? "#3DE08A" : "#55535a"}`, background: done[i] ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 14 } }, done[i] ? "\u2713" : ""),
     /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: done[i] ? "#8A8790" : "#F3EEE6", textDecoration: done[i] ? "line-through" : "none" }, className: "text-sm font-bold" }, it)
-  ))), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl p-4 text-center", style: { background: "#17161A", border: "1px solid #3DE08A", boxShadow: "0 0 14px rgba(61,224,138,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#3DE08A" }, className: "text-xs font-black mb-1" }, `\u062A\u0627\u06CC\u0645\u0631 \u0627\u0633\u062A\u0631\u0627\u062D\u062A \u0628\u06CC\u0646 \u0633\u062A\u200C\u0647\u0627 (${restSec} \u062B\u0627\u0646\u06CC\u0647)`), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-4xl font-bold mb-2" }, fmtMMSS(restLeft || restSec)), restLeft > 0 ? /* @__PURE__ */ React.createElement("button", { onClick: () => setRestLeft(0), className: "rounded-xl px-6 py-2.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" } }, "\u0644\u063A\u0648") : /* @__PURE__ */ React.createElement("button", { onClick: startRest, className: "rounded-xl px-6 py-2.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" } }, "\u0634\u0631\u0648\u0639 \u0627\u0633\u062A\u0631\u0627\u062D\u062A")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs text-center mt-3" }, `${count} \u0627\u0632 ${program.items.length} \u062D\u0631\u06A9\u062A \u0627\u0646\u062C\u0627\u0645 \u0634\u062F`));
+  )))), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl p-4 text-center", style: { background: "#17161A", border: "1px solid #3DE08A", boxShadow: "0 0 14px rgba(61,224,138,0.3)" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#3DE08A" }, className: "text-xs font-black mb-1" }, `\u062A\u0627\u06CC\u0645\u0631 \u0627\u0633\u062A\u0631\u0627\u062D\u062A \u0628\u06CC\u0646 \u0633\u062A\u200C\u0647\u0627 (${restSec} \u062B\u0627\u0646\u06CC\u0647)`), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-4xl font-bold mb-2" }, fmtMMSS(restLeft || restSec)), restLeft > 0 ? /* @__PURE__ */ React.createElement("button", { onClick: () => setRestLeft(0), className: "rounded-xl px-6 py-2.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" } }, "\u0644\u063A\u0648") : /* @__PURE__ */ React.createElement("button", { onClick: startRest, className: "rounded-xl px-6 py-2.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" } }, "\u0634\u0631\u0648\u0639 \u0627\u0633\u062A\u0631\u0627\u062D\u062A")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-xs text-center mt-3" }, `${count} \u0627\u0632 ${program.items.length} \u062D\u0631\u06A9\u062A \u0627\u0646\u062C\u0627\u0645 \u0634\u062F`));
 }
-function ProgramsScreen({ onBack }) {
+function ProgramsScreen({ onBack, isAdmin, authToken }) {
+  const [exVideos, setExVideos] = useState({});
+  useEffect(() => {
+    let alive = true;
+    apiFetchExerciseVideos().then((m) => {
+      if (alive && m) setExVideos(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const onVideoChanged = (k, url) => setExVideos((m) => {
+    const n = { ...m };
+    if (url) n[k] = url;
+    else delete n[k];
+    return n;
+  });
   const [cat, setCat] = useState(null);
   const [prog, setProg] = useState(null);
   const [playing, setPlaying] = useState(false);
   const hdr = (backFn, title) => /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ React.createElement("button", { onClick: backFn, style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }, className: "text-sm rounded-lg px-3 py-1.5 font-bold inline-block" }, "\u203A \u0628\u0627\u0632\u06AF\u0634\u062A"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-black" }, title));
   if (prog && playing) {
-    if (prog.mode === "amrap") return /* @__PURE__ */ React.createElement(AmrapPlayer, { program: prog, onExit: () => setPlaying(false) });
-    if (prog.mode === "list") return /* @__PURE__ */ React.createElement(ListWorkout, { program: prog, onExit: () => setPlaying(false) });
-    return /* @__PURE__ */ React.createElement(ProgramPlayer, { title: prog.name, steps: pgBuildSteps(prog), onExit: () => setPlaying(false) });
+    if (prog.mode === "amrap") return /* @__PURE__ */ React.createElement(AmrapPlayer, { program: prog, onExit: () => setPlaying(false), exVideos });
+    if (prog.mode === "list") return /* @__PURE__ */ React.createElement(ListWorkout, { program: prog, onExit: () => setPlaying(false), exVideos });
+    return /* @__PURE__ */ React.createElement(ProgramPlayer, { title: prog.name, steps: pgBuildSteps(prog), onExit: () => setPlaying(false), exVideos });
   }
   if (prog) {
     const steps = prog.mode === "interval" ? pgBuildSteps(prog) : null;
-    return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, hdr(() => setProg(null), cat.title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black mb-1" }, prog.name), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2.5 py-0.5 text-[11px] font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: `${PG_LEVEL_COLOR[prog.level]}22`, color: PG_LEVEL_COLOR[prog.level], border: `1px solid ${PG_LEVEL_COLOR[prog.level]}` } }, prog.level), steps && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `\u062D\u062F\u0648\u062F ${pgMin(steps)} \u062F\u0642\u06CC\u0642\u0647`), prog.mode === "amrap" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `${Math.round(prog.total / 60)} \u062F\u0642\u06CC\u0642\u0647`)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }, className: "text-sm leading-7 mb-4" }, prog.desc), steps && /* @__PURE__ */ React.createElement(ProgramMoveList, { steps }), prog.mode !== "interval" && /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#17161A", border: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-black mb-2" }, prog.mode === "amrap" ? "\u062D\u0631\u06A9\u062A\u200C\u0647\u0627\u06CC \u0647\u0631 \u062F\u0648\u0631" : "\u062D\u0631\u06A9\u062A\u200C\u0647\u0627"), prog.items.map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }, className: "text-xs leading-6" }, `${i + 1}. ${it}`))), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[11px] leading-5 mb-4" }, PG_SAFETY), /* @__PURE__ */ React.createElement("button", { onClick: () => setPlaying(true), className: "w-full rounded-xl py-3.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: `linear-gradient(135deg, ${cat.color}, ${cat.color}CC)`, color: "#fff", boxShadow: `0 0 18px ${cat.color}77` } }, "\u0634\u0631\u0648\u0639 \u062A\u0645\u0631\u06CC\u0646"));
+    return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, hdr(() => setProg(null), cat.title), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black mb-1" }, prog.name), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2 mb-2" }, /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2.5 py-0.5 text-[11px] font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: `${PG_LEVEL_COLOR[prog.level]}22`, color: PG_LEVEL_COLOR[prog.level], border: `1px solid ${PG_LEVEL_COLOR[prog.level]}` } }, prog.level), steps && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `\u062D\u062F\u0648\u062F ${pgMin(steps)} \u062F\u0642\u06CC\u0642\u0647`), prog.mode === "amrap" && /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }, className: "text-xs" }, `${Math.round(prog.total / 60)} \u062F\u0642\u06CC\u0642\u0647`)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }, className: "text-sm leading-7 mb-4" }, prog.desc), steps && /* @__PURE__ */ React.createElement(ProgramMoveList, { steps }), prog.mode !== "interval" && /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#17161A", border: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }, className: "text-xs font-black mb-2" }, prog.mode === "amrap" ? "\u062D\u0631\u06A9\u062A\u200C\u0647\u0627\u06CC \u0647\u0631 \u062F\u0648\u0631" : "\u062D\u0631\u06A9\u062A\u200C\u0647\u0627"), prog.items.map((it, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }, className: "text-xs leading-6" }, `${i + 1}. ${it}`))), isAdmin && /* @__PURE__ */ React.createElement(
+      ExerciseVideoAdmin,
+      {
+        names: prog.mode === "interval" ? pgBuildSteps(prog).filter((x) => x.type === "work").map((x) => x.name) : prog.items,
+        exVideos,
+        authToken,
+        onChanged: onVideoChanged
+      }
+    ), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }, className: "text-[11px] leading-5 mb-4" }, PG_SAFETY), /* @__PURE__ */ React.createElement("button", { onClick: () => setPlaying(true), className: "w-full rounded-xl py-3.5 text-sm font-bold", style: { fontFamily: "Vazirmatn, sans-serif", background: `linear-gradient(135deg, ${cat.color}, ${cat.color}CC)`, color: "#fff", boxShadow: `0 0 18px ${cat.color}77` } }, "\u0634\u0631\u0648\u0639 \u062A\u0645\u0631\u06CC\u0646"));
   }
   if (cat) {
     return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, hdr(() => setCat(null), "\u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u0645\u0631\u06CC\u0646\u06CC"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-2" }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 30 } }, cat.icon), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: cat.color }, className: "text-lg font-black" }, cat.title)), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }, className: "text-sm leading-7 mb-4" }, cat.desc), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2.5" }, cat.programs.map((p) => /* @__PURE__ */ React.createElement("button", { key: p.id, onClick: () => setProg(p), className: "rounded-xl px-4 py-3.5 text-right flex items-center justify-between gap-3", style: { background: "#17161A", border: `1px solid ${cat.color}`, boxShadow: `0 0 12px ${cat.color}44` } }, /* @__PURE__ */ React.createElement("span", { className: "flex flex-col gap-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-sm font-black" }, p.name), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: PG_LEVEL_COLOR[p.level] }, className: "text-[11px] font-bold" }, p.level)), /* @__PURE__ */ React.createElement("span", { style: { color: cat.color, fontSize: 22 } }, "\u2039")))));
@@ -8613,7 +8739,7 @@ function App() {
           setMenuOpen(true);
         }
       }
-    ), step === "programs" && /* @__PURE__ */ React.createElement(ProgramsScreen, { onBack: () => {
+    ), step === "programs" && /* @__PURE__ */ React.createElement(ProgramsScreen, { isAdmin: Boolean(authUser == null ? void 0 : authUser.isAdmin), authToken, onBack: () => {
       setStep("home");
       setMenuOpen(true);
     } }), step === "timer" && /* @__PURE__ */ React.createElement(TimerScreen, { onBack: () => {
