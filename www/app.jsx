@@ -5687,7 +5687,7 @@ const PG_SAFETY = "قبل از شروع ۵ دقیقه گرم کن (چرخش مف
 
 const PG_DATA = [
   {
-    id: "tabata", icon: "⚡", color: "#FF5A36", title: "تاباتا",
+    id: "tabata", img: "assets/prog-tabata.webp", icon: "⚡", color: "#FF5A36", title: "تاباتا",
     desc: "هر حرکت ۲۰ ثانیه تمام قدرت، ۱۰ ثانیه استراحت؛ ۸ دور = ۴ دقیقه. کوتاه ولی خیلی سنگین.",
     programs: [
       { id: "tb-full", name: "تاباتا تمام‌بدن", level: "متوسط", mode: "interval", desc: "۴ بلوک ۴ دقیقه‌ای؛ بین بلوک‌ها ۶۰ ثانیه استراحت.",
@@ -5718,7 +5718,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "hiit", icon: "🔥", color: "#E8B33D", title: "HIIT (تمرین تناوبی شدید)",
+    id: "hiit", img: "assets/prog-hiit.webp", icon: "🔥", color: "#E8B33D", title: "HIIT (تمرین تناوبی شدید)",
     desc: "تناوب بین تلاش شدید و استراحت کوتاه. چربی‌سوزی بالا در زمان کم.",
     programs: [
       { id: "hiit-beg", name: "HIIT مبتدی ۱۵ دقیقه", level: "مبتدی", mode: "interval", desc: "۳۰ ثانیه کار / ۳۰ ثانیه استراحت، ۳ دور ۵ حرکتی.",
@@ -5732,7 +5732,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "crossfit", icon: "🏋️", color: "#B08CFF", title: "کراس‌فیت",
+    id: "crossfit", img: "assets/prog-crossfit.webp", icon: "🏋️", color: "#B08CFF", title: "کراس‌فیت",
     desc: "تمرین‌های عملکردی با شدت بالا و متنوع (WOD). با شمارش دور یا زمان انجام می‌شن.",
     programs: [
       { id: "cf-amrap", name: "AMRAP ۱۲ دقیقه", level: "متوسط", mode: "amrap", total: 720,
@@ -5748,7 +5748,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "fitness", icon: "💪", color: "#3DE08A", title: "فیتنس و تمام‌بدن",
+    id: "fitness", img: "assets/prog-fitness.webp", icon: "💪", color: "#3DE08A", title: "فیتنس و تمام‌بدن",
     desc: "برنامه‌های عمومی برای تناسب اندام، قدرت پایه و آمادگی جسمانی.",
     programs: [
       { id: "ft-circuit", name: "سیرکویت تمام‌بدن (۲۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۳ دور ۶ حرکتی.",
@@ -5760,7 +5760,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "bodybuilding", icon: "🏆", color: "#FF7A45", title: "بدنسازی (با وزنه)",
+    id: "bodybuilding", img: "assets/prog-bodybuilding.webp", icon: "🏆", color: "#FF7A45", title: "بدنسازی (با وزنه)",
     desc: "برنامه‌های تقسیم‌بندی‌شده برای افزایش حجم و قدرت. وزنه رو طوری انتخاب کن که ۲-۳ تکرار آخر سخت باشه.",
     programs: [
       { id: "bb-full", name: "تمام‌بدن ۳ روز در هفته", level: "مبتدی", mode: "list", desc: "شنبه / دوشنبه / چهارشنبه. بین ست‌ها ۹۰ ثانیه استراحت.", rest: 90,
@@ -5774,7 +5774,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "cardio", icon: "🏃", color: "#5FD3E8", title: "ورزش‌های هوازی",
+    id: "cardio", img: "assets/prog-cardio.webp", icon: "🏃", color: "#5FD3E8", title: "ورزش‌های هوازی",
     desc: "تقویت قلب و ریه و چربی‌سوزی؛ پایه‌ی آمادگی بوکسور.",
     programs: [
       { id: "cd-walkrun", name: "راه رفتن/دویدن مبتدی (۲۵ دقیقه)", level: "مبتدی", mode: "interval", desc: "۱ دقیقه دویدن آرام، ۲ دقیقه راه رفتن؛ ۸ بار.",
@@ -5788,7 +5788,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "boxing", icon: "🥊", color: "#D91E2B", title: "کاندیشنینگ بوکس",
+    id: "boxing", img: "assets/prog-boxing.webp", icon: "🥊", color: "#D91E2B", title: "کاندیشنینگ بوکس",
     desc: "تمرین‌های آمادگی مخصوص بوکسور: استقامت راند، سرعت دست و پا و قدرت مرکز بدن.",
     programs: [
       { id: "bx-rounds", name: "۶ راند سایه‌بوکسینگ", level: "مبتدی", mode: "interval", desc: "۳ دقیقه راند / ۱ دقیقه استراحت. هر راند روی یک تمرکز.",
@@ -5802,7 +5802,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "calisthenics", icon: "🤸", color: "#2EC4B6", title: "تمرین با وزن بدن",
+    id: "calisthenics", img: "assets/prog-calisthenics.webp", icon: "🤸", color: "#2EC4B6", title: "تمرین با وزن بدن",
     desc: "قدرت و کنترل بدن بدون وسیله — هر جا و هر زمان.",
     programs: [
       { id: "cal-beg", name: "پایه (۳ روز در هفته)", level: "مبتدی", mode: "list", desc: "۳ ست، بین ست‌ها ۶۰ ثانیه.", rest: 60,
@@ -5812,7 +5812,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "recovery", icon: "🧘", color: "#8FA3B8", title: "کشش و ریکاوری",
+    id: "recovery", img: "assets/prog-recovery.webp", icon: "🧘", color: "#8FA3B8", title: "کشش و ریکاوری",
     desc: "بعد از تمرین یا روزهای استراحت؛ انعطاف و جلوگیری از آسیب.",
     programs: [
       { id: "rc-full", name: "کشش تمام‌بدن (۱۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "هر حرکت ۳۰ ثانیه، ۱۰ ثانیه تعویض.",
@@ -6129,8 +6129,12 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-4">سیستم تمرینی مورد نظرت رو انتخاب کن و با تایمر همراه تمرین کن.</div>
       <div className="grid grid-cols-2 gap-3">
         {PG_DATA.map((c) => (
-          <button key={c.id} onClick={() => (canOpen(c) ? setCat(c) : setLockedCat(c))} className="relative rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 118, opacity: canOpen(c) ? 1 : 0.8, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
-            <span style={{ fontSize: 34, filter: `drop-shadow(0 0 6px ${c.color})` }}>{c.icon}</span>
+          <button key={c.id} onClick={() => (canOpen(c) ? setCat(c) : setLockedCat(c))} className="relative rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 190, opacity: canOpen(c) ? 1 : 0.85, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
+            {c.img ? (
+              <img src={c.img} alt="" draggable={false} style={{ height: 112, width: "auto", maxWidth: "100%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}66)` }} />
+            ) : (
+              <span style={{ fontSize: 56, height: 112, display: "flex", alignItems: "center", filter: `drop-shadow(0 0 8px ${c.color})` }}>{c.icon}</span>
+            )}
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black leading-5">{c.title}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: c.color }} className="text-[10px] font-bold">{`${c.programs.length} برنامه`}</span>
             {!canOpen(c) && <span className="absolute top-2 left-2 text-base" style={{ filter: "drop-shadow(0 0 4px #000)" }}>🔒</span>}
@@ -6169,7 +6173,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     { color: "#E8B33D", key: "info-tips", label: tr("نکات کلیدی"), icon: MenuTipIcon },
     { color: "#5FD3E8", key: "info-coach", label: tr("کمک مربی"), icon: MenuCoachIcon },
     { color: "#D91E2B", key: "timer", label: tr("تایمر تمرین"), icon: MenuTimerIcon },
-    { color: "#3DE08A", key: "programs", label: tr("برنامه‌های تمرینی"), icon: MenuPlanIcon },
+    { color: "#3DE08A", key: "programs", label: tr("برنامه‌های تخصصی"), icon: MenuPlanIcon },
     { color: "#FFB547", key: "reminder", label: tr("یادآور روزانه"), icon: MenuBellIcon },
     { color: "#B08CFF", key: "info-faq", label: tr("سوالات متداول"), icon: MenuQuestionIcon },
     { color: "#FF7A45", key: "info-gear", label: tr("وسایل بوکس"), icon: MenuGloveIcon },
