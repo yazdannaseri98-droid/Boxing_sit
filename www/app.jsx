@@ -5823,6 +5823,12 @@ const PG_DATA = [
   },
 ];
 
+// ترتیب نمایش باکس‌ها (دو ستون): تاباتا اولی و بقیه به این ترتیب
+const PG_ORDER = ["tabata", "bodybuilding", "crossfit", "fitness", "hiit", "cardio", "boxing", "calisthenics", "recovery"];
+PG_DATA.sort((a, b) => PG_ORDER.indexOf(a.id) - PG_ORDER.indexOf(b.id));
+// فقط تاباتا برای همه بازه؛ بقیه با اشتراک دوره اول (یا ادمین)
+const PG_FREE = ["tabata"];
+
 const PG_LEVEL_COLOR = { "مبتدی": "#3DE08A", "متوسط": "#E8B33D", "پیشرفته": "#D91E2B" };
 const fmtMMSS = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 
@@ -6032,7 +6038,9 @@ function ListWorkout({ program, onExit, exVideos }) {
   );
 }
 
-function ProgramsScreen({ onBack, isAdmin, authToken }) {
+function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
+  const canOpen = (c) => isAdmin || PG_FREE.includes(c.id) || plan === "silver";
+  const [lockedCat, setLockedCat] = useState(null);
   const [exVideos, setExVideos] = useState({});
   useEffect(() => { let alive = true; apiFetchExerciseVideos().then((m) => { if (alive && m) setExVideos(m); }); return () => { alive = false; }; }, []);
   const onVideoChanged = (k, url) => setExVideos((m) => { const n = { ...m }; if (url) n[k] = url; else delete n[k]; return n; });
@@ -6121,14 +6129,27 @@ function ProgramsScreen({ onBack, isAdmin, authToken }) {
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-4">سیستم تمرینی مورد نظرت رو انتخاب کن و با تایمر همراه تمرین کن.</div>
       <div className="grid grid-cols-2 gap-3">
         {PG_DATA.map((c) => (
-          <button key={c.id} onClick={() => setCat(c)} className="rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 118, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
+          <button key={c.id} onClick={() => (canOpen(c) ? setCat(c) : setLockedCat(c))} className="relative rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 118, opacity: canOpen(c) ? 1 : 0.8, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
             <span style={{ fontSize: 34, filter: `drop-shadow(0 0 6px ${c.color})` }}>{c.icon}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black leading-5">{c.title}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: c.color }} className="text-[10px] font-bold">{`${c.programs.length} برنامه`}</span>
+            {!canOpen(c) && <span className="absolute top-2 left-2 text-base" style={{ filter: "drop-shadow(0 0 4px #000)" }}>🔒</span>}
+            {PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && <span className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#3DE08A", color: "#0B0B0D" }}>رایگان</span>}
           </button>
         ))}
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mt-5">{PG_SAFETY}</div>
+      {lockedCat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setLockedCat(null)}>
+          <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 22px rgba(232,179,61,0.35)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 38 }}>🔒</div>
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black mt-1 mb-2">{lockedCat.title}</div>
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">این بخش با خرید «اشتراک دوره اول» باز می‌شه. فقط تاباتا برای همه رایگانه.</div>
+            <button onClick={() => { setLockedCat(null); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg, #7A4300, #B86A00)", color: "#FFF6D8" }}>مشاهده اشتراک</button>
+            <button onClick={() => setLockedCat(null)} className="w-full rounded-xl py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" }}>بستن</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -10485,7 +10506,7 @@ function App() {
             />
           )}
           {step === "programs" && (
-            <ProgramsScreen isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} onBack={() => { setStep("home"); setMenuOpen(true); }} />
+            <ProgramsScreen isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} plan={authUser?.plan || "none"} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />
           )}
           {step === "timer" && (
             <TimerScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />
