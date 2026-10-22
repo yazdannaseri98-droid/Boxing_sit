@@ -577,6 +577,25 @@ async function apiFetchProgress(token) {
   }
 }
 
+async function apiFetchJourney(token) {
+  if (DEMO_MODE || !token) return null;
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/journey`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) { triggerAuthFailure(); return null; }
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.ok ? data.journey : null;
+  } catch { return null; }
+}
+async function apiPutJourney(token, payload) {
+  if (DEMO_MODE || !token) return null;
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/journey`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+    if (res.status === 401) { triggerAuthFailure(); return null; }
+    const data = await res.json().catch(() => ({}));
+    return res.ok && data.ok ? data.journey : null;
+  } catch { return null; }
+}
+
 async function apiPutProgress(token, payload) {
   if (DEMO_MODE) return null;
   try {
@@ -2633,7 +2652,7 @@ const glowBox = (c, strong) => ({
   boxShadow: `0 0 ${strong ? 24 : 16}px ${c}66, inset 0 1px 0 rgba(255,255,255,0.07), inset 0 0 20px ${c}18`,
 });
 
-function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange, nextLesson, reminder, onSetReminder, plan, planExpiresAt, accountContact }) {
+function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practiceMinutes, profileName, profileImage, onNameChange, onImageChange, nextLesson, reminder, onSetReminder, plan, planExpiresAt, accountContact, authToken, isGuest, onOpenJourney }) {
   const planInfo = PLAN_DISPLAY[plan] || PLAN_DISPLAY.none;
   const hasPaidPlan = plan === "silver" || plan === "gold";
   const daysLeft = hasPaidPlan && planExpiresAt ? Math.max(0, Math.ceil((planExpiresAt - Date.now()) / 86400000)) : null;
@@ -2872,6 +2891,8 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
           );
         })}
       </div>
+
+      <div className="mb-6"><JourneyProfileBox accountId={accountContact} authToken={authToken} isGuest={isGuest} onOpen={onOpenJourney} /></div>
 
       <RopeDivider />
 
@@ -3358,33 +3379,85 @@ function makeTimerAudio() {
       return null;
     }
   };
-  const bellOnce = (c, at) => {
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(0.9, at + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.6);
-    g.connect(c.destination);
-    [[880, 1], [1318, 0.5], [2093, 0.3], [2960, 0.18], [1760, 0.4]].forEach(([f, a]) => {
+  // خروجی مشترک با کمپرسور + اکوی کوتاه (فضای سالن)
+  let bus = null;
+  const getBus = (c) => {
+    if (bus && bus.ctx === c) return bus.in;
+    const comp = c.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.2;
+    const master = c.createGain();
+    master.gain.value = 0.95;
+    const dry = c.createGain(); dry.gain.value = 1;
+    const delay = c.createDelay(0.5); delay.delayTime.value = 0.09;
+    const fb = c.createGain(); fb.gain.value = 0.32;
+    const wet = c.createGain(); wet.gain.value = 0.28;
+    const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3800;
+    const input = c.createGain();
+    input.connect(dry); dry.connect(master);
+    input.connect(delay); delay.connect(lp); lp.connect(fb); fb.connect(delay); lp.connect(wet); wet.connect(master);
+    master.connect(comp); comp.connect(c.destination);
+    bus = { ctx: c, in: input };
+    return input;
+  };
+  const noiseBuf = (c) => {
+    const len = Math.floor(c.sampleRate * 0.25);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  };
+  // ضربه‌ی زنگ فلزی رینگ بوکس: چند هارمونیک غیرهماهنگ با محو شدن بلند + ضربه‌ی چکش
+  const bellOnce = (c, at, vol = 1) => {
+    const out = getBus(c);
+    const f0 = 760;
+    const partials = [[0.5, 0.5, 2.4], [1, 1, 2.2], [1.19, 0.55, 1.6], [1.56, 0.4, 1.3], [2.0, 0.55, 1.5], [2.74, 0.45, 1.0], [3.76, 0.3, 0.7], [5.4, 0.18, 0.45], [6.9, 0.1, 0.3]];
+    partials.forEach(([r, a, dec]) => {
       const o = c.createOscillator();
-      const og = c.createGain();
+      const g = c.createGain();
       o.type = "sine";
-      o.frequency.value = f;
-      og.gain.value = a;
-      o.connect(og);
-      og.connect(g);
-      o.start(at);
-      o.stop(at + 1.7);
+      o.frequency.value = f0 * r * (1 + (Math.random() - 0.5) * 0.002);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(a * 0.5 * vol, at + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dec);
+      o.connect(g); g.connect(out);
+      o.start(at); o.stop(at + dec + 0.05);
     });
+    // صدای ضربه‌ی چکش به فلز
+    const n = c.createBufferSource();
+    n.buffer = noiseBuf(c);
+    const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 3200; bp.Q.value = 0.9;
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.5 * vol, at);
+    ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+    n.connect(bp); bp.connect(ng); ng.connect(out);
+    n.start(at); n.stop(at + 0.1);
+  };
+  // کوبش چوب (هشدار ۱۰ ثانیه‌ی آخر راند)
+  const clap = (c, at) => {
+    const out = getBus(c);
+    const n = c.createBufferSource();
+    n.buffer = noiseBuf(c);
+    const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1700; bp.Q.value = 1.4;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.9, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+    n.connect(bp); bp.connect(g); g.connect(out);
+    n.start(at); n.stop(at + 0.12);
+    const o = c.createOscillator(); const og = c.createGain();
+    o.type = "triangle"; o.frequency.setValueAtTime(900, at); o.frequency.exponentialRampToValueAtTime(380, at + 0.05);
+    og.gain.setValueAtTime(0.35, at); og.gain.exponentialRampToValueAtTime(0.0001, at + 0.06);
+    o.connect(og); og.connect(out); o.start(at); o.stop(at + 0.08);
   };
   const beep = (c, at, f, len, vol) => {
     const o = c.createOscillator();
     const g = c.createGain();
-    o.type = "square";
+    o.type = "sine";
     o.frequency.value = f;
-    g.gain.setValueAtTime(vol, at);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.004);
     g.gain.exponentialRampToValueAtTime(0.0001, at + len);
     o.connect(g);
-    g.connect(c.destination);
+    g.connect(getBus(c));
     o.start(at);
     o.stop(at + len + 0.02);
   };
@@ -3396,20 +3469,23 @@ function makeTimerAudio() {
     bell(times) {
       const c = get();
       if (!c) return;
-      for (let i = 0; i < times; i++) bellOnce(c, c.currentTime + i * 0.7);
+      // شروع راند: یک ضربه‌ی کامل؛ استراحت: دو ضربه؛ پایان: سه ضربه‌ی پشت‌سرهم مثل زنگ واقعی
+      const gap = times === 1 ? 0 : 0.42;
+      for (let i = 0; i < times; i++) bellOnce(c, c.currentTime + 0.02 + i * gap, i === times - 1 ? 1 : 0.85);
     },
     clapper() {
       const c = get();
       if (!c) return;
-      for (let i = 0; i < 4; i++) beep(c, c.currentTime + i * 0.09, 1900, 0.05, 0.35);
+      for (let i = 0; i < 3; i++) clap(c, c.currentTime + i * 0.11);
     },
     tick() {
       const c = get();
-      if (c) beep(c, c.currentTime, 880, 0.12, 0.3);
+      if (c) beep(c, c.currentTime, 1040, 0.09, 0.6);
     },
     close() {
       try { ctx && ctx.close && ctx.close(); } catch {}
       ctx = null;
+      bus = null;
     },
   };
 }
@@ -5371,7 +5447,7 @@ function AdminUsersScreen({ authToken, onBack }) {
                   style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }}
                   className="text-sm font-bold"
                 >
-                  {u.identifier}
+                  {u.identifier}{u.name ? ` · ${u.name}` : ""}
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {u.isAdmin && (
@@ -5400,6 +5476,9 @@ function AdminUsersScreen({ authToken, onBack }) {
                   {formatExpiryDate(u.createdAt)}
                 </span>
               </div>
+              {(u.journeyDays > 0) && (
+                <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-[11px] mt-1">{`مسیر ۱۰۰ روزه: ${u.journeyDays} روز • ${u.journeyMedals || 0} مدال`}</div>
+              )}
             </div>
           );
         })}
@@ -5771,6 +5850,18 @@ const PG_DATA = [
         items: ["بارفیکس (یا لت‌پول) — ۴×۸", "زیربغل هالتر خم — ۴×۸", "زیربغل سیم‌کش — ۳×۱۰", "فِیس‌پول — ۳×۱۵", "جلو بازو هالتر — ۳×۱۰", "جلو بازو چکشی — ۳×۱۲"] },
       { id: "bb-legs", name: "روز Legs (پا)", level: "متوسط", mode: "list", desc: "بین ست‌ها ۱۲۰ ثانیه.", rest: 120,
         items: ["اسکات — ۴×۸", "پرس پا — ۴×۱۰", "رومانیایی ددلیفت — ۳×۱۰", "جلو پا — ۳×۱۲", "پشت پا — ۳×۱۲", "ساق پا — ۴×۱۵"] },
+      { id: "bb-upper", name: "بالاتنه (Upper) — حجم و قدرت", level: "متوسط", mode: "list", desc: "روز بالاتنه در تقسیم ۴ روزه. بین ست‌ها ۹۰ ثانیه.", rest: 90,
+        items: ["پرس سینه هالتر — ۴×۸", "زیربغل هالتر خم — ۴×۸", "پرس سرشانه دمبل — ۳×۱۰", "لت‌پول — ۳×۱۰", "نشر از جانب — ۳×۱۵", "جلو بازو هالتر — ۳×۱۰", "پشت بازو سیم‌کش — ۳×۱۲"] },
+      { id: "bb-lower", name: "پایین‌تنه (Lower) — حجم و قدرت", level: "متوسط", mode: "list", desc: "روز پایین‌تنه در تقسیم ۴ روزه. بین ست‌ها ۱۲۰ ثانیه.", rest: 120,
+        items: ["اسکات هالتر — ۴×۸", "رومانیایی ددلیفت — ۴×۸", "پرس پا — ۳×۱۲", "لانج واکینگ با دمبل — ۳×۱۰ هر پا", "پشت پا — ۳×۱۲", "ساق پا — ۴×۱۵"] },
+      { id: "bb-531", name: "قدرت ۵×۵ (اسکات، پرس، ددلیفت)", level: "پیشرفته", mode: "list", desc: "برنامه‌ی قدرتی: وزنه‌ی سنگین و تکرار کم. بین ست‌ها ۱۸۰ ثانیه. تکنیک رو فدا نکن و حتماً هم‌تمرین داشته باش.", rest: 180,
+        items: ["اسکات هالتر — ۵×۵", "پرس سینه هالتر — ۵×۵", "ددلیفت — ۳×۵", "پرس سرشانه ایستاده — ۳×۸", "بارفیکس با وزنه — ۳×۶"] },
+      { id: "bb-glute", name: "پایین‌تنه و باسن (مخصوص بانوان)", level: "مبتدی", mode: "list", desc: "تمرکز روی باسن و پا؛ بین ست‌ها ۷۵ ثانیه.", rest: 75,
+        items: ["هیپ‌تراست — ۴×۱۲", "اسکات سومو — ۴×۱۲", "رومانیایی ددلیفت با دمبل — ۳×۱۲", "لانج عقب — ۳×۱۰ هر پا", "کیک‌بک سیم‌کش — ۳×۱۵ هر پا", "ابداکشن (بازکردن ران) — ۳×۲۰"] },
+      { id: "bb-dropset", name: "پمپ بازو و شانه (دراپ‌ست)", level: "پیشرفته", mode: "list", desc: "هر حرکت ۳ ست؛ ست آخر دراپ‌ست (۲۰٪ وزنه کم کن و تا ناتوانی ادامه بده). بین ست‌ها ۶۰ ثانیه.", rest: 60,
+        items: ["پرس سرشانه دمبل — ۴×۱۰", "نشر از جانب — ۴×۱۵", "نشر خم به عقب — ۳×۱۵", "جلو بازو هالتر ز — ۴×۱۰", "جلو بازو چکشی — ۳×۱۲", "پشت بازو سیم‌کش — ۴×۱۲", "پشت بازو پشت‌سر دمبل — ۳×۱۲"] },
+      { id: "bb-fighter", name: "قدرت مخصوص بوکسور (۳ روز)", level: "متوسط", mode: "list", desc: "قدرت انفجاری برای ضربه‌ی محکم‌تر، بدون حجم اضافه. بین ست‌ها ۹۰ ثانیه.", rest: 90,
+        items: ["پرتاب توپ مدیسین به دیوار — ۴×۸", "اسکات پرشی — ۴×۶", "ددلیفت — ۴×۵", "پرس سینه دمبل (سریع بالا) — ۴×۶", "بارفیکس — ۴×۶", "چرخش مدیسین‌بال (پرتاب چرخشی) — ۳×۱۰ هر طرف", "پلانک — ۳×۶۰ ثانیه"] },
     ],
   },
   {
@@ -5799,6 +5890,20 @@ const PG_DATA = [
         blocks: [{ ex: ["جَب سریع", "نردبان چابکی (یا جابه‌جایی پا)", "کراس-هوک سریع", "پرش طناب دوبل"], work: 30, rest: 30, rounds: 3 }] },
       { id: "bx-neck", name: "گردن و شانه (محافظ ضربه)", level: "مبتدی", mode: "list", desc: "برای مقاومت در برابر ضربه. بین ست‌ها ۶۰ ثانیه.", rest: 60,
         items: ["پل گردن (ملایم) — ۳×۱۰ ثانیه", "شراگ شانه — ۳×۱۵", "نشر از جانب — ۳×۱۵", "چرخش شانه با کش — ۳×۱۵"] },
+      { id: "bx-combo1", name: "ترکیب ضربات: مبتدی (۶ راند)", level: "مبتدی", mode: "interval", desc: "سیستم شماره‌گذاری: ۱=جَب ۲=کراس ۳=هوک جلو ۴=هوک عقب ۵=آپرکات جلو ۶=آپرکات عقب. راند ۳ دقیقه / استراحت ۱ دقیقه.",
+        blocks: [{ ex: ["راند ۱: ۱-۲ آروم و دقیق", "راند ۲: ۱-۱-۲", "راند ۳: ۱-۲-۳ (جَب-کراس-هوک)", "راند ۴: ۱-۲-۳-۲", "راند ۵: ۱-۲ + اسلیپ", "راند ۶: همه‌ی ترکیب‌ها با ریتم"], work: 180, rest: 60, rounds: 1 }] },
+      { id: "bx-combo2", name: "ترکیب ضربات: پیشرفته (۸ راند)", level: "پیشرفته", mode: "interval", desc: "سیستم شماره‌گذاری: ۱=جَب ۲=کراس ۳=هوک جلو ۴=هوک عقب ۵=آپرکات جلو ۶=آپرکات عقب. هر راند یک ترکیب بلند + دفاع. راند ۳ دقیقه / استراحت ۴۵ ثانیه.",
+        blocks: [{ ex: ["راند ۱: ۱-۲-۳-۲ (گرم‌کردن سرعتی)", "راند ۲: ۱-۲-۵-۶-۳-۲", "راند ۳: ۱-۲-اسلیپ-۲-۳-۲", "راند ۴: ۲-۳-رول-۳-۴-۵-۳", "راند ۵: ۱-۱-۲-باب‌ویو-۳-۴-۳", "راند ۶: ۱-۲-۳-پولبک-۲-۳-۲", "راند ۷: ۱-اسلیپ-۲-رول-۳-۲-پیوت", "راند ۸: همه‌چی! بدون توقف"], work: 180, rest: 45, rounds: 1 }] },
+      { id: "bx-head", name: "رقص سر و جاخالی (اسلیپ، رول)", level: "متوسط", mode: "interval", desc: "دفاع با سر و بدن: اسلیپ = جاخالی کناری، رول = چرخش U شکل زیر ضربه، باب‌ویو = خم شدن، پولبک = عقب کشیدن سر. دست‌ها بالا، چانه پایین.",
+        blocks: [{ ex: ["اسلیپ راست و چپ بدون ضربه", "رول چپ-راست (U شکل)", "باب‌ویو و بالا آمدن", "اسلیپ-اسلیپ-رول + جَب", "پولبک + ضدحمله ۱-۲", "رقص سر آزاد روی ریتم موزیک"], work: 40, rest: 20, rounds: 4, restAfter: 45 }] },
+      { id: "bx-counter", name: "ضدحمله: جاخالی + ضربه", level: "پیشرفته", mode: "interval", desc: "هر جاخالی رو بلافاصله با ضربه تموم کن؛ سرعت واکنش مهم‌ترین چیزه. ۴۵ ثانیه کار / ۱۵ ثانیه استراحت.",
+        blocks: [{ ex: ["اسلیپ راست ← ۲-۳", "پولبک ← ۱-۲", "رول چپ ← هوک بدن ۳ ← ۲", "پَری ← ۲ ← ۳", "باب‌ویو ← ۳-۲-۳ از زیر", "اسلیپ-رول ← ۱-۲-۳-۲"], work: 45, rest: 15, rounds: 4, restAfter: 60 }] },
+      { id: "bx-bag", name: "کیسه‌ی سنگین: قدرت و ترکیب (۶ راند)", level: "متوسط", mode: "interval", desc: "سیستم شماره‌گذاری: ۱=جَب ۲=کراس ۳=هوک جلو ۴=هوک عقب ۵=آپرکات جلو ۶=آپرکات عقب. روی کیسه‌ی بوکس. راند ۳ دقیقه / استراحت ۶۰ ثانیه.",
+        blocks: [{ ex: ["راند ۱: جَب سنگین + کار پا دور کیسه", "راند ۲: ۱-۲ با تمام قدرت", "راند ۳: ۱-۲-۳ و خروج با پیوت", "راند ۴: ضربات بدن ۳ بدن - ۳ سر - ۲", "راند ۵: آپرکات ۵-۶ پشت‌سرهم", "راند ۶: ۱۰ ثانیه قدرت کامل / ۵ ثانیه آرام"], work: 180, rest: 60, rounds: 1 }] },
+      { id: "bx-pro", name: "کاندیشن حرفه‌ای (سیرکویت بوکس)", level: "پیشرفته", mode: "interval", desc: "ترکیب ضربه، دفاع و قدرت در یک سیرکویت. ۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۵ دور.",
+        blocks: [{ ex: ["ترکیب ۱-۲-۳-۲ سریع", "اسلیپ-رول-اسلیپ ریتمیک", "برپی + جَب-کراس", "پیوت و ضربه (چپ/راست)", "طناب دوبل یا سایه‌بوکس سریع", "آپرکات ۵-۶ پشت‌سرهم"], work: 40, rest: 20, rounds: 5, restAfter: 60 }] },
+      { id: "bx-footwork", name: "کار پا و زاویه گرفتن", level: "مبتدی", mode: "interval", desc: "پایه‌ی همه‌ی ترکیب‌ها: تعادل و حرکت. ۴۰ ثانیه کار / ۲۰ ثانیه استراحت.",
+        blocks: [{ ex: ["قدم و کشیدن (Step-Drag) جلو و عقب", "چرخش دور حریف ساعتگرد با جَب", "چرخش دور حریف پادساعتگرد با جَب", "پیوت چپ و راست", "In & Out: جلو جَب، عقب خروج", "زیگزاگ و رقص سر"], work: 40, rest: 20, rounds: 3, restAfter: 45 }] },
     ],
   },
   {
@@ -5833,7 +5938,7 @@ const PG_LEVEL_COLOR = { "مبتدی": "#3DE08A", "متوسط": "#E8B33D", "پی
 const fmtMMSS = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 
 // پخش‌کننده‌ی تایمر مشترک: لیستی از مرحله‌ها (steps) رو یکی‌یکی اجرا می‌کنه
-function ProgramPlayer({ title, steps, onExit, extra, exVideos }) {
+function ProgramPlayer({ title, steps, onExit, extra, exVideos, onComplete }) {
   const [idx, setIdx] = useState(0);
   const [left, setLeft] = useState(steps[0] ? steps[0].dur : 0);
   const [mode, setMode] = useState("idle"); // idle | running | paused | done
@@ -5846,6 +5951,8 @@ function ProgramPlayer({ title, steps, onExit, extra, exVideos }) {
   const beep = (fn) => { try { fn(getAudio()); } catch {} };
   const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
   const setM = (m) => { modeRef.current = m; setMode(m); };
+  const completedRef = useRef(false);
+  useEffect(() => { if (mode === "done" && !completedRef.current) { completedRef.current = true; onComplete && onComplete(); } }, [mode]);
 
   const enter = (i) => {
     idxRef.current = i;
@@ -5989,8 +6096,9 @@ function AmrapPlayer({ program, onExit, exVideos }) {
 }
 
 // برنامه‌ی ست و تکرار: چک‌لیست + تایمر استراحت
-function ListWorkout({ program, onExit, exVideos }) {
+function ListWorkout({ program, onExit, exVideos, onComplete }) {
   const [done, setDone] = useState({});
+  const completedRef = useRef(false);
   const [restLeft, setRestLeft] = useState(0);
   const audioRef = useRef(null);
   const restSec = program.rest || 60;
@@ -6007,6 +6115,7 @@ function ListWorkout({ program, onExit, exVideos }) {
   useEffect(() => () => { try { audioRef.current && audioRef.current.close(); } catch {} }, []);
   const startRest = () => { try { (audioRef.current || (audioRef.current = makeTimerAudio())).unlock(); } catch {} setRestLeft(restSec); };
   const count = Object.values(done).filter(Boolean).length;
+  useEffect(() => { if (count >= program.items.length && count > 0 && !completedRef.current) { completedRef.current = true; onComplete && onComplete(); } }, [count]);
   return (
     <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
       <button onClick={onExit} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block mb-3">{"› بازگشت"}</button>
@@ -6158,6 +6267,719 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
   );
 }
 
+// ---------- مسیر پیشرفت ۱۰۰ روزه: موتور ساخت برنامه ----------
+const JR_WEEKDAYS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+const jrFa = (n) => String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+const JR_DEFAULT = { level: 0, track: "strength", freq: 7, gender: "m", goal: "fit", equip: "none", minutes: 45 };
+const JR_TOTAL_DAYS = 100;
+
+// ---- بانک تمرین‌ها ----
+const JR_POOL = {
+  none: {
+    push: [
+      ["شنا روی زانو", "شنا با شیب (دست روی میز)", "شنا دست‌پهن روی زانو", "شنا استاندارد (هر چقدر می‌تونی)", "دیپ روی صندلی"],
+      ["شنا استاندارد", "شنا الماسی", "شنا پایه‌بلند", "دیپ روی صندلی", "شنا با مکث پایین"],
+      ["شنا انفجاری", "شنا الماسی", "شنا پایک (شانه)", "شنا پایه‌بلند", "شنا آهسته (۳ ثانیه پایین)"],
+    ],
+    pull: [
+      ["ردیف معکوس زیر میز", "سوپرمن", "ردیف با حوله", "جلو بازو با حوله (مقاومتی)"],
+      ["ردیف معکوس زیر میز", "بارفیکس منفی (آهسته پایین)", "سوپرمن با مکث", "جلو بازو با حوله (مقاومتی)"],
+      ["بارفیکس", "بارفیکس منفی آهسته", "ردیف تک‌دست با کیف سنگین", "سوپرمن با مکث"],
+    ],
+    legs: [
+      ["اسکات", "لانج عقب", "پل باسن", "اسکات دیوار", "ساق پا ایستاده"],
+      ["اسکات بلغاری", "لانج جهشی", "پل باسن تک‌پا", "اسکات با مکث", "ساق پا تک‌پا"],
+      ["اسکات پرشی", "اسکات تک‌پا (پیستول با کمک)", "لانج واکینگ", "پل باسن تک‌پا با مکث", "اسکات بلغاری آهسته"],
+    ],
+    glute: ["پل باسن", "کیک‌بک چهارنقطه", "حرکت پا به‌پهلو (خوابیده)", "اسکات سومو", "پل باسن تک‌پا"],
+    shoulder: ["نشر جانب با بطری آب", "شنا پایک", "چرخش شانه با حوله", "شراگ با کیف"],
+  },
+  gym: {
+    push: [
+      ["پرس سینه دمبل", "پرس بالا سینه دمبل", "پرس سرشانه دمبل", "نشر از جانب", "پشت بازو سیم‌کش"],
+      ["پرس سینه هالتر", "پرس بالا سینه دمبل", "پرس سرشانه هالتر", "نشر از جانب", "دیپ", "پشت بازو سیم‌کش"],
+      ["پرس سینه هالتر", "پرس بالا سینه هالتر", "پرس سرشانه ایستاده", "نشر از جانب سیم‌کش", "دیپ با وزنه", "فلای سینه"],
+    ],
+    pull: [
+      ["لت‌پول", "زیربغل سیم‌کش", "فِیس‌پول", "جلو بازو دمبل"],
+      ["لت‌پول", "زیربغل هالتر خم", "زیربغل سیم‌کش", "فِیس‌پول", "جلو بازو هالتر"],
+      ["بارفیکس", "زیربغل هالتر خم", "ردیف تک‌دست دمبل", "فِیس‌پول", "جلو بازو چکشی", "شراگ"],
+    ],
+    legs: [
+      ["اسکات گابلت", "پرس پا", "رومانیایی ددلیفت با دمبل", "لانج دمبل", "ساق پا"],
+      ["اسکات هالتر", "پرس پا", "رومانیایی ددلیفت", "لانج دمبل", "جلو پا", "پشت پا"],
+      ["اسکات هالتر", "ددلیفت", "پرس پا", "لانج واکینگ با دمبل", "پشت پا", "ساق پا"],
+    ],
+    glute: ["هیپ‌تراست", "اسکات سومو", "کیک‌بک سیم‌کش", "رومانیایی ددلیفت", "پل باسن با هالتر"],
+    shoulder: ["نشر از جانب سیم‌کش", "پرس سرشانه دمبل", "نشر خم به عقب", "شراگ دمبل"],
+  },
+};
+const JR_POWER = {
+  none: ["شنا انفجاری", "اسکات پرشی", "برپی", "پرش روی پله/جعبه", "چرخش پرتاب کیف شنی"],
+  gym: ["پرتاب توپ مدیسین به دیوار", "سوئینگ کتل‌بل", "اسکات پرشی سبک", "چرخش مدیسین‌بال (پرتاب چرخشی)", "ددلیفت سبک سریع"],
+};
+const JR_CORE = [
+  ["پلانک", "دراز و نشست دوچرخه‌ای", "بالا آوردن پا", "پلانک کناری راست", "پلانک کناری چپ", "دددباگ (Dead Bug)"],
+  ["پلانک", "چرخش روسی", "بالا آوردن پا", "پلانک با لمس شانه", "کوهنورد آرام", "پلانک کناری راست", "پلانک کناری چپ"],
+  ["پلانک با لمس شانه", "V-up", "چرخش روسی با وزنه", "کوهنورد سریع", "بالا آوردن پا آویزان (یا روی زمین)", "پلانک کناری با بالا بردن پا"],
+];
+const JR_HIIT = [
+  ["جامپینگ‌جک", "اسکات", "شنا روی زانو", "کوهنورد آرام", "پلانک‌جک", "زانو بالا", "لانج متناوب"],
+  ["برپی (نیم)", "اسکات پرشی", "شنا", "کوهنورد", "لانج جهشی", "اسکی‌باز", "زانو بالا سریع"],
+  ["برپی کامل", "اسکات پرشی", "شنا انفجاری", "کوهنورد سریع", "لانج جهشی", "V-up", "برپی با شنا"],
+];
+const JR_BOXCOND = ["سایه‌بوکس سریع", "طناب‌زنی", "جَب-کراس سرعتی", "هوک-آپرکات پیوسته", "اسلیپ-رول ریتمیک", "برپی", "پیوت و ضربه", "زانو بالا + جَب"];
+const JR_WARM = ["چرخش گردن و شانه", "چرخش مچ و آرنج", "چرخش کمر و لگن", "زانو بالا (درجا)", "پاشنه به باسن", "جامپینگ‌جک سبک", "سایه‌بوکس خیلی سبک"];
+const JR_COOL = ["کشش گردن", "کشش شانه و سینه", "کشش پشت (گربه-گاو)", "کشش جلو ران", "کشش پشت ران", "کشش ساق", "کشش باسن", "تنفس عمیق (ریکاوری)"];
+
+// ---- ضربات و دفاع (سیستم شماره‌گذاری بوکس: ۱=جَب ۲=کراس ۳=هوک جلو ۴=هوک عقب ۵=آپرکات جلو ۶=آپرکات عقب) ----
+const JR_COMBOS = [
+  ["۱-۲ (جَب-کراس)", "۱-۱-۲", "۱-۲-۳ (جَب-کراس-هوک)", "۲-۳-۲", "۱-۲-۵-۲", "۱-۲ و بعدش خروج با پا"],
+  ["۱-۲-۳-۲", "۱-۲-۳-۴", "۱-۲-اسلیپ-۲", "۱-۱-۲-۳-۲", "۲-۳-۶-۳", "۱-۲-رول-۳-۲", "۱-۲-۵-۶-۳"],
+  ["۱-۲-۳-۲-رول-۳-۴", "۱-۲-اسلیپ-۲-۳-۲", "۱-۲-۵-۶-۳-۲", "۱-۱-۲-باب‌ویو-۳-۴-۳", "۱-۲-۳-پولبک-۲-۳-۲", "۲-۳-رول-۳-۴-۵-۳", "۱-اسلیپ-۲-رول-۳-۲-پیوت"],
+];
+const JR_DEFENSE = ["اسلیپ (جاخالی کناری) راست و چپ", "رول (چرخش زیر ضربه‌ی خیالی) به‌شکل U", "باب‌ویو (خم شدن و حرکت زیر ضربه)", "پولبک (عقب کشیدن سر)", "پَری و بلاک (دفع ضربه با دست)", "شولدر رول (چرخش شانه)", "پیوت و زاویه گرفتن"];
+const JR_FOOTWORK = ["کار پا: قدم و کشیدن (Step-Drag)", "چرخش دور حریف (ساعتگرد)", "چرخش دور حریف (پادساعتگرد)", "جلو و عقب (In & Out) همراه جَب", "پیوت چپ و راست", "حرکت زیگزاگ (رقص سر و کار پا)"];
+const JR_HEADMOVE = ["رقص سر: اسلیپ-اسلیپ-رول بدون ضربه", "رقص سر + جَب بعد هر جاخالی", "رول-باب‌ویو پشت‌سرهم و ریتمیک", "رقص سر با دست‌های بالا (روی ریتم موزیک)"];
+const JR_COUNTER = ["اسلیپ راست ← ضدحمله ۲-۳", "پولبک ← ۱-۲ ضد", "رول چپ ← هوک بدن ۳ ← ۲", "پَری ← ۲ ← ۳", "باب‌ویو ← ۳-۲-۳ از زیر"];
+const JR_POWERRND = ["قدرت: ۲-۳ سنگین (۱۰ ثانیه تمام قدرت / ۵ ثانیه آرام)", "راند سرعت: ۱-۱-۲ سریع", "ضربات بدن: ۳ بدن-۳ سر-۲", "آپرکات‌های پشت‌سرهم ۵-۶ با ریتم", "ترکیب‌های سنگین ۱-۲-۳-۲ با پرتاب وزن بدن"];
+const JR_TIPS = [
+  "قبل از تمرین ۱ تا ۲ ساعت قبل یه وعده سبک بخور و حین تمرین آب کافی بنوش.",
+  "خواب ۷ تا ۸ ساعته نصف نتیجه‌ی تمرینه؛ امشب زودتر بخواب.",
+  "پروتئین کافی (تخم‌مرغ، مرغ، ماهی، حبوبات) بعد از تمرین عضلات رو بازسازی می‌کنه.",
+  "تکنیک مهم‌تر از سرعته؛ ضربه‌هات رو کنترل‌شده بزن.",
+  "اگه درد مفصل داشتی، حرکت رو قطع کن و استراحت بده.",
+  "دست‌ها همیشه نزدیک چانه و چانه پایین؛ حتی وقتی خسته‌ای.",
+  "نفس رو با ضربه خارج کن (ش‌ش‌ش) تا زودتر خسته نشی.",
+  "هر هفته یه ذره سخت‌تر؛ ولی هیچ‌وقت تمرین رو با خستگی شدید و درد ادامه نده.",
+  "یه لیوان آب بعد از بیدار شدن، انرژی روزت رو بالا می‌بره.",
+  "نتایجت رو یادداشت کن؛ دیدن پیشرفت بهترین انگیزه‌ست.",
+];
+
+// ---- پارامترهای شدت: سطح × فاز ----
+// فازها: ۱-۳ پایه‌ریزی | ۵-۷ ساخت | ۹-۱۱ تشدید | ۱۳-۱۵ اوج؛ هفته‌های ۴ و ۸ و ۱۲ هفته‌ی کم‌فشار (ریکاوری)
+function jrParams(cfg, w) {
+  const L = cfg.level;
+  const deload = w % 4 === 0 && w < 15;
+  const ph = w <= 3 ? 0 : w <= 7 ? 1 : w <= 11 ? 2 : 3;
+  const roundSec = [[120, 120, 150, 150], [150, 180, 180, 180], [180, 180, 180, 180]][L][ph];
+  const roundRest = [60, 60, 45][L] - (ph === 3 && L === 2 ? 5 : 0);
+  let sets = [[2, 3, 3, 3], [3, 3, 4, 4], [3, 4, 4, 5]][L][ph] - (deload ? 1 : 0);
+  let reps = [[12, 12, 10, 10], [12, 10, 8, 8], [10, 8, 6, 6]][L][ph];
+  let rest = [60, 75, 90][L];
+  if (cfg.goal === "fatloss") { reps += 3; rest -= 15; }
+  else if (cfg.goal === "muscle") { rest += 15; reps = Math.max(6, reps); }
+  else if (cfg.goal === "fight") { reps = Math.max(5, reps - 2); }
+  const hw = [[[30, 30], [35, 25], [40, 20], [40, 20]], [[40, 20], [40, 20], [45, 15], [45, 15]], [[45, 15], [45, 15], [50, 10], [50, 10]]][L][ph];
+  const endMin = [[15, 20, 25, 30], [20, 25, 35, 40], [30, 40, 45, 55]][L][ph] * (deload ? 0.7 : 1);
+  return { L, w, ph, deload, roundSec, roundRest, sets: Math.max(2, sets), reps, rest, hiitWork: hw[0], hiitRest: hw[1], endMin: Math.round(endMin), plankSec: 30 + ph * 8 + L * 6 };
+}
+
+const jrClamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function jrPick(arr, k, seed) {
+  const out = [];
+  const n = arr.length;
+  for (let i = 0; i < Math.min(k, n); i++) out.push(arr[(seed * 2 + i) % n]);
+  return out;
+}
+
+// ---- بلوک‌ساز‌ها: هرکدوم {title, kind, program, minutes} برمی‌گردونن ----
+// program برای پخش‌کننده: interval → {name, mode:"interval", blocks}  |  list → {name, mode:"list", items, rest, desc}
+function jrMinutes(program) {
+  if (program.mode === "interval") {
+    const steps = pgBuildSteps(program);
+    return Math.max(1, Math.round(steps.reduce((a, s) => a + s.dur, 0) / 60));
+  }
+  const sets = program._sets || 3;
+  return Math.round(program.items.length * (sets * (0.75 + (program.rest || 60) / 60)));
+}
+function jrIntervalBlock(title, blocks, desc) {
+  const program = { name: title, mode: "interval", blocks, desc: desc || "" };
+  return { title, kind: "interval", program, minutes: jrMinutes(program) };
+}
+
+function jrWarm() {
+  return jrIntervalBlock("گرم‌کردن", [{ ex: JR_WARM, work: 35, rest: 5, rounds: 1 }], "بدنت رو آماده کن؛ این بخش رو حذف نکن.");
+}
+function jrCool() {
+  return jrIntervalBlock("سردکردن و کشش", [{ ex: JR_COOL.slice(0, 6), work: 30, rest: 5, rounds: 1 }], "ضربان رو پایین بیار و عضلات رو بکش.");
+}
+
+function jrStrength(kind, cfg, P, seed, budget) {
+  const eq = cfg.equip === "gym" ? "gym" : "none";
+  const pool = JR_POOL[eq];
+  const L = cfg.level;
+  const f = cfg.gender === "f";
+  let list = [];
+  const take = (arr, k) => jrPick(arr, k, seed);
+  if (kind === "push") list = take(pool.push[L], 5);
+  else if (kind === "pull") list = take(pool.pull[L], 5);
+  else if (kind === "legs") list = take(f ? [...pool.glute.slice(0, 2), ...pool.legs[L]] : pool.legs[L], 5);
+  else if (kind === "upper") list = [...take(pool.push[L], 3), ...take(pool.pull[L], 3)];
+  else if (kind === "lower") list = [...take(pool.legs[L], 4), ...take(pool.glute, 2)];
+  else if (kind === "circuit") list = [...take(pool.legs[L], 2), ...take(pool.push[L], 2), ...take(pool.pull[L], 2)];
+  else list = [pool.legs[L][seed % pool.legs[L].length], pool.push[L][seed % pool.push[L].length], pool.pull[L][seed % pool.pull[L].length], pool.legs[L][(seed + 1) % pool.legs[L].length], pool.push[L][(seed + 2) % pool.push[L].length], pool.pull[L][(seed + 1) % pool.pull[L].length]];
+  // نیم‌نگاه جنسیتی: بانوان ← تمرکز روی پایین‌تنه و مرکز بدن؛ آقایان ← شانه و بازو
+  if (f && (kind === "push" || kind === "upper")) list.push(take(pool.glute, 1)[0]);
+  if (!f && (kind === "pull" || kind === "push" || kind === "upper")) list.push(take(pool.shoulder, 1)[0]);
+  const seen = new Set();
+  list = list.filter((x) => (seen.has(x) ? false : (seen.add(x), true)));
+  const perEx = P.sets * (0.75 + P.rest / 60);
+  const n = jrClamp(Math.floor(budget / perEx), 3, Math.min(6, list.length));
+  list = list.slice(0, n);
+  const isTimed = (nm) => /^پلانک/.test(nm) || /مکث$/.test(nm) && false;
+  const items = list.map((nm) => (isTimed(nm) ? `${nm} — ${jrFa(P.sets)}×${jrFa(P.plankSec)} ثانیه` : `${nm} — ${jrFa(P.sets)}×${jrFa(P.reps)}`));
+  const names = { push: "قدرت: هل دادن (سینه، شانه، پشت بازو)", pull: "قدرت: کشیدن (پشت و جلو بازو)", legs: "قدرت: پا و باسن", upper: "قدرت: بالاتنه", lower: "قدرت: پایین‌تنه و باسن", circuit: "قدرت: سیرکویت تمام‌بدن", full: "قدرت: تمام‌بدن" };
+  const title = names[kind] || "قدرت";
+  const desc = `${jrFa(P.sets)} ست، بین ست‌ها ${jrFa(P.rest)} ثانیه استراحت. وزنه رو طوری انتخاب کن که ۲ تکرار آخر سخت باشه ولی تکنیک خراب نشه.${P.deload ? " (هفته‌ی سبک: وزنه و ست کمتر)" : ""}`;
+  const program = { name: title, mode: "list", items, rest: P.rest, desc, _sets: P.sets };
+  return { title, kind: "list", program, minutes: jrMinutes(program) };
+}
+
+function jrCore(cfg, P, seed, budget) {
+  const L = cfg.level;
+  const work = [35, 40, 45][L] + P.ph * 2;
+  const rest = 15;
+  const per = (work + rest) / 60;
+  const rounds = jrClamp(Math.floor(budget / (per * 5)), 1, 3);
+  const ex = jrPick(JR_CORE[L], 5, seed);
+  return jrIntervalBlock("شکم و مرکز بدن", [{ ex, work, rest, rounds }], "مرکز بدن = قدرت ضربه و تعادل.");
+}
+
+function jrHiit(cfg, P, seed, budget, boxy) {
+  const L = cfg.level;
+  const pool = boxy ? [...JR_BOXCOND, ...JR_HIIT[L].slice(0, 3)] : JR_HIIT[L];
+  const ex = jrPick(pool, 5, seed);
+  const per = (5 * (P.hiitWork + P.hiitRest)) / 60;
+  const rounds = jrClamp(Math.floor(budget / per), 1, 5);
+  const title = boxy ? "کاندیشنینگ تناوبی بوکس" : `HIIT ${jrFa(P.hiitWork)}/${jrFa(P.hiitRest)}`;
+  return jrIntervalBlock(title, [{ ex, work: P.hiitWork, rest: P.hiitRest, rounds, restAfter: 45 }], "تا جای ممکن شدید کار کن؛ استراحت‌ها رو کامل بگیر.");
+}
+
+function jrTabata(cfg, P, seed, budget) {
+  const L = cfg.level;
+  const pool = JR_HIIT[L];
+  const nBlocks = jrClamp(Math.floor(budget / 5), 1, 3);
+  const blocks = [];
+  for (let i = 0; i < nBlocks; i++) blocks.push({ ex: [pool[(seed + i * 2) % pool.length], pool[(seed + i * 2 + 1) % pool.length]], work: 20, rest: 10, rounds: 4, restAfter: 60 });
+  return jrIntervalBlock("تاباتا", blocks, "۲۰ ثانیه تمام قدرت، ۱۰ ثانیه استراحت.");
+}
+
+function jrEndurance(kind, cfg, P, budget) {
+  const L = cfg.level;
+  const total = Math.round(jrClamp(Math.min(P.endMin, budget), 8, 70));
+  if (kind === "tempo") {
+    const hard = Math.max(4, total - 10);
+    const p = { name: "تمپو", mode: "interval", blocks: [{ ex: ["گرم‌کردن آرام (۵ دقیقه)"], work: 300, rest: 0, rounds: 1 }, { ex: [`تمپو: شدت نسبتاً سخت (${jrFa(hard)} دقیقه)`], work: hard * 60, rest: 0, rounds: 1 }, { ex: ["سرد کردن آرام (۵ دقیقه)"], work: 300, rest: 0, rounds: 1 }], desc: "شدتی که فقط جمله‌های کوتاه بتونی بگی." };
+    return { title: "دویدن/طناب تمپو", kind: "interval", program: p, minutes: jrMinutes(p) };
+  }
+  if (kind === "intervals") {
+    const hardMin = [1, 2, 3][L];
+    const n = jrClamp(Math.floor(budget / (hardMin + 1.5)), 3, 8);
+    const p = { name: "تناوبی استقامتی", mode: "interval", blocks: [{ ex: ["شدت بالا (دویدن/طناب/دوچرخه)"], work: hardMin * 60, rest: 90, rounds: n }], desc: "هر دور شدید، بعدش آرام راه برو." };
+    return { title: `تناوبی استقامتی ${jrFa(n)}×${jrFa(hardMin)} دقیقه`, kind: "interval", program: p, minutes: jrMinutes(p) };
+  }
+  if (kind === "ladder") {
+    const p = { name: "نردبان", mode: "interval", blocks: [{ ex: ["۱ دقیقه سخت", "۲ دقیقه سخت", "۳ دقیقه سخت", "۲ دقیقه سخت", "۱ دقیقه سخت"], work: 120, rest: 90, rounds: 1 }], desc: "سرعت رو با زمان تنظیم کن؛ استراحت: راه رفتن." };
+    return { title: "نردبان شدت (۱-۲-۳-۲-۱)", kind: "interval", program: p, minutes: jrMinutes(p) };
+  }
+  const p = { name: "استقامتی ملایم", mode: "interval", blocks: [{ ex: ["دویدن آرام / طناب / دوچرخه (باید بتونی صحبت کنی)"], work: total * 60, rest: 0, rounds: 1 }], desc: "شدت متوسط و پیوسته؛ پایه‌ی استقامت بوکسور." };
+  return { title: `استقامت ملایم ${jrFa(total)} دقیقه`, kind: "interval", program: p, minutes: jrMinutes(p) };
+}
+
+// ---- راندهای بوکس: تکنیک، ترکیب، دفاع (رقص سر)، ضربه‌ی قدرتی، هوازی، استقامتی ----
+function jrBoxing(style, cfg, P, seed, budget) {
+  const L = cfg.level;
+  const per = (P.roundSec + P.roundRest) / 60;
+  let n = jrClamp(Math.floor(budget / per), 2, 12);
+  if (P.deload) n = Math.max(2, n - 1);
+  const combos = JR_COMBOS[L];
+  const c = (i) => combos[(seed + i) % combos.length];
+  const pickFrom = (arr, i) => arr[(seed + i) % arr.length];
+  const rounds = [];
+  for (let i = 0; i < n; i++) {
+    let t;
+    if (i === 0) t = "گرم‌کردن سبک (۷۰٪ قدرت): جَب و کار پا";
+    else if (style === "technique") t = [`ترکیب ${c(i)}`, pickFrom(JR_FOOTWORK, i), `ترکیب ${c(i + 1)} + ${pickFrom(JR_DEFENSE, i)}`][i % 3];
+    else if (style === "combos") t = `ترکیب ${c(i)} → ${c(i + 2)} (پشت‌سرهم)`;
+    else if (style === "defense") t = [pickFrom(JR_DEFENSE, i), pickFrom(JR_HEADMOVE, i), pickFrom(JR_COUNTER, i)][i % 3];
+    else if (style === "power") t = pickFrom(JR_POWERRND, i);
+    else if (style === "cardio") t = [`سرعتی: ${c(i)} + طناب‌زنی بین ترکیب‌ها`, "سایه‌بوکس پرتحرک و بدون توقف", `ریتمیک: ${c(i)} + ${pickFrom(JR_HEADMOVE, i)}`][i % 3];
+    else t = [`استقامتی: ${c(i)} با ریتم ثابت`, pickFrom(JR_FOOTWORK, i) + " + جَب-کراس مداوم", `ترکیب ${c(i + 1)} + ${pickFrom(JR_DEFENSE, i)}`][i % 3];
+    rounds.push(`راند ${jrFa(i + 1)}: ${t}`);
+  }
+  if (n >= 4 && L >= 1 && style !== "defense") rounds[n - 1] = `راند ${jrFa(n)} (آخر): همه‌چی! ترکیب ${c(0)} + ${c(3)} با تمام قدرت`;
+  const titles = { technique: "بوکس: تکنیک و کار پا", combos: "بوکس: ترکیب ضربات", defense: "بوکس: دفاع و رقص سر (اسلیپ، رول)", power: "بوکس: ضربات قدرتی", cardio: "بوکس هوازی (راندهای سریع)", stamina: "بوکس استقامتی (راندهای بلند)" };
+  const title = titles[style];
+  const desc = "سیستم شماره‌گذاری: ۱=جَب ۲=کراس ۳=هوک جلو ۴=هوک عقب ۵=آپرکات جلو ۶=آپرکات عقب. روی کیسه یا سایه‌بوکس انجام بده.";
+  return jrIntervalBlock(title, [{ ex: rounds, work: P.roundSec, rest: P.roundRest, rounds: 1 }], desc);
+}
+
+function jrRecovery(seed) {
+  const p = { name: "ریکاوری فعال", mode: "interval", blocks: [{ ex: ["پیاده‌روی سبک (۱۵ دقیقه)"], work: 900, rest: 0, rounds: 1 }, { ex: JR_COOL, work: 40, rest: 5, rounds: 1 }], desc: "فشار نیار؛ هدف: بازسازی عضلات و رفع خستگی." };
+  return { title: "ریکاوری فعال", kind: "interval", program: p, minutes: jrMinutes(p) };
+}
+function jrRestDay(seed) {
+  const p = { name: "استراحت فعال", mode: "interval", blocks: [{ ex: ["پیاده‌روی سبک (۲۰ دقیقه)"], work: 1200, rest: 0, rounds: 1 }, { ex: JR_COOL.slice(0, 6), work: 35, rest: 5, rounds: 1 }], desc: "امروز روز استراحته؛ فقط ۲۰ دقیقه راه برو و کشش بده. این هم یه جلسه حساب می‌شه!" };
+  return { title: "استراحت فعال", kind: "interval", program: p, minutes: jrMinutes(p) };
+}
+function jrTestBlock(P) {
+  const p = {
+    name: "تست‌های هفته", mode: "interval",
+    blocks: [{ ex: ["تست شنا: حداکثر تکرار در ۶۰ ثانیه", "تست اسکات: حداکثر تکرار در ۶۰ ثانیه", "تست پلانک: تا حداکثر زمان (۶۰ ثانیه)", "تست طناب/سایه‌بوکس سرعتی ۶۰ ثانیه"], work: 60, rest: 90, rounds: 1 }],
+    desc: "هر تست رو با تمام قدرت انجام بده و نتیجه‌ات رو بعدش ثبت کن.",
+  };
+  return { title: "تست‌های هفته", kind: "interval", program: p, minutes: jrMinutes(p) };
+}
+
+// ---- الگوی هفتگی: برای هر نوع برنامه (track) و تعداد روز تمرین در هفته (freq) ----
+// اسلات‌ها: ۰=شنبه ... ۶=جمعه؛ هر روز لیست بلوک‌های اصلی (به ترتیب اولویت) یا "R" (ریکاوری)
+const JR_WEEK = {
+  strength: {
+    7: [["S:push", "B:technique"], ["S:legs", "C:hiit"], ["B:combos", "K:core"], ["S:pull", "C:tabata"], ["B:power", "S:circuit"], ["E:steady", "K:core"], ["R"]],
+    3: { 0: ["S:full", "B:technique"], 2: ["B:combos", "C:hiit", "K:core"], 4: ["S:lower", "B:power"] },
+    2: { 0: ["S:full", "B:technique"], 3: ["B:combos", "C:hiit", "K:core"] },
+  },
+  aerobic: {
+    7: [["B:cardio", "K:core"], ["C:hiitbox", "K:core"], ["B:technique", "B:combos"], ["E:steady", "K:core"], ["B:power", "C:tabata"], ["S:circuit", "C:hiit"], ["R"]],
+    3: { 0: ["B:cardio", "C:hiitbox"], 2: ["B:technique", "C:hiit", "K:core"], 4: ["E:steady", "S:circuit"] },
+    2: { 0: ["B:cardio", "C:hiitbox"], 3: ["E:steady", "B:technique"] },
+  },
+  endurance: {
+    7: [["E:tempo", "K:core"], ["B:stamina", "K:core"], ["E:intervals", "K:core"], ["B:technique", "S:circuit"], ["E:steady", "B:combos"], ["B:stamina", "C:hiit"], ["R"]],
+    3: { 0: ["E:tempo", "B:technique"], 2: ["B:stamina", "S:circuit"], 4: ["E:intervals", "K:core"] },
+    2: { 0: ["B:stamina", "E:steady"], 3: ["E:intervals", "S:circuit"] },
+  },
+};
+
+function jrSlotTokens(cfg, wd) {
+  const t = JR_WEEK[cfg.track] || JR_WEEK.strength;
+  const f = Number(cfg.freq);
+  if (f === 7) return t[7][wd];
+  const m = t[f] || t[3];
+  return m[wd] || null;
+}
+
+function jrBuildDay(cfgIn, n) {
+  const cfg = { ...JR_DEFAULT, ...cfgIn };
+  const wd = (n - 1) % 7;
+  const w = Math.ceil(n / 7);
+  const P = jrParams(cfg, w);
+  const seed = w * 3 + wd;
+  const tip = JR_TIPS[(n - 1) % JR_TIPS.length];
+  const base = { n, w, wd, weekday: JR_WEEKDAYS[wd], tip, deload: P.deload };
+  if (n === JR_TOTAL_DAYS) {
+    const blocks = [jrWarm(), jrTestBlock(P), jrCool()];
+    return { ...base, type: "final", title: "روز آخر: تست نهایی ۱۰۰ روزه", summary: "آخرین چالش! نتیجه‌ات رو با هفته‌ی اول مقایسه کن.", blocks, minutes: blocks.reduce((a, b) => a + b.minutes, 0) };
+  }
+  const tokens = jrSlotTokens(cfg, wd);
+  if (!tokens) {
+    const b = jrRestDay(seed);
+    return { ...base, type: "rest", title: "استراحت فعال", summary: "امروز روز استراحته؛ پیاده‌روی سبک و کشش. این روز هم باید ثبت بشه.", blocks: [b], minutes: b.minutes };
+  }
+  if (tokens[0] === "R") {
+    const b = jrRecovery(seed);
+    return { ...base, type: "recovery", title: "ریکاوری فعال", summary: "امروز بدنت رو بازسازی کن تا هفته‌ی بعد قوی‌تر باشی.", blocks: [b], minutes: b.minutes };
+  }
+  const D = Number(cfg.minutes) || 45;
+  const mainBudget = Math.max(12, D - 9);
+  const weights = tokens.length === 1 ? [1] : tokens.length === 2 ? [0.58, 0.42] : [0.45, 0.32, 0.23];
+  const blocks = [jrWarm()];
+  tokens.forEach((tk, i) => {
+    const [kind, sub] = tk.split(":");
+    const budget = mainBudget * weights[i];
+    let b = null;
+    if (kind === "S") b = jrStrength(sub, cfg, P, seed + i, budget);
+    else if (kind === "B") b = jrBoxing(sub, cfg, P, seed + i, budget);
+    else if (kind === "C") b = sub === "tabata" ? jrTabata(cfg, P, seed + i, budget) : jrHiit(cfg, P, seed + i, budget, sub === "hiitbox");
+    else if (kind === "E") b = jrEndurance(sub, cfg, P, budget);
+    else if (kind === "K") b = jrCore(cfg, P, seed + i, budget);
+    if (b) blocks.push(b);
+  });
+  blocks.push(jrCool());
+  const mains = blocks.slice(1, -1);
+  const title = mains.map((b) => b.title).slice(0, 2).join(" + ");
+  const phases = ["پایه‌ریزی", "ساخت", "تشدید", "اوج"];
+  const summary = `هفته ${jrFa(w)} • فاز ${phases[P.ph]}${P.deload ? " (هفته‌ی سبک)" : ""} • حدود ${jrFa(blocks.reduce((a, b) => a + b.minutes, 0))} دقیقه`;
+  return { ...base, type: "train", title, summary, blocks, minutes: blocks.reduce((a, b) => a + b.minutes, 0) };
+}
+
+// ساختار نودهای مسیر: ۷ روز، بعدش یک دایره‌ی طلایی (جلسه‌ی ویژه + مدال)؛ آخر کار جام قهرمانی
+function jrNodes() {
+  const nodes = [];
+  for (let n = 1; n <= JR_TOTAL_DAYS; n++) {
+    nodes.push({ kind: "day", n });
+    if (n % 7 === 0 && n < JR_TOTAL_DAYS) nodes.push({ kind: "gold", w: n / 7 });
+  }
+  nodes.push({ kind: "trophy" });
+  return nodes;
+}
+
+// ---------- صفحه‌ی «مسیر پیشرفت من» ----------
+const JR_STORE = "journey_v1";
+const JR_OPTS = {
+  level: [[0, "مبتدی"], [1, "متوسط"], [2, "پیشرفته"]],
+  track: [["strength", "بوکس + بدنسازی"], ["aerobic", "بوکس هوازی"], ["endurance", "بوکس استقامتی"]],
+  freq: [[7, "هر روز"], [3, "۳ روز در هفته"], [2, "۲ روز در هفته"]],
+  gender: [["m", "مرد"], ["f", "زن"]],
+  goal: [["fit", "تناسب اندام"], ["fatloss", "چربی‌سوزی"], ["muscle", "عضله‌سازی"], ["fight", "آمادگی مسابقه"]],
+  equip: [["none", "بدون وسیله (خونه)"], ["gym", "باشگاه / وزنه"]],
+  minutes: [[30, "۳۰ دقیقه"], [45, "۴۵ دقیقه"], [60, "۶۰ دقیقه"], [90, "۹۰ دقیقه"]],
+};
+const JR_LABELS = { level: "سطح", track: "نوع برنامه", freq: "تعداد روز تمرین", gender: "جنسیت", goal: "هدف", equip: "امکانات", minutes: "زمان هر جلسه" };
+const JR_FONT = { fontFamily: "Vazirmatn, sans-serif" };
+
+function jrGoldDay(w) {
+  const blocks = [jrWarm(), jrTestBlock(), jrCool()];
+  return { type: "gold", n: 0, w, title: `جلسه‌ی طلایی هفته ${jrFa(w)}`, summary: "تست‌های هفته + مدال طلا 🏅", tip: "نتایجت رو ثبت کن تا پیشرفتت رو ببینی.", blocks, minutes: blocks.reduce((a, b) => a + b.minutes, 0) };
+}
+
+const JR_FREE_DAYS = 3;
+const jrStoreKey = (accountId) => JR_STORE + "_" + String(accountId || "guest");
+const jrDoneT = (v) => (v && typeof v === "object" ? Number(v.t) || 0 : Number(v) || 0);
+const jrDoneM = (v) => (v && typeof v === "object" ? Number(v.m) || 0 : 0);
+function jrMerge(a, b) {
+  const d = { ...(a || {}) };
+  for (const [k, v] of Object.entries(b || {})) if (!d[k]) d[k] = v;
+  return d;
+}
+// بارگذاری پیشرفت: اول از گوشی، بعد (اگه وارد شده باشه) ادغام با سرور
+async function jrLoadState(accountId, token, isGuest) {
+  let local = { cfg: null, done: {}, res: {}, blk: {} };
+  try { const v = await AppStorage.get(jrStoreKey(accountId)); if (v) { const o = JSON.parse(v); local = { cfg: o.cfg || null, done: o.done || {}, res: o.res || {}, blk: o.blk || {} }; } } catch {}
+  let synced = false;
+  if (token && !isGuest) {
+    const sv = await apiFetchJourney(token);
+    if (sv) {
+      local = { ...local, cfg: local.cfg || sv.cfg || null, done: jrMerge(local.done, sv.done), res: { ...(sv.res || {}), ...local.res } };
+      synced = true;
+    }
+  }
+  return { ...local, synced };
+}
+
+function jrDayStats(done) {
+  const keys = Object.keys(done || {});
+  const days = keys.filter((k) => k[0] === "d").length;
+  const medals = keys.filter((k) => k[0] === "g").length;
+  const minutes = keys.reduce((a, k) => a + jrDoneM(done[k]), 0);
+  const dayKey = (t) => { const x = new Date(t); return x.getFullYear() * 10000 + (x.getMonth() + 1) * 100 + x.getDate(); };
+  const byDay = {};
+  keys.forEach((k) => { const t = jrDoneT(done[k]); if (t) { const dk = dayKey(t); byDay[dk] = (byDay[dk] || 0) + jrDoneM(done[k]); } });
+  const last14 = [];
+  for (let i = 13; i >= 0; i--) { const t = new Date(); t.setHours(12, 0, 0, 0); t.setDate(t.getDate() - i); last14.push({ date: t, v: byDay[dayKey(t)] || 0 }); }
+  let streak = 0;
+  for (let i = last14.length - 1; i >= 0; i--) { if (last14[i].v > 0 || (byDay[dayKey(last14[i].date)] !== undefined)) streak++; else if (i === last14.length - 1) continue; else break; }
+  const weeks = [];
+  for (let w = 1; w <= 15; w++) { let c = 0; for (let d = 1; d <= 7; d++) { if (done["d" + ((w - 1) * 7 + d)]) c++; } weeks.push({ w, c, gold: !!done["g" + w] }); }
+  return { days, medals, minutes, last14, streak, weeks };
+}
+
+function JourneyChartBox({ done, onOpen }) {
+  const st = jrDayStats(done);
+  const max = Math.max(30, ...st.last14.map((x) => x.v));
+  const W = 320, H = 120, pad = 18, bw = (W - pad * 2) / 14;
+  const dn = ["ی", "د", "س", "چ", "پ", "ج", "ش"];
+  const pct = Math.round((st.days / JR_TOTAL_DAYS) * 100);
+  return (
+    <div className="rounded-2xl p-4" style={{ background: "#17161A", border: "1px solid #4DA3FF88", boxShadow: "0 0 16px #4DA3FF33" }}>
+      <div className="flex items-center justify-between mb-3">
+        <span style={{ ...JR_FONT, color: "#4DA3FF" }} className="text-sm font-black">📈 مسیر پیشرفت ۱۰۰ روزه</span>
+        {onOpen && <button onClick={onOpen} className="rounded-lg px-2.5 py-1 text-[11px] font-bold" style={{ ...JR_FONT, background: "#4DA3FF22", color: "#4DA3FF", border: "1px solid #4DA3FF" }}>ادامه تمرین ›</button>}
+      </div>
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {[[jrFa(st.days), "روز انجام‌شده", "#3DE08A"], [jrFa(st.medals), "مدال طلا", "#E8B33D"], [jrFa(st.streak), "روز پیاپی", "#FF7A45"], [jrFa(st.minutes), "دقیقه تمرین", "#4DA3FF"]].map(([v, l, c]) => (
+          <div key={l} className="rounded-xl py-2 text-center" style={{ background: "#0B0B0D", border: `1px solid ${c}55` }}>
+            <div style={{ fontFamily: "Oswald, sans-serif", color: c }} className="text-lg font-bold leading-6">{v}</div>
+            <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[9px]">{l}</div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, background: "#222127" }}><div style={{ width: pct + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>
+        <span style={{ ...JR_FONT, color: "#3DE08A" }} className="text-[11px] font-black">{jrFa(pct)}٪</span>
+      </div>
+      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px] font-bold mt-3 mb-1">تمرین ۱۴ روز اخیر (دقیقه)</div>
+      <svg viewBox={`0 0 ${W} ${H + 22}`} width="100%" style={{ display: "block", direction: "ltr" }}>
+        <defs><linearGradient id="jrbar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4DA3FF" /><stop offset="100%" stopColor="#1c6fd1" /></linearGradient></defs>
+        {[0, 0.5, 1].map((f) => (<line key={f} x1={pad} x2={W - pad} y1={H - f * (H - 14)} y2={H - f * (H - 14)} stroke="#2a292e" strokeWidth="1" strokeDasharray="3 3" />))}
+        {st.last14.map((x, i) => {
+          const h = x.v > 0 ? Math.max(5, (x.v / max) * (H - 14)) : 2;
+          const cx = pad + i * bw + bw / 2;
+          const today = i === 13;
+          return (
+            <g key={i}>
+              <rect x={cx - bw * 0.32} y={H - h} width={bw * 0.64} height={h} rx="3" fill={x.v > 0 ? "url(#jrbar)" : "#2a292e"} style={x.v > 0 ? { filter: "drop-shadow(0 0 4px #4DA3FF88)" } : undefined} />
+              {x.v > 0 && <text x={cx} y={H - h - 3} textAnchor="middle" fontSize="7" fill="#CFC9BF">{x.v}</text>}
+              <text x={cx} y={H + 11} textAnchor="middle" fontSize="8" fill={today ? "#E8B33D" : "#8A8790"} fontWeight={today ? "700" : "400"}>{dn[(x.date.getDay() + 1) % 7]}</text>
+              <text x={cx} y={H + 20} textAnchor="middle" fontSize="6.5" fill="#55535a">{x.date.getDate()}</text>
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px] font-bold mt-2 mb-1">هفته‌ها (روزهای انجام‌شده از ۷)</div>
+      <div className="flex items-end gap-1" style={{ height: 44, direction: "ltr" }}>
+        {st.weeks.map((w) => (
+          <div key={w.w} className="flex-1 flex flex-col items-center justify-end gap-0.5" style={{ height: "100%" }}>
+            <div style={{ width: "100%", height: Math.max(3, (w.c / 7) * 30), borderRadius: 3, background: w.c === 7 ? "linear-gradient(180deg,#3DE08A,#1FA855)" : w.c > 0 ? "#2f8f5a" : "#2a292e" }} />
+            <span style={{ fontSize: 7, color: w.gold ? "#E8B33D" : "#55535a" }}>{w.gold ? "🏅" : jrFa(w.w)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, onSubscribe }) {
+  const isPaid = Boolean(isAdmin) || plan === "silver" || plan === "gold";
+  const [cfg, setCfg] = useState(JR_DEFAULT);
+  const [done, setDone] = useState({});
+  const [res, setRes] = useState({});
+  const [blk, setBlk] = useState({});
+  const [ready, setReady] = useState(false);
+  const [showSet, setShowSet] = useState(false);
+  const [sel, setSel] = useState(null);
+  const [play, setPlay] = useState(null);
+  const [reward, setReward] = useState(null);
+  const [lockModal, setLockModal] = useState(false);
+  const [exVideos, setExVideos] = useState({});
+  const stateRef = useRef({});
+  stateRef.current = { cfg, done, res, blk };
+  useEffect(() => { let alive = true; apiFetchExerciseVideos().then((m) => { if (alive && m) setExVideos(m); }); return () => { alive = false; }; }, []);
+  useEffect(() => {
+    let alive = true;
+    jrLoadState(accountId, authToken, isGuest).then((o) => {
+      if (!alive) return;
+      if (o.cfg) { setCfg({ ...JR_DEFAULT, ...o.cfg }); } else setShowSet(true);
+      setDone(o.done); setRes(o.res); setBlk(o.blk);
+      setReady(true);
+      if (o.synced) apiPutJourney(authToken, { cfg: o.cfg || undefined, done: o.done, res: o.res });
+    });
+    return () => { alive = false; };
+  }, []);
+  const save = (c, d, r, b) => {
+    AppStorage.set(jrStoreKey(accountId), JSON.stringify({ cfg: c, done: d, res: r, blk: b }));
+    if (authToken && !isGuest) apiPutJourney(authToken, { cfg: c, done: d, res: r });
+  };
+  const setOpt = (k, v) => { const c = { ...cfg, [k]: v }; setCfg(c); save(c, done, res, blk); };
+
+  const nodes = useMemo(() => jrNodes(), []);
+  const doneDays = Object.keys(done).filter((k) => k[0] === "d").length;
+  const firstUndone = (() => { for (let n = 1; n <= JR_TOTAL_DAYS; n++) if (!done["d" + n]) return n; return 0; })();
+  const goldCount = Object.keys(done).filter((k) => k[0] === "g").length;
+  const locked = (nd) => !isPaid && (nd.kind !== "day" || nd.n > JR_FREE_DAYS);
+  const openNode = (nd) => { if (locked(nd)) { setLockModal(true); return; } setSel(nd.kind === "gold" ? { kind: "gold", w: nd.w } : { kind: "day", n: nd.n }); };
+
+  const dayOf = (s) => (s.kind === "gold" ? jrGoldDay(s.w) : jrBuildDay(cfg, s.n));
+  const keyOf = (s) => (s.kind === "gold" ? "g" + s.w : "d" + s.n);
+
+  // هر بخش که تموم شد، خودکار تیک می‌خوره؛ وقتی همه‌ی بخش‌ها تموم شدن، خود روز سبز می‌شه
+  const completeBlock = (s, i) => {
+    const { cfg: c, done: d, res: r, blk: b } = stateRef.current;
+    const key = keyOf(s);
+    const day = dayOf(s);
+    const cur = new Set(b[key] || []);
+    cur.add(i);
+    const nb = { ...b, [key]: [...cur] };
+    let nd = d;
+    let rw = null;
+    if (cur.size >= day.blocks.length && !d[key]) {
+      nd = { ...d, [key]: { t: Date.now(), m: day.minutes || 0 } };
+      rw = s.kind === "gold" ? "gold" : s.n === JR_TOTAL_DAYS ? "trophy" : "day";
+    }
+    setBlk(nb); setDone(nd);
+    save(c, nd, r, nb);
+    if (rw && rw !== "day") setReward(rw);
+    if (rw) setSel(null);
+  };
+
+  const btn = (onClick, label, extra) => (<button onClick={onClick} style={{ ...JR_FONT, color: "#0B0B0D", background: "#DAD6CE", ...extra }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{label}</button>);
+
+  if (!ready) return <div className="flex-1 flex items-center justify-center" style={{ ...JR_FONT, color: "#8A8790" }}>...</div>;
+
+  if (play) {
+    const prog = play.block.program;
+    const exit = () => setPlay(null);
+    const onComplete = () => completeBlock(play.s, play.i);
+    if (prog.mode === "list") return <ListWorkout program={prog} onExit={exit} exVideos={exVideos} onComplete={onComplete} />;
+    return <ProgramPlayer title={prog.name} steps={pgBuildSteps(prog)} onExit={exit} exVideos={exVideos} onComplete={onComplete} />;
+  }
+
+  if (sel) {
+    const isGold = sel.kind === "gold";
+    const day = dayOf(sel);
+    const key = keyOf(sel);
+    const isDone = !!done[key];
+    const doneBlocks = new Set(isDone ? day.blocks.map((_, i) => i) : blk[key] || []);
+    const col = isGold ? "#E8B33D" : isDone ? "#3DE08A" : "#4DA3FF";
+    const r = res[key] || {};
+    const setR = (f, v) => { const nr = { ...res, [key]: { ...(res[key] || {}), [f]: v } }; setRes(nr); save(cfg, done, nr, blk); };
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pt-3 pb-8" dir={APP_DIR}>
+        <div className="mb-3">{btn(() => setSel(null), "› بازگشت")}</div>
+        <div style={{ ...JR_FONT, color: col }} className="text-xs font-black mb-1">{isGold ? "جلسه‌ی ویژه" : `روز ${jrFa(day.n)} • ${day.weekday}`}{isDone ? " • ✓ انجام شد" : ""}</div>
+        <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-lg font-black mb-1">{day.title}</div>
+        <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-xs leading-6 mb-3">{day.summary}{day.minutes ? ` • حدود ${jrFa(day.minutes)} دقیقه` : ""}</div>
+        <div style={{ ...JR_FONT, color: "#8FA3B8" }} className="text-[11px] leading-6 mb-3">هر بخش که تموم بشه خودکار تیک می‌خوره؛ با تموم شدن همه‌ی بخش‌ها این روز سبز می‌شه.</div>
+        <div className="flex flex-col gap-2.5 mb-4">
+          {day.blocks.map((b, i) => {
+            const names = b.kind === "list" ? b.program.items : [...new Set(b.program.blocks.flatMap((x) => x.ex))];
+            const ok = doneBlocks.has(i);
+            return (
+              <div key={i} className="rounded-xl p-3" style={{ background: ok ? "rgba(61,224,138,0.10)" : "#17161A", border: `1px solid ${ok ? "#3DE08A" : col + "66"}` }}>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="flex items-center gap-2">
+                    <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${ok ? "#3DE08A" : "#55535a"}`, background: ok ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 13 }}>{ok ? "✓" : ""}</span>
+                    <span style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-sm font-black">{`${jrFa(i + 1)}. ${b.title}`}</span>
+                  </span>
+                  <span style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px]">{`${jrFa(b.minutes)} دقیقه`}</span>
+                </div>
+                <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-[11px] leading-5 mb-2">{names.slice(0, 7).join(" • ")}{names.length > 7 ? " ..." : ""}</div>
+                <button onClick={() => setPlay({ block: b, i, s: sel })} className="w-full rounded-lg py-2 text-xs font-bold" style={{ ...JR_FONT, background: `${ok ? "#3DE08A" : col}22`, color: ok ? "#3DE08A" : col, border: `1px solid ${ok ? "#3DE08A" : col}` }}>{ok ? "تکرار این بخش ▶" : "شروع این بخش ▶"}</button>
+              </div>
+            );
+          })}
+        </div>
+        {isGold && (
+          <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #E8B33D66" }}>
+            <div style={{ ...JR_FONT, color: "#E8B33D" }} className="text-xs font-black mb-2">نتایج تست‌هات (اختیاری)</div>
+            <div className="grid grid-cols-3 gap-2">
+              {[["push", "شنا"], ["squat", "اسکات"], ["plank", "پلانک (ثانیه)"]].map(([f, l]) => (
+                <label key={f} className="flex flex-col gap-1">
+                  <span style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[10px]">{l}</span>
+                  <input type="number" inputMode="numeric" value={r[f] || ""} onChange={(e) => setR(f, e.target.value)} className="rounded-lg px-2 py-1.5 text-sm text-center" style={{ background: "#0B0B0D", color: "#F3EEE6", border: "1px solid #2a292e", width: "100%" }} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={{ ...JR_FONT, color: "#8FA3B8" }} className="text-[11px] leading-6 mb-4">{"💡 " + day.tip}</div>
+        <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px] leading-5">{PG_SAFETY}</div>
+      </div>
+    );
+  }
+
+  const circle = (nd, i) => {
+    const lk = locked(nd);
+    const lockBadge = lk ? (<span className="absolute" style={{ top: -3, left: -3, fontSize: 10 }}>🔒</span>) : null;
+    if (nd.kind === "trophy") {
+      const ok = !!done["d" + JR_TOTAL_DAYS];
+      return (
+        <button key={i} onClick={() => (lk ? setLockModal(true) : ok && setReward("trophy"))} className="relative rounded-full aspect-square flex items-center justify-center" style={{ background: ok ? "linear-gradient(135deg,#B8860B,#FFD76A)" : "#17161A", border: `2px solid ${ok ? "#FFD76A" : "#3a3940"}`, fontSize: 18, boxShadow: ok ? "0 0 14px #FFD76Aaa" : "none", opacity: ok ? 1 : 0.6 }}>🏆{lockBadge}</button>
+      );
+    }
+    if (nd.kind === "gold") {
+      const dn = !!done["g" + nd.w];
+      return (
+        <button key={i} onClick={() => openNode(nd)} className="relative rounded-full aspect-square flex flex-col items-center justify-center" style={{ background: dn ? "linear-gradient(135deg,#B8860B,#FFD76A)" : "linear-gradient(135deg,#3a2b05,#6b4e0b)", border: "2px solid #E8B33D", boxShadow: dn ? "0 0 14px #FFD76Acc" : "0 0 8px #E8B33D66" }}>
+          <img src={MEDAL_GOLD_SRC} alt="" draggable={false} style={{ width: "68%", height: "68%", objectFit: "contain", opacity: dn ? 1 : 0.8 }} />{lockBadge}
+        </button>
+      );
+    }
+    const n = nd.n; const dn = !!done["d" + n]; const cur = n === firstUndone;
+    const wd = JR_WEEKDAYS[(n - 1) % 7];
+    return (
+      <button key={i} onClick={() => openNode(nd)} className="rounded-full aspect-square flex flex-col items-center justify-center leading-none relative" style={{ background: dn ? "linear-gradient(135deg,#1FA855,#3DE08A)" : "#17161A", border: `2px solid ${dn ? "#3DE08A" : cur ? "#4DA3FF" : "#3a3940"}`, boxShadow: cur ? "0 0 12px #4DA3FFcc" : dn ? "0 0 8px #3DE08A66" : "none", color: dn ? "#06210f" : "#F3EEE6", opacity: lk ? 0.7 : 1 }}>
+        <span style={{ ...JR_FONT, fontSize: 6.5, fontWeight: 800, whiteSpace: "nowrap" }}>{wd}</span>
+        <span style={{ fontFamily: "Oswald, sans-serif", fontSize: 12, fontWeight: 700, marginTop: 1 }}>{dn ? "✓" : jrFa(n)}</span>{lockBadge}
+      </button>
+    );
+  };
+
+  const summary = JR_OPTS.level.find((x) => x[0] === cfg.level)[1] + " • " + JR_OPTS.track.find((x) => x[0] === cfg.track)[1] + " • " + JR_OPTS.freq.find((x) => x[0] === Number(cfg.freq))[1];
+  const pct = Math.round((doneDays / JR_TOTAL_DAYS) * 100);
+  const nextNode = firstUndone ? { kind: "day", n: firstUndone } : null;
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 pt-3 pb-8" dir={APP_DIR}>
+      <div className="mb-3">{btn(onBack, "› بازگشت")}</div>
+      <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-xl font-black mb-1">مسیر پیشرفت من</div>
+      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-xs leading-6 mb-3">۱۰۰ روز، هفته‌به‌هفته. با کامل کردن همه‌ی بخش‌های هر روز، دایره‌ی اون روز سبز می‌شه؛ هر ۷ روز یه جلسه‌ی طلایی با مدال منتظرته.{!isPaid ? ` ${jrFa(JR_FREE_DAYS)} روز اول رایگانه و ادامه‌ی مسیر با «اشتراک دوره اول» یا «دوم» باز می‌شه.` : ""}</div>
+
+      <div className="rounded-2xl p-3 mb-3" style={{ background: "#17161A", border: "1px solid #4DA3FF88", boxShadow: "0 0 14px #4DA3FF33" }}>
+        <button onClick={() => setShowSet((s) => !s)} className="w-full flex items-center justify-between gap-2 text-right">
+          <span className="flex flex-col gap-0.5">
+            <span style={{ ...JR_FONT, color: "#4DA3FF" }} className="text-sm font-black">⚙️ تنظیم برنامه‌ی تمرینی</span>
+            <span style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px]">{summary}</span>
+          </span>
+          <span style={{ color: "#4DA3FF", fontSize: 18 }}>{showSet ? "▲" : "▼"}</span>
+        </button>
+        {showSet && (
+          <div className="mt-3 flex flex-col gap-3">
+            {Object.keys(JR_OPTS).map((k) => (
+              <div key={k}>
+                <div style={{ ...JR_FONT, color: "#E8B33D" }} className="text-[11px] font-black mb-1.5">{JR_LABELS[k]}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {JR_OPTS[k].map(([v, l]) => {
+                    const on = String(cfg[k]) === String(v);
+                    return (<button key={String(v)} onClick={() => setOpt(k, v)} className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ ...JR_FONT, background: on ? "linear-gradient(135deg,#1c6fd1,#4DA3FF)" : "#0B0B0D", color: on ? "#fff" : "#CFC9BF", border: `1px solid ${on ? "#4DA3FF" : "#3a3940"}` }}>{l}</button>);
+                  })}
+                </div>
+              </div>
+            ))}
+            <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px] leading-5">با تغییر تنظیمات، روزهای انجام‌نشده بر اساس انتخاب جدیدت دوباره ساخته می‌شن و روزهای سبز شده می‌مونن.</div>
+            <button onClick={() => { setShowSet(false); save(cfg, done, res, blk); }} className="rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>ذخیره و بستن</button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, background: "#222127" }}><div style={{ width: pct + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>
+        <span dir="rtl" style={{ ...JR_FONT, color: "#3DE08A", whiteSpace: "nowrap" }} className="text-xs font-black">{`${jrFa(doneDays)} از ${jrFa(JR_TOTAL_DAYS)} روز · ${jrFa(goldCount)} مدال`}</span>
+      </div>
+      {nextNode && (
+        <button onClick={() => openNode(nextNode)} className="w-full rounded-xl py-3 text-sm font-bold mb-4" style={{ ...JR_FONT, background: "linear-gradient(135deg,#1c6fd1,#4DA3FF)", color: "#fff", boxShadow: "0 0 16px #4DA3FF66" }}>{`تمرین امروز: روز ${jrFa(firstUndone)} ▶`}</button>
+      )}
+
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(9, minmax(0, 1fr))" }}>
+        {nodes.map((nd, i) => circle(nd, i))}
+      </div>
+      <div className="flex flex-wrap gap-3 mt-4 justify-center" style={{ ...JR_FONT, color: "#8A8790", fontSize: 10 }}>
+        <span>🟢 انجام‌شده</span><span>🔵 روز فعلی</span><span>🟡 جلسه‌ی طلایی + مدال</span><span>🏆 جام ۱۰۰ روز</span><span>🔒 نیازمند اشتراک</span>
+      </div>
+
+      {lockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setLockModal(false)}>
+          <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 22px rgba(232,179,61,0.35)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 38 }}>🔒</div>
+            <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-base font-black mt-1 mb-2">ادامه‌ی مسیر ۱۰۰ روزه</div>
+            <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{`${jrFa(JR_FREE_DAYS)} روز اول رایگانه. برای باز شدن بقیه‌ی روزها و جلسه‌های طلایی، «اشتراک دوره اول» یا «اشتراک دوره دوم» بخر.`}</div>
+            <button onClick={() => { setLockModal(false); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ ...JR_FONT, background: "linear-gradient(135deg, #7A4300, #B86A00)", color: "#FFF6D8" }}>مشاهده اشتراک</button>
+            <button onClick={() => setLockModal(false)} className="w-full rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "#2a292e", color: "#F3EEE6" }}>بستن</button>
+          </div>
+        </div>
+      )}
+
+      {reward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.8)" }} onClick={() => setReward(null)}>
+          <div className="w-full rounded-2xl p-6 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 28px rgba(232,179,61,0.5)" }} onClick={(e) => e.stopPropagation()}>
+            {reward === "gold" ? <img src={MEDAL_GOLD_SRC} alt="" style={{ width: 120, height: 120, objectFit: "contain", margin: "0 auto", filter: "drop-shadow(0 0 14px #E8B33D)" }} /> : <div style={{ fontSize: 80 }}>🏆</div>}
+            <div style={{ ...JR_FONT, color: "#FFD76A" }} className="text-lg font-black mt-2 mb-1">{reward === "gold" ? "مدال طلا گرفتی!" : "قهرمان ۱۰۰ روزه شدی!"}</div>
+            <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{reward === "gold" ? "یک هفته‌ی دیگه رو با قدرت تموم کردی. ادامه بده!" : "۱۰۰ روز تمرین مداوم یعنی تو یه بوکسور واقعی‌ای. افتخار می‌کنیم!"}</div>
+            <button onClick={() => setReward(null)} className="w-full rounded-xl py-3 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#B8860B,#E8B33D)", color: "#2a1a00" }}>ادامه</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// باکس پیشرفت روزانه در صفحه‌ی حساب کاربری
+function JourneyProfileBox({ accountId, authToken, isGuest, onOpen }) {
+  const [done, setDone] = useState(null);
+  useEffect(() => { let alive = true; jrLoadState(accountId, authToken, isGuest).then((o) => { if (alive) setDone(o.done); }); return () => { alive = false; }; }, []);
+  if (!done) return null;
+  return <JourneyChartBox done={done} onOpen={onOpen} />;
+}
+
+function MenuJourneyIcon({ className, style }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      <circle cx="5" cy="18" r="2.2" /><circle cx="12" cy="10" r="2.2" /><circle cx="19" cy="4.5" r="2.2" /><path d="M6.8 16.6 10.3 11.6M13.8 8.6 17.4 6" />
+    </svg>
+  );
+}
+
 function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
@@ -6174,6 +6996,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     { color: "#5FD3E8", key: "info-coach", label: tr("کمک مربی"), icon: MenuCoachIcon },
     { color: "#D91E2B", key: "timer", label: tr("تایمر تمرین"), icon: MenuTimerIcon },
     { color: "#3DE08A", key: "programs", label: tr("برنامه‌های تخصصی"), icon: MenuPlanIcon },
+    { color: "#4DA3FF", key: "journey", label: tr("مسیر پیشرفت من"), icon: MenuJourneyIcon },
     { color: "#FFB547", key: "reminder", label: tr("یادآور روزانه"), icon: MenuBellIcon },
     { color: "#B08CFF", key: "info-faq", label: tr("سوالات متداول"), icon: MenuQuestionIcon },
     { color: "#FF7A45", key: "info-gear", label: tr("وسایل بوکس"), icon: MenuGloveIcon },
@@ -8987,28 +9810,28 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       <PlanCard tone="gold" className="mb-5">
         {isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}
         <div className="text-center mb-1">
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-base font-black">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-xl font-black">
             <span className="plan-float">⭐</span> {pl.silver.title || tr("اشتراک دوره اول")} <span className="plan-float">⭐</span></span>
         </div>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#5A3F06" }} className="text-base font-bold text-center mb-4">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-lg font-black text-center mb-4">
           {tr("({n} ماهه)", { n: pl.silver.months.toLocaleString(NUM_LOCALE) })}</p>
 
-        <div className="flex items-baseline justify-center gap-2 mb-2">
+        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0 mb-2">
           {pl.silver.originalPrice > pl.silver.price && (
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#9A7A3A", textDecoration: "line-through" }} className="text-lg">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#6B4A10", textDecoration: "line-through" }} className="text-base font-bold">
             {formatPrice(pl.silver.originalPrice)}
           </span>
           )}
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#3A2300", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-3xl font-black">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#3A2300", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-[34px] leading-tight font-black">
             {formatPrice(pl.silver.price)}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B4A10" }} className="text-sm">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B4A10" }} className="text-base font-black">
             {tr("تومان")}</span>
         </div>
         {pl.silver.badge !== "-" ? (
           <div className="flex justify-center mb-5">
             <span
               style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B6B38", background: "rgba(31,168,85,0.16)", border: "1px solid rgba(11,107,56,0.45)" }}
-              className="text-[11px] font-bold rounded-full px-3 py-1"
+              className="text-xs font-black rounded-full px-3.5 py-1.5"
             >
               {pl.silver.badge || tr("تخفیف آغازین")}</span>
           </div>
@@ -9017,8 +9840,8 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
         )}
 
         <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3208", fontWeight: 600 }}
-          className="text-xs leading-6 text-center mb-5"
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#2E1D00", fontWeight: 800 }}
+          className="text-sm leading-7 text-center mb-5"
         >
           {pl.silver.description || tr("دسترسی به ۳ فصل ({names})", { names: silverChapterNames })}
         </p>
@@ -9028,10 +9851,10 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
             className="rounded-xl py-3 text-center"
             style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(150,100,0,0.45)" }}
           >
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00" }} className="text-sm font-bold">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00" }} className="text-base font-black">
               {tr("اشتراک دوره اول تو فعاله ✓")}</span>
             {planExpiresAt && (
-              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#7A5A1A" }} className="text-xs mt-1">
+              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3208" }} className="text-sm font-bold mt-1">
                 {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}
               </p>
             )}
@@ -9046,7 +9869,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
               color: loadingPlan === "silver" ? "#5a7a63" : "#F3EEE6",
               boxShadow: loadingPlan === "silver" ? "none" : "0 0 18px rgba(47,211,122,0.5)",
             }}
-            className={`w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "silver" ? "" : "plan-cta"}`}
+            className={`w-full rounded-xl py-3.5 font-black text-base transition-colors ${loadingPlan === "silver" ? "" : "plan-cta"}`}
           >
             {loadingPlan === "silver" ? tr("در حال اتصال به درگاه…") : pl.silver.buttonText || tr("خرید اشتراک دوره اول")}
           </button>
@@ -9057,15 +9880,15 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       <PlanCard tone="gold" delay={1.4} className="mb-3">
         {isAdmin && <PlanEditButton onClick={() => setEditingPlan("gold")} />}
         <div className="text-center mb-1">
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-base font-black">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-xl font-black">
             <span className="plan-float">⭐</span> {pl.gold.title || tr("اشتراک دوره دوم")} <span className="plan-float">⭐</span></span>
         </div>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#5A3F06" }} className="text-base font-bold text-center mb-4">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-lg font-black text-center mb-4">
           {tr("({n} ماهه)", { n: pl.gold.months.toLocaleString(NUM_LOCALE) })}</p>
 
-        <div className="flex items-baseline justify-center gap-2 mb-2">
+        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0 mb-2">
           {pl.gold.originalPrice > pl.gold.price && (
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#8A6B2A", textDecoration: "line-through" }} className="text-lg">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#6B4A10", textDecoration: "line-through" }} className="text-base font-bold">
             {formatPrice(pl.gold.originalPrice)}
           </span>
           )}
@@ -9079,17 +9902,17 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
               color: "#7A4300",
               filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))",
             }}
-            className="text-3xl font-black"
+            className="text-[34px] leading-tight font-black"
           >
             {formatPrice(pl.gold.price)}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B4A0E" }} className="text-sm">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-base font-black">
             {tr("تومان")}</span>
         </div>
         {pl.gold.badge !== "-" ? (
           <div className="flex justify-center mb-5">
             <span
               style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B3A00", background: "rgba(255,255,255,0.55)", border: "1px solid rgba(122,67,0,0.45)" }}
-              className="text-[11px] font-bold rounded-full px-3 py-1"
+              className="text-xs font-black rounded-full px-3.5 py-1.5"
             >
               {pl.gold.badge || tr("تخفیف آغازین")}</span>
           </div>
@@ -9098,8 +9921,8 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
         )}
 
         <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3508", fontWeight: 600 }}
-          className="text-xs leading-6 text-center mb-5"
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#2E1D00", fontWeight: 800 }}
+          className="text-sm leading-7 text-center mb-5"
         >
           {pl.gold.description || tr("دسترسی به ۳ فصل ({names})", { names: goldChapterNames })}
         </p>
@@ -9109,10 +9932,10 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
             className="rounded-xl py-3 text-center"
             style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(122,67,0,0.45)" }}
           >
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#7A4300" }} className="text-sm font-bold">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-base font-black">
               {tr("اشتراک دوره دوم تو فعاله ✓")}</span>
             {planExpiresAt && (
-              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B5320" }} className="text-xs mt-1">
+              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3208" }} className="text-sm font-bold mt-1">
                 {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}
               </p>
             )}
@@ -9127,7 +9950,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
               color: "#FFFFFF",
               boxShadow: loadingPlan === "gold" ? "none" : "0 0 16px rgba(120,128,140,0.5)",
             }}
-            className={`w-full rounded-xl py-3.5 font-bold text-sm transition-colors ${loadingPlan === "gold" ? "" : "plan-cta"}`}
+            className={`w-full rounded-xl py-3.5 font-black text-base transition-colors ${loadingPlan === "gold" ? "" : "plan-cta"}`}
           >
             {loadingPlan === "gold" ? tr("در حال اتصال به درگاه…") : pl.gold.buttonText || tr("خرید اشتراک دوره دوم")}
           </button>
@@ -9140,7 +9963,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
               color: "#3F4650",
               cursor: "not-allowed",
             }}
-            className="w-full rounded-xl py-3.5 font-bold text-sm"
+            className="w-full rounded-xl py-3.5 font-black text-base"
           >
             {tr("به‌زودی فعال می‌شه")}</button>
         )}
@@ -9502,6 +10325,7 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
       return { type: "step", step: `curriculum-${activeLesson?.curriculumKey || "basic"}` };
     case "timer":
     case "programs":
+    case "journey":
     case "reminder":
     case "info-gear":
     case "info-tips":
@@ -10509,6 +11333,7 @@ function App() {
               onBack={() => { setStep("home"); setMenuOpen(true); }}
             />
           )}
+          {step === "journey" && <JourneyScreen isAdmin={Boolean(authUser?.isAdmin)} isGuest={Boolean(authUser?.isGuest)} plan={authUser?.plan || "none"} authToken={authToken} accountId={authUser?.identifier} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />}
           {step === "programs" && (
             <ProgramsScreen isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} plan={authUser?.plan || "none"} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />
           )}
@@ -10775,6 +11600,9 @@ function App() {
               plan={authUser?.plan || "none"}
               planExpiresAt={authUser?.planExpiresAt || null}
               accountContact={authUser?.identifier}
+              authToken={authToken}
+              isGuest={Boolean(authUser?.isGuest)}
+              onOpenJourney={() => setStep("journey")}
               badgeUnlocked={{
                 basic: CURRICULUM_BASIC.every((it) => effectiveCompleted[`basic-${it.n}`]),
                 advanced: CURRICULUM_ADVANCED.every((it) => effectiveCompleted[`advanced-${it.n}`]),
