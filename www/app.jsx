@@ -1607,20 +1607,33 @@ function NetworkBanner() {
   );
 }
 
-function PhoneMock({ children, bgImage }) {
+function PhoneMock({ children, bgImage, pencil }) {
   return (
-    <div className="relative w-full h-full overflow-hidden flex flex-col" style={{ background: bgImage ? "#26272B" : "#0B0B0D" }}>
+    <div className="relative w-full h-full overflow-hidden flex flex-col" style={{ background: pencil ? "#0F1011" : "#0B0B0D" }}>
       {/* تکسچر پس‌زمینه‌ی رینگ بوکس - پشت همه‌ی محتوا، روی باکس‌ها و عکس‌های فصل‌ها اصلاً تاثیری نداره */}
-      {bgImage && (
+      {bgImage && !pencil && (
         <div
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(120% 70% at 50% 0%, #3A3B40 0%, #2A2B2F 55%, #202125 100%)",
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.2,
+            zIndex: 0,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      {pencil && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(130% 60% at 50% 0%, #1E1F22 0%, #141517 50%, #0C0D0E 100%)",
             zIndex: 0,
             pointerEvents: "none",
           }}
         >
-          <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent 0 22px, rgba(255,255,255,0.035) 22px 23px)" }} />
+                    <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,0.45) 100%)" }} />
         </div>
       )}
       <div className="relative flex-1 flex flex-col min-h-0" style={{ zIndex: 1 }}>
@@ -1659,11 +1672,11 @@ async function checkServerReachable() {
 function OfflineGateScreen({ onRetry, checking }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center" dir={APP_DIR} style={{ background: "radial-gradient(circle at 50% 20%, #2a1013 0%, #0B0B0D 60%)" }}>
-      <div className="rounded-full flex items-center justify-center mb-6" style={{ width: 96, height: 96, background: "rgba(217,30,43,0.15)", border: "2px solid #D91E2B", boxShadow: "0 0 28px rgba(217,30,43,0.5)" }}>
+      <div className="rounded-full flex items-center justify-center mb-6" style={{ width: 96, height: 96, background: "#44292E", border: "2px solid #D91E2B", boxShadow: "0 0 28px rgba(217,30,43,0.5)" }}>
         <WifiOffIcon className="w-11 h-11" style={{ color: "#D91E2B" }} />
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xl font-black mb-2">{tr("اینترنت دستگاه را چک کنید")}</div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-sm leading-7 mb-8">
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7 mb-8">
         {tr("برای باز کردن اپ باید به اینترنت وصل باشی. اگه فیلترشکن روشنه، خاموشش کن و دوباره امتحان کن.")}
       </div>
       <button
@@ -1832,7 +1845,7 @@ function AuthPasswordField({ value, onChange, onEnter, placeholder, autoComplete
         dir="ltr"
         maxLength={64}
       />
-      <button type="button" onClick={() => setVisible((v) => !v)} aria-label={visible ? tr("پنهان کردن رمز") : tr("نمایش رمز")} style={{ color: "#8A8790" }} className="mr-2">
+      <button type="button" onClick={() => setVisible((v) => !v)} aria-label={visible ? tr("پنهان کردن رمز") : tr("نمایش رمز")} style={{ color: "#F3EEE6" }} className="mr-2">
         <EyeIcon className="w-5 h-5" off={visible} />
       </button>
     </div>
@@ -2031,7 +2044,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
       }
     });
 
-  const label = { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" };
+  const label = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
   const primaryBtn = (enabled) => ({
     fontFamily: "Vazirmatn, sans-serif",
     background: enabled ? "#D91E2B" : "#3a2226",
@@ -2064,8 +2077,8 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
   ) : null;
 
   const conflictBox = (onForce) => (
-    <div className="rounded-xl p-4 mb-4" style={{ background: "rgba(217,30,43,0.1)", border: "1px solid rgba(217,30,43,0.35)" }}>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }} className="text-xs leading-6 mb-3 text-center">
+    <div className="rounded-xl p-4 mb-4" style={{ background: "#3C2A2F", border: "1px solid rgba(217,30,43,0.35)" }}>
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6 mb-3 text-center">
         {tr("این حساب همین الان روی یه گوشی دیگه بازه. هر حساب فقط می‌تونه روی یه دستگاه فعال باشه.")}</p>
       <button
         onClick={onForce}
@@ -2092,7 +2105,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
       )}
       {DEMO_MODE && (
         <span
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)", border: "1px solid rgba(243,238,230,0.4)", fontSize: "9px" }}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#424245", border: "1px solid rgba(243,238,230,0.4)", fontSize: "9px" }}
           className="rounded-full px-2 py-1 mr-auto"
         >
           {tr("حالت آزمایشی")}</span>
@@ -2235,7 +2248,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         <button onClick={() => handleVerifyCode()} disabled={!filled || loading} style={primaryBtn(filled && !loading)} className="w-full rounded-xl py-4 font-bold text-base transition-colors">
           {loading ? tr("در حال بررسی…") : tr("تایید")}
         </button>
-        <button onClick={() => { setStage("phone"); clearError(); }} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs underline mt-4">
+        <button onClick={() => { setStage("phone"); clearError(); }} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs underline mt-4">
           {tr("ویرایش شماره")}</button>
       </div>
     );
@@ -2320,7 +2333,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
             style={{
               fontFamily: "Vazirmatn, sans-serif",
               color: "#F3EEE6",
-              background: "rgba(243,238,230,0.12)",
+              background: "#424245",
               border: "1px solid rgba(243,238,230,0.4)",
               fontSize: "9px",
             }}
@@ -2335,7 +2348,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
         className="text-3xl font-black mb-2"
       >
         {tr("وارد رینگ شو.")}</h1>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm mb-6 leading-7">
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm mb-6 leading-7">
         {tr("با ایمیل یا شماره موبایلت ثبت‌نام کن و برنامه تمرینی حرفه‌ای بوکس رو شروع کن.")}</p>
 
       <div
@@ -2365,7 +2378,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
       </div>
 
       <label
-        style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }}
+        style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
         className="text-xs mb-2 block"
       >
         {method === "email" ? tr("ایمیل") : tr("شماره موبایل")}
@@ -2424,7 +2437,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
       </button>
 
       {onUsePassword && (
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm text-center mb-3">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm text-center mb-3">
           {tr("با شماره موبایل و رمز عبور وارد می‌شی؟")}{" "}
           <button onClick={onUsePassword} style={{ color: "#F3EEE6" }} className="font-bold">
             {tr("ورود با رمز عبور")}</button>
@@ -2517,14 +2530,14 @@ function OtpScreen({ contact, method, onVerify, code, setCode }) {
 
       <div
         className="w-24 h-24 rounded-full flex items-center justify-center mb-6 overflow-hidden mx-auto"
-        style={{ background: "rgba(217,30,43,0.12)", border: "1px solid rgba(217,30,43,0.4)" }}
+        style={{ background: "#3F292F", border: "1px solid rgba(217,30,43,0.4)" }}
       >
         <img src={SPLASH_LOGO_SRC} alt="NASERI" className="w-20 h-20 object-contain" />
       </div>
 
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-2xl font-black mb-2">
         {tr("کد تایید رو وارد کن")}</h1>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm mb-8 leading-7">
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm mb-8 leading-7">
         {trNode(method === "email" ? tr("کد ۴ رقمی به ایمیل {contact} ارسال شد.") : tr("کد ۴ رقمی به شماره {contact} پیامک شد."), {
           contact: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{contact || "example@email.com"}</span>,
         })}
@@ -2560,9 +2573,9 @@ function OtpScreen({ contact, method, onVerify, code, setCode }) {
       {deviceConflict ? (
         <div
           className="rounded-xl p-4 mb-6"
-          style={{ background: "rgba(217,30,43,0.1)", border: "1px solid rgba(217,30,43,0.35)" }}
+          style={{ background: "#3C2A2F", border: "1px solid rgba(217,30,43,0.35)" }}
         >
-          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }} className="text-xs leading-6 mb-3 text-center">
+          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6 mb-3 text-center">
             {tr("این حساب همین الان روی یه گوشی دیگه بازه. هر حساب فقط می‌تونه روی یه دستگاه فعال باشه.")}</p>
           <button
             onClick={() => handleVerify(true)}
@@ -2647,7 +2660,7 @@ const PLAN_DISPLAY = {
 
 // جعبه‌ی نورانی (بک‌لایت): حاشیه‌ی رنگی + درخشش بیرونی و داخلی؛ رنگ هر جعبه جدا انتخاب می‌شه
 const glowBox = (c, strong) => ({
-  background: `linear-gradient(160deg, ${c}22 0%, #17161A 55%, #121115 100%)`,
+  background: `linear-gradient(160deg, color-mix(in srgb, ${c} 13%, #17161A) 0%, #17161A 55%, #121115 100%)`,
   border: `1px solid ${c}`,
   boxShadow: `0 0 ${strong ? 24 : 16}px ${c}66, inset 0 1px 0 rgba(255,255,255,0.07), inset 0 0 20px ${c}18`,
 });
@@ -2739,7 +2752,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
     <div className="flex-1 overflow-y-auto px-5 pt-2 pb-6" dir={APP_DIR}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm">
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm">
           {tr("پروفایل حرفه‌ای")}</span>
         <div className="flex items-center gap-1.5">
           <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs font-semibold tracking-wider">
@@ -2818,7 +2831,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
           </button>
         )}
 
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
           {tr("مربی: یزدان ناصری گهر · باشگاه آنلاین")}</p>
       </div>
 
@@ -2855,7 +2868,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
                 </span>
               </span>
             ) : (
-              <span style={{ color: "#8A8790" }}>{tr("اشتراک فعال نداری")}</span>
+              <span style={{ color: "#F3EEE6" }}>{tr("اشتراک فعال نداری")}</span>
             ),
           },
         ].map((row, i) => (
@@ -2865,7 +2878,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
             className="flex items-center justify-between px-4 py-3.5"
             style={{ borderTop: i === 0 ? "none" : "1px solid rgba(77,163,255,0.18)", fontFamily: "Vazirmatn, sans-serif", fontSize: "14px" }}
           >
-            <span style={{ color: "#B7B3AB", fontWeight: 700 }}>{row.label}</span>
+            <span style={{ color: "#F3EEE6", fontWeight: 700 }}>{row.label}</span>
             {row.value}
           </div>
         ))}
@@ -2881,10 +2894,10 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
             className="rounded-xl py-4 px-2 text-center"
             style={glowBox(c)}
           >
-            <div style={{ fontFamily: "Oswald, sans-serif", color: c, textShadow: `0 0 10px ${c}88` }} className="text-2xl font-bold mb-1">
+            <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-2xl font-bold mb-1">
               {s.value}
             </div>
-            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF", fontSize: "11px", fontWeight: 700 }} className="leading-4">
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: "11px", fontWeight: 700 }} className="leading-4">
               {s.label}
             </div>
           </div>
@@ -2902,7 +2915,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
             {tr("سطح: {level}", { level: boxerLevel })}
           </span>
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#8A8790" }} className="text-xs">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">
             {progressPercent}%
           </span>
         </div>
@@ -2977,7 +2990,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
             <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
               {nextSessionTitle}
             </p>
-            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">
+            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mt-1">
               {reminderDayWord} · {reminderTime}
             </p>
           </div>
@@ -3123,7 +3136,7 @@ function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
             >
               {tr("به‌زودی")}</span>
             <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
               className="text-xs"
             >
               {tr("در حال آماده‌سازی محتوا")}</span>
@@ -3145,7 +3158,7 @@ function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
             <div
               className="w-11 h-11 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(217,30,43,0.12)", border: "1px solid rgba(217,30,43,0.4)" }}
+              style={{ background: "#3F292F", border: "1px solid rgba(217,30,43,0.4)" }}
             >
               <GloveIcon className="w-5 h-5" style={{ color: "#D91E2B" }} />
             </div>
@@ -3160,7 +3173,7 @@ function ComingSoonBox({ title, subtitle }) {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-2 px-0.5">
-        <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-base font-black">
+        <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">
           {title}
         </h3>
         <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a", fontSize: "11px" }}>
@@ -3499,7 +3512,7 @@ function TimerStepper({ label, value, onChange, min, max, step, format }) {
   const inc = () => onChange(Math.min(max, value + step));
   return (
     <div className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: "#17161A", border: "1px solid #2c2a31" }}>
-      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm font-bold">{label}</span>
+      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">{label}</span>
       <div className="flex items-center gap-3" dir="ltr">
         <button onClick={dec} style={btn} aria-label="-">−</button>
         <span style={{ fontFamily: '"Bebas Neue", Oswald, sans-serif', color: "#F3EEE6", fontSize: 26, minWidth: 64, textAlign: "center", letterSpacing: 1 }}>
@@ -3518,7 +3531,7 @@ function TimerToggle({ label, on, onChange }) {
       className="flex items-center justify-between rounded-xl px-3 py-2.5 w-full"
       style={{ background: "#17161A", border: "1px solid #2c2a31" }}
     >
-      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm font-bold">{label}</span>
+      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">{label}</span>
       <span dir="ltr" style={{ width: 46, height: 26, borderRadius: 13, background: on ? "#D91E2B" : "#3a3840", position: "relative", flexShrink: 0, transition: "background .2s" }}>
         <span style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: 10, background: "#F3EEE6", transition: "left .2s" }} />
       </span>
@@ -3752,7 +3765,7 @@ function TimerScreen({ onBack }) {
 
           <div className="rounded-2xl py-4 flex flex-col items-center" style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 18px rgba(77,163,255,0.25)" }}>
             <span style={{ fontFamily: '"Bebas Neue", Oswald, sans-serif', color: "#F3EEE6", fontSize: 56, letterSpacing: 2, lineHeight: 1 }} dir="ltr">{fmtClock(cfg.roundSec * 1000)}</span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f" }} className="text-xs mt-1">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mt-1">
               {tr("{n} راند", { n: cfg.rounds })} · {tr("استراحت")} {fmtClock(cfg.restSec * 1000)}
             </span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mt-1">
@@ -3790,7 +3803,7 @@ function TimerScreen({ onBack }) {
               {mode === "done" ? tr("تمرین تمام شد!") : loc ? phaseName(loc.seg) : ""}
             </span>
             {mode !== "done" && loc && (
-              <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm font-bold">
+              <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
                 {loc.seg.type === "prep" ? tr("آماده باش…") : tr("راند {n} از {total}", { n: loc.seg.type === "rest" ? loc.seg.idx + 1 : loc.seg.idx, total: cfg.rounds })}
               </span>
             )}
@@ -3836,17 +3849,17 @@ function TimerScreen({ onBack }) {
               })}
             </div>
             {mode === "done" ? (
-              <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm font-bold text-center">
+              <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold text-center">
                 {tr("{n} راند", { n: cfg.rounds })} · {fmtClock(tl.total)}
               </span>
             ) : (
               <>
                 {nextSeg && (
-                  <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f" }} className="text-xs font-bold">
+                  <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold">
                     {tr("بعدی: {name}", { name: phaseName(nextSeg) })}
                   </span>
                 )}
-                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f" }} className="text-xs">
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
                   {tr("زمان باقی‌مانده: {time}", { time: fmtClock(totalLeft) })}
                 </span>
               </>
@@ -3963,7 +3976,7 @@ function UpdateModal({ update, onLater }) {
         className="w-full rounded-2xl p-5 flex flex-col items-center text-center"
         style={{ maxWidth: 340, background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 28px rgba(77,163,255,0.4)" }}
       >
-        <div style={{ width: 64, height: 64, borderRadius: 32, background: "rgba(217,30,43,0.15)", border: "1px solid #D91E2B", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 18px rgba(217,30,43,0.45)" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 32, background: "#44292E", border: "1px solid #D91E2B", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 18px rgba(217,30,43,0.45)" }}>
           <UpdateIcon className="w-8 h-8" style={{ color: "#D91E2B" }} />
         </div>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-xs font-black mt-3">
@@ -3972,7 +3985,7 @@ function UpdateModal({ update, onLater }) {
         <h2 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mt-1">
           {update.title || tr("نسخه‌ی جدید آکادمی Naseri منتشر شد")}
         </h2>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF", lineHeight: 1.9 }} className="text-sm mt-3">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.9 }} className="text-sm mt-3">
           {update.message || tr("برای استفاده از جدیدترین امکانات، تمرین‌های کامل‌تر و عملکرد بهتر، اپ را به آخرین نسخه بروزرسانی کنید. بروزرسانی فقط چند ثانیه طول می‌کشد و پیشرفت و اشتراک شما حفظ می‌شود.")}
         </p>
         <button
@@ -3986,7 +3999,7 @@ function UpdateModal({ update, onLater }) {
           <button
             onClick={onLater}
             className="w-full py-2 mt-2 text-sm"
-            style={{ color: "#9a968f", fontFamily: "Vazirmatn, sans-serif", fontWeight: 700 }}
+            style={{ color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif", fontWeight: 700 }}
           >
             {tr("بعداً")}
           </button>
@@ -4002,7 +4015,7 @@ function AdminUpdateScreen({ update, build, authToken, onSave, onCheck, onBack }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const field = { background: "#17161A", border: "1px solid #3a3840", color: "#F3EEE6", borderRadius: 12, fontFamily: "Vazirmatn, sans-serif", padding: "10px 12px", width: "100%" };
-  const lab = { fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" };
+  const lab = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
   const save = async () => {
     setBusy(true);
     setMsg("");
@@ -4020,14 +4033,14 @@ function AdminUpdateScreen({ update, build, authToken, onSave, onCheck, onBack }
         {tr("› بازگشت")}
       </button>
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-1">{tr("بروزرسانی اپ")}</h1>
-      <p style={{ ...lab, color: "#9a968f" }} className="text-xs mb-4">
+      <p style={{ ...lab, color: "#F3EEE6" }} className="text-xs mb-4">
         {tr("نسخه‌ی نصب‌شده روی این گوشی: {n}", { n: build || "—" })}
       </p>
       <div className="rounded-xl p-3 mb-3" style={{ background: "#17161A", border: "1px solid #2c2a31" }}>
         <p style={lab} className="text-sm font-bold">
           {update.autoOk ? tr("آخرین نسخه‌ی منتشرشده در بازار (خودکار): {n}", { n: update.autoLatest }) : tr("تشخیص خودکار از بازار هنوز نتیجه‌ای نداشته")}
         </p>
-        <p style={{ ...lab, color: "#9a968f" }} className="text-xs mt-1">{tr("هر ۶ ساعت خودکار بررسی می‌شود؛ هر نسخه‌ی جدید به‌صورت خودکار برای کاربران پیام می‌دهد.")}</p>
+        <p style={{ ...lab, color: "#F3EEE6" }} className="text-xs mt-1">{tr("هر ۶ ساعت خودکار بررسی می‌شود؛ هر نسخه‌ی جدید به‌صورت خودکار برای کاربران پیام می‌دهد.")}</p>
         <button
           disabled={checking}
           onClick={async () => { setChecking(true); try { await onCheck(); } catch {} setChecking(false); }}
@@ -4136,7 +4149,7 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
         <BellIcon className="w-5 h-5" style={{ color: "#F3EEE6" }} />
         {tr("یادآور روزانه")}
       </h1>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f", lineHeight: 1.9 }} className="text-xs mb-4">
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.9 }} className="text-xs mb-4">
         {tr("هر روز سر ساعت انتخابی، جلسه‌ی بعدی تمرینت یادآوری می‌شه.")}
       </p>
 
@@ -4168,7 +4181,7 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
       <div className="rounded-xl px-4 py-3 mb-4" style={glowBox("#D91E2B")}>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mb-1">{tr("متن یادآور")}</p>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">{lessonTitle}</p>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{day} · {time}</p>
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mt-1">{day} · {time}</p>
       </div>
 
       <button onClick={save} disabled={busy || !time} className="w-full py-3.5 text-base mb-2" style={{ background: "#D91E2B", color: "#fff", borderRadius: 14, fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, boxShadow: "0 0 20px rgba(217,30,43,0.5)", opacity: busy ? 0.6 : 1 }}>
@@ -4582,7 +4595,7 @@ function CoachHub({ chapterNames, counts, legacyCount, onOpen, onBack }) {
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-1">
         {tr("مربی کمکی")}
       </h1>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs leading-6 mb-4">
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6 mb-4">
         {tr("فصلِ مربوط به مشکلت رو انتخاب کن")}
       </p>
       <div className="flex flex-col gap-3">
@@ -4595,16 +4608,16 @@ function CoachHub({ chapterNames, counts, legacyCount, onOpen, onBack }) {
             style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 12px rgba(77,163,255,0.45)", textAlign: "start" }}
           >
             <div className="flex items-center gap-3">
-              <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: "34px", height: "34px", background: "rgba(217,30,43,0.15)" }}>
+              <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: "34px", height: "34px", background: "#44292E" }}>
                 <span style={{ fontFamily: "Oswald, sans-serif", color: "#D91E2B" }} className="text-sm font-bold">{b.n.toLocaleString(NUM_LOCALE)}</span>
               </div>
               <div className="flex-1">
                 <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black block">{b.title}</span>
-                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs block mt-1">
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs block mt-1">
                   {tr("{n} مورد", { n: b.count.toLocaleString(NUM_LOCALE) })}
                 </span>
               </div>
-              <span style={{ color: "#8A8790" }} className="text-sm shrink-0">{APP_DIR === "rtl" ? "‹" : "›"}</span>
+              <span style={{ color: "#F3EEE6" }} className="text-sm shrink-0">{APP_DIR === "rtl" ? "‹" : "›"}</span>
             </div>
           </button>
         ))}
@@ -4822,7 +4835,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
     { className: "flex-1 overflow-y-auto px-5 pt-3 pb-10", dir: APP_DIR, "data-testid": "content-editor" },
     topBar,
     h("h1", { style: { ...CONTENT_FONT, color: "#F3EEE6" }, className: "text-lg font-black mb-1" }, tr("ویرایش: ") + title),
-    h("p", { style: { ...CONTENT_FONT, color: "#8A8790" }, className: "text-xs mb-4 leading-6" }, tr("تغییرها بعد از «ذخیره» برای همه‌ی کاربرها اعمال می‌شه.")),
+    h("p", { style: { ...CONTENT_FONT, color: "#F3EEE6" }, className: "text-xs mb-4 leading-6" }, tr("تغییرها بعد از «ذخیره» برای همه‌ی کاربرها اعمال می‌شه.")),
     error && h("p", { style: { ...CONTENT_FONT, color: "#ff6b6b" }, className: "text-xs mb-3" }, error),
     h("div", { className: "flex flex-col gap-3" }, cards),
     !isPara &&
@@ -4833,7 +4846,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
           disabled: busy,
           "data-testid": "content-add",
           className: "w-full rounded-xl py-3 mt-3 text-sm font-bold",
-          style: { ...CONTENT_FONT, color: "#4DA3FF", background: "rgba(77,163,255,0.08)", border: "1px dashed #4DA3FF" },
+          style: { ...CONTENT_FONT, color: "#4DA3FF", background: "#2D3540", border: "1px dashed #4DA3FF" },
         },
         tr("+ افزودن باکس جدید")
       ),
@@ -4919,7 +4932,7 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
               <div className="flex items-center gap-3">
                 <div
                   className="rounded-full flex items-center justify-center shrink-0"
-                  style={{ width: "26px", height: "26px", background: "rgba(217,30,43,0.15)" }}
+                  style={{ width: "26px", height: "26px", background: "#44292E" }}
                 >
                   <span style={{ fontFamily: "Oswald, sans-serif", color: "#D91E2B" }} className="text-xs font-bold">
                     {i + 1}
@@ -4928,14 +4941,14 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
                 <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold flex-1">
                   {item.q}
                 </span>
-                <span style={{ color: "#8A8790" }} className="text-xs shrink-0">
+                <span style={{ color: "#F3EEE6" }} className="text-xs shrink-0">
                   {isOpen ? "▲" : "▼"}
                 </span>
               </div>
 
               {isOpen && (
                 <p
-                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }}
+                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
                   className="text-xs leading-7 mt-3 pt-3"
                 >
                   <span style={{ display: "block", borderTop: "1px solid rgba(77,163,255,0.25)", marginBottom: "10px" }} />
@@ -5157,7 +5170,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
           {title}
         </h1>
         {subtitle && (
-          <p style={{ fontFamily: "Oswald, sans-serif", color: "#8A8790", direction: "ltr" }} className="text-xs mt-1">
+          <p style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }} className="text-xs mt-1">
             {subtitle}
           </p>
         )}
@@ -5247,7 +5260,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
         <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
           <button
             onClick={handleCancelRecording}
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", background: "#17161A", border: "1px solid #2a292e" }}
+            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
             className="rounded-xl px-3 py-2.5 text-sm shrink-0"
           >
             {tr("لغو")}</button>
@@ -5328,7 +5341,7 @@ function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
         {tr("پشتیبانی")}</h1>
 
       {loading && (
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm text-center mt-10">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm text-center mt-10">
           {tr("در حال بارگذاری…")}</p>
       )}
       {error && (
@@ -5363,7 +5376,7 @@ function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
                 />
               )}
             </div>
-            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs truncate">
+            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs truncate">
               {t.lastSender === "admin" ? tr("شما: ") : ""}
               {t.lastMessage}
             </p>
@@ -5414,7 +5427,7 @@ function AdminUsersScreen({ authToken, onBack }) {
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black">
           {tr("لیست کاربران")}</h1>
         <span
-          style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)" }}
+          style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", background: "#424245" }}
           className="text-xs font-bold rounded-full px-3 py-1"
         >
           {tr("{n} نفر", { n: total.toLocaleString("en-US") })}
@@ -5422,7 +5435,7 @@ function AdminUsersScreen({ authToken, onBack }) {
       </div>
 
       {loading && (
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm text-center mt-10">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm text-center mt-10">
           {tr("در حال بارگذاری…")}</p>
       )}
       {error && (
@@ -5452,14 +5465,14 @@ function AdminUsersScreen({ authToken, onBack }) {
                 <div className="flex items-center gap-1.5 shrink-0">
                   {u.isAdmin && (
                     <span
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#424245" }}
                       className="text-[10px] font-bold rounded-full px-2 py-0.5"
                     >
                       {tr("ادمین")}</span>
                   )}
                   {isActivePaid && (
                     <span
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#1C6FD1", background: "rgba(28,111,209,0.12)" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#1C6FD1", background: "#283342" }}
                       className="text-[10px] font-bold rounded-full px-2 py-0.5 flex items-center gap-1"
                     >
                       <span style={{ background: "#1C6FD1" }} className="w-1.5 h-1.5 rounded-full" />
@@ -5468,7 +5481,7 @@ function AdminUsersScreen({ authToken, onBack }) {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs">
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
                   {planLabel[u.plan] || u.plan}
                   {u.planExpiresAt ? tr(" · تا {date}", { date: formatExpiryDate(u.planExpiresAt) }) : ""}
                 </span>
@@ -5538,7 +5551,7 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
 
       {paragraph && (
         <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE", whiteSpace: "pre-line" }}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", whiteSpace: "pre-line" }}
           className="text-sm leading-8"
         >
           {paragraph}
@@ -5571,14 +5584,14 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
                 ) : (
                   <div
                     className="rounded-full flex items-center justify-center shrink-0"
-                    style={{ width: "26px", height: "26px", background: "rgba(217,30,43,0.15)" }}
+                    style={{ width: "26px", height: "26px", background: "#44292E" }}
                   >
                     <span style={{ fontFamily: "Oswald, sans-serif", color: "#D91E2B" }} className="text-xs font-bold">
                       {i + 1}
                     </span>
                   </div>
                 )}
-                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }} className="text-sm">
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm">
                   {item.text}
                 </span>
               </Wrapper>
@@ -5608,10 +5621,10 @@ function AdminStatsRows({ stats }) {
         <div key={r.key} data-testid={`admin-stat-${r.key}`} className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0">
             <span className="rounded-full shrink-0" style={{ width: "8px", height: "8px", background: r.color }} />
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }} className="text-xs font-bold whitespace-nowrap">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold whitespace-nowrap">
               {r.label}
             </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[10px] truncate">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[10px] truncate">
               {r.hint}
             </span>
           </span>
@@ -5717,7 +5730,7 @@ function ExerciseVideoAdmin({ names, exVideos, authToken, onChanged }) {
   return (
     <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px dashed #F3EEE6" }}>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">ویدیوی حرکت‌ها (فقط ادمین)</div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[10px] leading-4 mb-2">ویدیو کوتاه (۵ تا ۱۰ ثانیه) بذار؛ توی اپ بی‌صدا و تکراری پخش می‌شه. ویدیوی هر حرکت توی همه‌ی برنامه‌ها مشترکه.</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[10px] leading-4 mb-2">ویدیو کوتاه (۵ تا ۱۰ ثانیه) بذار؛ توی اپ بی‌صدا و تکراری پخش می‌شه. ویدیوی هر حرکت توی همه‌ی برنامه‌ها مشترکه.</div>
       {uniq.map(({ k, label }) => (
         <div key={k} className="flex items-center justify-between gap-2 py-1.5" style={{ borderTop: "1px solid #2a292e" }}>
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs flex-1">{label}</span>
@@ -6007,7 +6020,7 @@ function ProgramPlayer({ title, steps, onExit, extra, exVideos, onComplete }) {
       style={{ background: mode !== "idle" ? `radial-gradient(ellipse at 50% 28%, ${col}33 0%, rgba(11,11,13,0) 65%)` : undefined, transition: "background .4s" }}>
       <div className="flex items-center justify-between mb-3">
         <button onClick={onExit} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{"› بازگشت"}</button>
-        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-center text-base font-black mb-2">{title}</div>
 
@@ -6033,12 +6046,12 @@ function ProgramPlayer({ title, steps, onExit, extra, exVideos, onComplete }) {
           {mode === "idle" ? "برای شروع بزن" : mode === "done" ? "آفرین! یه کم کشش بده." : s.type === "rest" ? (s.next ? `بعدی: ${s.next}` : "نفس بگیر") : s.name}
         </div>
         {mode !== "idle" && mode !== "done" && s.type === "work" && s.rounds > 1 && (
-          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`دور ${s.round} از ${s.rounds}`}</div>
+          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">{`دور ${s.round} از ${s.rounds}`}</div>
         )}
         {mode !== "idle" && mode !== "done" && nextWork && s.type === "work" && (
-          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{`بعدی: ${nextWork}`}</div>
+          <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mt-1">{`بعدی: ${nextWork}`}</div>
         )}
-        {workSteps.length > 1 && <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{`${Math.min(workDone + (s && s.type === "work" ? 1 : 0), workSteps.length)} / ${workSteps.length} حرکت`}</div>}
+        {workSteps.length > 1 && <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mt-1">{`${Math.min(workDone + (s && s.type === "work" ? 1 : 0), workSteps.length)} / ${workSteps.length} حرکت`}</div>}
       </div>
 
       <div className="flex items-center justify-center gap-3 mt-3">
@@ -6071,7 +6084,7 @@ function ProgramMoveList({ steps }) {
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">{`حرکت‌ها (${works.length})`}</div>
       <div className="flex flex-col gap-1">
         {works.map((w, i) => (
-          <div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${w.name} — ${w.dur >= 60 ? Math.round(w.dur / 60) + " دقیقه" : w.dur + " ثانیه"}`}</div>
+          <div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6">{`${i + 1}. ${w.name} — ${w.dur >= 60 ? Math.round(w.dur / 60) + " دقیقه" : w.dur + " ثانیه"}`}</div>
         ))}
       </div>
     </div>
@@ -6088,7 +6101,7 @@ function AmrapPlayer({ program, onExit, exVideos }) {
       {program.items.map((it, i) => (<div key={i}><ExerciseClip name={it} exVideos={exVideos} height={120} /><div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7">{it}</div></div>))}
       <div className="flex items-center justify-center gap-4 mt-3">
         <button onClick={() => setRounds((r) => Math.max(0, r - 1))} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#2a292e", color: "#F3EEE6" }}>−</button>
-        <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" }}>{" دور"}</span></div>
+        <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#F3EEE6" }}>{" دور"}</span></div>
         <button onClick={() => setRounds((r) => r + 1)} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#4DA3FF", color: "#0B0B0D" }}>+</button>
       </div>
     </div>
@@ -6121,7 +6134,7 @@ function ListWorkout({ program, onExit, exVideos, onComplete }) {
     <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
       <button onClick={onExit} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block mb-3">{"› بازگشت"}</button>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black mb-1">{program.name}</div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-3">{program.desc}</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6 mb-3">{program.desc}</div>
       <div className="flex flex-col gap-2 mb-4">
         {program.items.map((it, i) => (
           <div key={i}>
@@ -6143,7 +6156,7 @@ function ListWorkout({ program, onExit, exVideos, onComplete }) {
           <button onClick={startRest} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}>شروع استراحت</button>
         )}
       </div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs text-center mt-3">{`${count} از ${program.items.length} حرکت انجام شد`}</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs text-center mt-3">{`${count} از ${program.items.length} حرکت انجام شد`}</div>
     </div>
   );
 }
@@ -6181,16 +6194,16 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initial
         {hdr(() => setProg(null), cat.title)}
         <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-1">{prog.name}</div>
         <div className="flex items-center gap-2 mb-2">
-          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `${PG_LEVEL_COLOR[prog.level]}22`, color: PG_LEVEL_COLOR[prog.level], border: `1px solid ${PG_LEVEL_COLOR[prog.level]}` }}>{prog.level}</span>
-          {steps && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>}
-          {prog.mode === "amrap" && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs">{`${Math.round(prog.total / 60)} دقیقه`}</span>}
+          <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `color-mix(in srgb, ${PG_LEVEL_COLOR[prog.level]} 13%, #17161A)`, color: PG_LEVEL_COLOR[prog.level], border: `1px solid ${PG_LEVEL_COLOR[prog.level]}` }}>{prog.level}</span>
+          {steps && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">{`حدود ${pgMin(steps)} دقیقه`}</span>}
+          {prog.mode === "amrap" && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">{`${Math.round(prog.total / 60)} دقیقه`}</span>}
         </div>
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{prog.desc}</div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7 mb-4">{prog.desc}</div>
         {steps && <ProgramMoveList steps={steps} />}
         {prog.mode !== "interval" && (
           <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">{prog.mode === "amrap" ? "حرکت‌های هر دور" : "حرکت‌ها"}</div>
-            {prog.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${it}`}</div>))}
+            {prog.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6">{`${i + 1}. ${it}`}</div>))}
           </div>
         )}
         {isAdmin && (
@@ -6199,7 +6212,7 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initial
             exVideos={exVideos} authToken={authToken} onChanged={onVideoChanged}
           />
         )}
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mb-4">{PG_SAFETY}</div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] leading-5 mb-4">{PG_SAFETY}</div>
         <button onClick={() => setPlaying(true)} className="w-full rounded-xl py-3.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: `linear-gradient(135deg, ${cat.color}, ${cat.color}CC)`, color: "#fff", boxShadow: `0 0 18px ${cat.color}77` }}>شروع تمرین</button>
       </div>
     );
@@ -6214,7 +6227,7 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initial
           <span style={{ fontSize: 30 }}>{cat.icon}</span>
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: cat.color }} className="text-lg font-black">{cat.title}</span>
         </div>
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{cat.desc}</div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7 mb-4">{cat.desc}</div>
         <div className="flex flex-col gap-2.5">
           {cat.programs.map((p) => (
             <button key={p.id} onClick={() => setProg(p)} className="rounded-xl px-4 py-3.5 text-right flex items-center justify-between gap-3" style={{ background: "#17161A", border: `1px solid ${cat.color}`, boxShadow: `0 0 12px ${cat.color}44` }}>
@@ -6237,10 +6250,10 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initial
         <button onClick={onBack} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{"› بازگشت"}</button>
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xl font-black mb-1">برنامه‌های تمرینی</div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B7B3AB" }} className="text-xs leading-6 mb-4">سیستم تمرینی مورد نظرت رو انتخاب کن و با تایمر همراه تمرین کن.</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6 mb-4">سیستم تمرینی مورد نظرت رو انتخاب کن و با تایمر همراه تمرین کن.</div>
       <div className="grid grid-cols-2 gap-3">
         {PG_DATA.map((c) => (
-          <button key={c.id} onClick={() => (canOpen(c) ? setCat(c) : setLockedCat(c))} className="relative rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 190, opacity: canOpen(c) ? 1 : 0.85, background: `linear-gradient(145deg, ${c.color}26, #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
+          <button key={c.id} onClick={() => (canOpen(c) ? setCat(c) : setLockedCat(c))} className="relative rounded-2xl p-3.5 text-center flex flex-col items-center justify-center gap-2" style={{ minHeight: 190, opacity: canOpen(c) ? 1 : 0.85, background: `linear-gradient(145deg, color-mix(in srgb, ${c.color} 15%, #17161A), #17161A 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}55, inset 0 0 14px ${c.color}18` }}>
             {c.img ? (
               <img src={c.img} alt="" draggable={false} style={{ height: 112, width: "auto", maxWidth: "100%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}66)` }} />
             ) : (
@@ -6253,13 +6266,13 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initial
           </button>
         ))}
       </div>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mt-5">{PG_SAFETY}</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] leading-5 mt-5">{PG_SAFETY}</div>
       {lockedCat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setLockedCat(null)}>
           <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #F3EEE6", boxShadow: "0 0 22px rgba(243,238,230,0.35)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 38 }}>🔒</div>
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black mt-1 mb-2">{lockedCat.title}</div>
-            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">این بخش با خرید «اشتراک دوره اول» باز می‌شه. فقط تاباتا برای همه رایگانه.</div>
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7 mb-4">این بخش با خرید «اشتراک دوره اول» باز می‌شه. فقط تاباتا برای همه رایگانه.</div>
             <button onClick={() => { setLockedCat(null); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg, #8F1019, #D91E2B)", color: "#FFFFFF" }}>مشاهده اشتراک</button>
             <button onClick={() => setLockedCat(null)} className="w-full rounded-xl py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" }}>بستن</button>
           </div>
@@ -6693,7 +6706,7 @@ function JourneyChartBox({ done, onOpen }) {
         {[[jrFa(st.days), "روز انجام‌شده", "#3DE08A"], [jrFa(st.medals), "مدال طلا", "#E8B33D"], [jrFa(st.streak), "روز پیاپی", "#D91E2B"], [jrFa(st.minutes), "دقیقه تمرین", "#4DA3FF"]].map(([v, l, c]) => (
           <div key={l} className="rounded-xl py-2 text-center" style={{ background: "#0B0B0D", border: `1px solid ${c}55` }}>
             <div style={{ fontFamily: "Oswald, sans-serif", color: c }} className="text-lg font-bold leading-6">{v}</div>
-            <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[9px]">{l}</div>
+            <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[9px]">{l}</div>
           </div>
         ))}
       </div>
@@ -6701,7 +6714,7 @@ function JourneyChartBox({ done, onOpen }) {
         <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, background: "#222127" }}><div style={{ width: pct + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>
         <span style={{ ...JR_FONT, color: "#3DE08A" }} className="text-[11px] font-black">{jrFa(pct)}٪</span>
       </div>
-      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px] font-bold mt-3 mb-1">تمرین ۱۴ روز اخیر (دقیقه)</div>
+      <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px] font-bold mt-3 mb-1">تمرین ۱۴ روز اخیر (دقیقه)</div>
       <svg viewBox={`0 0 ${W} ${H + 22}`} width="100%" style={{ display: "block", direction: "ltr" }}>
         <defs><linearGradient id="jrbar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4DA3FF" /><stop offset="100%" stopColor="#1c6fd1" /></linearGradient></defs>
         {[0, 0.5, 1].map((f) => (<line key={f} x1={pad} x2={W - pad} y1={H - f * (H - 14)} y2={H - f * (H - 14)} stroke="#2a292e" strokeWidth="1" strokeDasharray="3 3" />))}
@@ -6719,7 +6732,7 @@ function JourneyChartBox({ done, onOpen }) {
           );
         })}
       </svg>
-      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px] font-bold mt-2 mb-1">هفته‌ها (روزهای انجام‌شده از ۷)</div>
+      <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px] font-bold mt-2 mb-1">هفته‌ها (روزهای انجام‌شده از ۷)</div>
       <div className="flex items-end gap-1" style={{ height: 44, direction: "ltr" }}>
         {st.weeks.map((w) => (
           <div key={w.w} className="flex-1 flex flex-col items-center justify-end gap-0.5" style={{ height: "100%" }}>
@@ -6797,7 +6810,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
 
   const btn = (onClick, label, extra) => (<button onClick={onClick} style={{ ...JR_FONT, color: "#0B0B0D", background: "#DAD6CE", ...extra }} className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block">{label}</button>);
 
-  if (!ready) return <div className="flex-1 flex items-center justify-center" style={{ ...JR_FONT, color: "#8A8790" }}>...</div>;
+  if (!ready) return <div className="flex-1 flex items-center justify-center" style={{ ...JR_FONT, color: "#F3EEE6" }}>...</div>;
 
   if (play) {
     const prog = play.block.program;
@@ -6821,7 +6834,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
         <div className="mb-3">{btn(() => setSel(null), "› بازگشت")}</div>
         <div style={{ ...JR_FONT, color: col }} className="text-xs font-black mb-1">{isGold ? "جلسه‌ی ویژه" : `روز ${jrFa(day.n)} • ${day.weekday}`}{isDone ? " • ✓ انجام شد" : ""}</div>
         <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-lg font-black mb-1">{day.title}</div>
-        <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-xs leading-6 mb-3">{day.summary}{day.minutes ? ` • حدود ${jrFa(day.minutes)} دقیقه` : ""}</div>
+        <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-xs leading-6 mb-3">{day.summary}{day.minutes ? ` • حدود ${jrFa(day.minutes)} دقیقه` : ""}</div>
         <div style={{ ...JR_FONT, color: "#8FA3B8" }} className="text-[11px] leading-6 mb-3">هر بخش که تموم بشه خودکار تیک می‌خوره؛ با تموم شدن همه‌ی بخش‌ها این روز سبز می‌شه.</div>
         <div className="flex flex-col gap-2.5 mb-4">
           {day.blocks.map((b, i) => {
@@ -6834,10 +6847,10 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
                     <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 22, height: 22, border: `2px solid ${ok ? "#3DE08A" : "#55535a"}`, background: ok ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 13 }}>{ok ? "✓" : ""}</span>
                     <span style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-sm font-black">{`${jrFa(i + 1)}. ${b.title}`}</span>
                   </span>
-                  <span style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px]">{`${jrFa(b.minutes)} دقیقه`}</span>
+                  <span style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px]">{`${jrFa(b.minutes)} دقیقه`}</span>
                 </div>
-                <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-[11px] leading-5 mb-2">{names.slice(0, 7).join(" • ")}{names.length > 7 ? " ..." : ""}</div>
-                <button onClick={() => setPlay({ block: b, i, s: sel })} className="w-full rounded-lg py-2 text-xs font-bold" style={{ ...JR_FONT, background: `${ok ? "#3DE08A" : col}22`, color: ok ? "#3DE08A" : col, border: `1px solid ${ok ? "#3DE08A" : col}` }}>{ok ? "تکرار این بخش ▶" : "شروع این بخش ▶"}</button>
+                <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px] leading-5 mb-2">{names.slice(0, 7).join(" • ")}{names.length > 7 ? " ..." : ""}</div>
+                <button onClick={() => setPlay({ block: b, i, s: sel })} className="w-full rounded-lg py-2 text-xs font-bold" style={{ ...JR_FONT, background: `color-mix(in srgb, ${ok ? "#3DE08A" : col} 13%, #17161A)`, color: ok ? "#3DE08A" : col, border: `1px solid ${ok ? "#3DE08A" : col}` }}>{ok ? "تکرار این بخش ▶" : "شروع این بخش ▶"}</button>
               </div>
             );
           })}
@@ -6848,7 +6861,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
             <div className="grid grid-cols-3 gap-2">
               {[["push", "شنا"], ["squat", "اسکات"], ["plank", "پلانک (ثانیه)"]].map(([f, l]) => (
                 <label key={f} className="flex flex-col gap-1">
-                  <span style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[10px]">{l}</span>
+                  <span style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[10px]">{l}</span>
                   <input type="number" inputMode="numeric" value={r[f] || ""} onChange={(e) => setR(f, e.target.value)} className="rounded-lg px-2 py-1.5 text-sm text-center" style={{ background: "#0B0B0D", color: "#F3EEE6", border: "1px solid #2a292e", width: "100%" }} />
                 </label>
               ))}
@@ -6856,7 +6869,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
           </div>
         )}
         <div style={{ ...JR_FONT, color: "#8FA3B8" }} className="text-[11px] leading-6 mb-4">{"💡 " + day.tip}</div>
-        <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px] leading-5">{PG_SAFETY}</div>
+        <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px] leading-5">{PG_SAFETY}</div>
       </div>
     );
   }
@@ -6896,13 +6909,13 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
     <div className="flex-1 overflow-y-auto px-4 pt-3 pb-8" dir={APP_DIR}>
       <div className="mb-3">{btn(onBack, "› بازگشت")}</div>
       <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-xl font-black mb-1">مسیر پیشرفت من</div>
-      <div style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-xs leading-6 mb-3">۱۰۰ روز، هفته‌به‌هفته. با کامل کردن همه‌ی بخش‌های هر روز، دایره‌ی اون روز سبز می‌شه؛ هر ۷ روز یه جلسه‌ی طلایی با مدال منتظرته.{!isPaid ? ` ${jrFa(JR_FREE_DAYS)} روز اول رایگانه و ادامه‌ی مسیر با «اشتراک دوره اول» یا «دوم» باز می‌شه.` : ""}</div>
+      <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-xs leading-6 mb-3">۱۰۰ روز، هفته‌به‌هفته. با کامل کردن همه‌ی بخش‌های هر روز، دایره‌ی اون روز سبز می‌شه؛ هر ۷ روز یه جلسه‌ی طلایی با مدال منتظرته.{!isPaid ? ` ${jrFa(JR_FREE_DAYS)} روز اول رایگانه و ادامه‌ی مسیر با «اشتراک دوره اول» یا «دوم» باز می‌شه.` : ""}</div>
 
       <div className="rounded-2xl p-3 mb-3" style={{ background: "#17161A", border: "1px solid #4DA3FF88", boxShadow: "0 0 14px #4DA3FF33" }}>
         <button onClick={() => setShowSet((s) => !s)} className="w-full flex items-center justify-between gap-2 text-right">
           <span className="flex flex-col gap-0.5">
             <span style={{ ...JR_FONT, color: "#4DA3FF" }} className="text-sm font-black">⚙️ تنظیم برنامه‌ی تمرینی</span>
-            <span style={{ ...JR_FONT, color: "#B7B3AB" }} className="text-[11px]">{summary}</span>
+            <span style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px]">{summary}</span>
           </span>
           <span style={{ color: "#4DA3FF", fontSize: 18 }}>{showSet ? "▲" : "▼"}</span>
         </button>
@@ -6919,7 +6932,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
                 </div>
               </div>
             ))}
-            <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px] leading-5">با تغییر تنظیمات، روزهای انجام‌نشده بر اساس انتخاب جدیدت دوباره ساخته می‌شن و روزهای سبز شده می‌مونن.</div>
+            <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-[11px] leading-5">با تغییر تنظیمات، روزهای انجام‌نشده بر اساس انتخاب جدیدت دوباره ساخته می‌شن و روزهای سبز شده می‌مونن.</div>
             <button onClick={() => { setShowSet(false); save(cfg, done, res, blk); }} className="rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}>ذخیره و بستن</button>
           </div>
         )}
@@ -6936,7 +6949,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
       <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(9, minmax(0, 1fr))" }}>
         {nodes.map((nd, i) => circle(nd, i))}
       </div>
-      <div className="flex flex-wrap gap-3 mt-4 justify-center" style={{ ...JR_FONT, color: "#8A8790", fontSize: 10 }}>
+      <div className="flex flex-wrap gap-3 mt-4 justify-center" style={{ ...JR_FONT, color: "#F3EEE6", fontSize: 10 }}>
         <span>🟢 انجام‌شده</span><span>🔵 روز فعلی</span><span>🟡 جلسه‌ی طلایی + مدال</span><span>🏆 جام ۱۰۰ روز</span><span>🔒 نیازمند اشتراک</span>
       </div>
 
@@ -6945,7 +6958,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
           <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 22px rgba(232,179,61,0.35)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 38 }}>🔒</div>
             <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-base font-black mt-1 mb-2">ادامه‌ی مسیر ۱۰۰ روزه</div>
-            <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{`${jrFa(JR_FREE_DAYS)} روز اول رایگانه. برای باز شدن بقیه‌ی روزها و جلسه‌های طلایی، «اشتراک دوره اول» یا «اشتراک دوره دوم» بخر.`}</div>
+            <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-sm leading-7 mb-4">{`${jrFa(JR_FREE_DAYS)} روز اول رایگانه. برای باز شدن بقیه‌ی روزها و جلسه‌های طلایی، «اشتراک دوره اول» یا «اشتراک دوره دوم» بخر.`}</div>
             <button onClick={() => { setLockModal(false); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ ...JR_FONT, background: "linear-gradient(135deg, #7A4300, #B86A00)", color: "#FFF6D8" }}>مشاهده اشتراک</button>
             <button onClick={() => setLockModal(false)} className="w-full rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "#2a292e", color: "#F3EEE6" }}>بستن</button>
           </div>
@@ -6957,7 +6970,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
           <div className="w-full rounded-2xl p-6 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 28px rgba(232,179,61,0.5)" }} onClick={(e) => e.stopPropagation()}>
             {reward === "gold" ? <img src={MEDAL_GOLD_SRC} alt="" style={{ width: 120, height: 120, objectFit: "contain", margin: "0 auto", filter: "drop-shadow(0 0 14px #E8B33D)" }} /> : <div style={{ fontSize: 80 }}>🏆</div>}
             <div style={{ ...JR_FONT, color: "#FFD76A" }} className="text-lg font-black mt-2 mb-1">{reward === "gold" ? "مدال طلا گرفتی!" : "قهرمان ۱۰۰ روزه شدی!"}</div>
-            <div style={{ ...JR_FONT, color: "#CFC9BF" }} className="text-sm leading-7 mb-4">{reward === "gold" ? "یک هفته‌ی دیگه رو با قدرت تموم کردی. ادامه بده!" : "۱۰۰ روز تمرین مداوم یعنی تو یه بوکسور واقعی‌ای. افتخار می‌کنیم!"}</div>
+            <div style={{ ...JR_FONT, color: "#F3EEE6" }} className="text-sm leading-7 mb-4">{reward === "gold" ? "یک هفته‌ی دیگه رو با قدرت تموم کردی. ادامه بده!" : "۱۰۰ روز تمرین مداوم یعنی تو یه بوکسور واقعی‌ای. افتخار می‌کنیم!"}</div>
             <button onClick={() => setReward(null)} className="w-full rounded-xl py-3 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#B8860B,#E8B33D)", color: "#2a1a00" }}>ادامه</button>
           </div>
         </div>
@@ -7415,7 +7428,7 @@ function BsTimelineSvg() {
       <div className="flex gap-1 mb-3">{[1, 2, 3].map((i) => box("راند " + jrFa(i), "#4DA3FF"))}</div>
       <div style={{ ...BSF, color: "#F3EEE6", fontSize: 11, fontWeight: 800 }} className="mb-1.5">حرفه‌ای عنوان قهرمانی: تا ۱۲ راند × ۳ دقیقه</div>
       <div className="flex gap-0.5">{Array.from({ length: 12 }, (_, i) => box(jrFa(i + 1), "#F3EEE6"))}</div>
-      <div style={{ ...BSF, color: "#8A8790", fontSize: 10 }} className="mt-2">بین هر راند ۱ دقیقه استراحت</div>
+      <div style={{ ...BSF, color: "#F3EEE6", fontSize: 10 }} className="mt-2">بین هر راند ۱ دقیقه استراحت</div>
     </div>
   );
 }
@@ -7426,14 +7439,14 @@ function BsWeightsSvg() {
     <div className="rounded-xl p-3 mb-3" style={{ background: "#0F0F12", border: "1px solid #2a292e" }}>
       {BS_PRO_WEIGHTS.map(([n, lb, kg], i) => (
         <div key={i} className="flex items-center gap-2 mb-1.5" style={{ direction: "ltr" }}>
-          <div style={{ width: 118, textAlign: "left", fontSize: 8.5, color: "#CFC9BF", ...BSF }}>{n}</div>
+          <div style={{ width: 118, textAlign: "left", fontSize: 8.5, color: "#F3EEE6", ...BSF }}>{n}</div>
           <div className="flex-1 rounded-sm" style={{ height: 10, background: "#1b1b22" }}>
             <div style={{ width: (kg / max) * 100 + "%", height: "100%", borderRadius: 2, background: `linear-gradient(90deg,#1c6fd1,${i > 14 ? "#D91E2B" : "#4DA3FF"})` }} />
           </div>
           <div style={{ width: 62, fontSize: 9, color: "#F3EEE6", fontFamily: "Oswald, sans-serif" }}>{i === 16 ? "200+ lb" : lb + " lb"} • {i === 16 ? "+90.7" : kg}</div>
         </div>
       ))}
-      <div style={{ ...BSF, color: "#8A8790", fontSize: 10 }} className="mt-2">سقف هر رده بر اساس پوند (lb) و کیلوگرم؛ برخی سازمان‌ها رده‌های اضافه (مثل بریج‌ر ۲۲۴ پوند) هم دارن.</div>
+      <div style={{ ...BSF, color: "#F3EEE6", fontSize: 10 }} className="mt-2">سقف هر رده بر اساس پوند (lb) و کیلوگرم؛ برخی سازمان‌ها رده‌های اضافه (مثل بریج‌ر ۲۲۴ پوند) هم دارن.</div>
     </div>
   );
 }
@@ -7454,16 +7467,16 @@ function BsBlocks({ blocks, color }) {
     <div className="flex flex-col gap-2">
       {blocks.map((b, i) => {
         if (b.t === "h") return <div key={i} style={{ ...BSF, color }} className="text-sm font-black mt-4 mb-0.5">{b.x}</div>;
-        if (b.t === "p") return <p key={i} style={{ ...BSF, color: "#DAD6CE" }} className="text-[13px] leading-7">{b.x}</p>;
-        if (b.t === "ul") return (<ul key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#DAD6CE" }}><span style={{ color }}>•</span><span>{x}</span></li>))}</ul>);
-        if (b.t === "ol") return (<ol key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#DAD6CE" }}><span style={{ color, fontWeight: 900, minWidth: 18 }}>{jrFa(j + 1)}.</span><span>{x}</span></li>))}</ol>);
-        if (b.t === "note") return (<div key={i} className="rounded-xl p-3 mt-3 text-[11px] leading-6" style={{ ...BSF, background: "rgba(243,238,230,0.08)", border: "1px solid rgba(243,238,230,0.4)", color: "#CFC9BF" }}>ℹ️ {b.x}</div>);
-        if (b.t === "kv") return (<div key={i} className="flex flex-col gap-2">{b.x.map(([k, v], j) => (<div key={j} className="rounded-xl p-3" style={{ background: "#17161A", border: `1px solid ${color}55` }}><div style={{ ...BSF, color }} className="text-[13px] font-black mb-0.5">{k}</div><div style={{ ...BSF, color: "#CFC9BF" }} className="text-xs leading-6">{v}</div></div>))}</div>);
+        if (b.t === "p") return <p key={i} style={{ ...BSF, color: "#F3EEE6" }} className="text-[13px] leading-7">{b.x}</p>;
+        if (b.t === "ul") return (<ul key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#F3EEE6" }}><span style={{ color }}>•</span><span>{x}</span></li>))}</ul>);
+        if (b.t === "ol") return (<ol key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#F3EEE6" }}><span style={{ color, fontWeight: 900, minWidth: 18 }}>{jrFa(j + 1)}.</span><span>{x}</span></li>))}</ol>);
+        if (b.t === "note") return (<div key={i} className="rounded-xl p-3 mt-3 text-[11px] leading-6" style={{ ...BSF, background: "#3A3B3E", border: "1px solid rgba(243,238,230,0.4)", color: "#F3EEE6" }}>ℹ️ {b.x}</div>);
+        if (b.t === "kv") return (<div key={i} className="flex flex-col gap-2">{b.x.map(([k, v], j) => (<div key={j} className="rounded-xl p-3" style={{ background: "#17161A", border: `1px solid ${color}55` }}><div style={{ ...BSF, color }} className="text-[13px] font-black mb-0.5">{k}</div><div style={{ ...BSF, color: "#F3EEE6" }} className="text-xs leading-6">{v}</div></div>))}</div>);
         if (b.t === "table") return (
           <div key={i} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${color}55` }}>
             <table style={{ width: "100%", borderCollapse: "collapse", ...BSF }}>
               <thead><tr>{b.head.map((h, j) => (<th key={j} style={{ background: color + "26", color, fontSize: 11, padding: "8px 6px", textAlign: "center" }}>{h}</th>))}</tr></thead>
-              <tbody>{b.rows.map((r, j) => (<tr key={j} style={{ background: j % 2 ? "#141418" : "#17161A" }}>{r.map((c, k) => (<td key={k} style={{ color: "#DAD6CE", fontSize: 11.5, padding: "8px 6px", textAlign: "center", borderTop: "1px solid #24232a" }}>{c}</td>))}</tr>))}</tbody>
+              <tbody>{b.rows.map((r, j) => (<tr key={j} style={{ background: j % 2 ? "#141418" : "#17161A" }}>{r.map((c, k) => (<td key={k} style={{ color: "#F3EEE6", fontSize: 11.5, padding: "8px 6px", textAlign: "center", borderTop: "1px solid #24232a" }}>{c}</td>))}</tr>))}</tbody>
             </table>
           </div>
         );
@@ -7485,7 +7498,7 @@ function BoxingScienceScreen({ onBack }) {
         {back(() => setOpen(null))}
         <div className="flex items-center gap-3 mb-3">
           <span style={{ fontSize: 34 }}>{t.icon}</span>
-          <div><div style={{ ...BSF, color: t.color }} className="text-lg font-black leading-7">{t.title}</div><div style={{ ...BSF, color: "#8A8790" }} className="text-[11px]">{t.sub}</div></div>
+          <div><div style={{ ...BSF, color: t.color }} className="text-lg font-black leading-7">{t.title}</div><div style={{ ...BSF, color: "#F3EEE6" }} className="text-[11px]">{t.sub}</div></div>
         </div>
         <BsBlocks blocks={t.blocks} color={t.color} />
       </div>
@@ -7495,10 +7508,10 @@ function BoxingScienceScreen({ onBack }) {
     <div className="flex-1 overflow-y-auto px-5 pt-3 pb-10" dir={APP_DIR}>
       {back(onBack)}
       <div style={{ ...BSF, color: "#F3EEE6" }} className="text-xl font-black mb-1">علوم ضروری بوکس</div>
-      <div style={{ ...BSF, color: "#B7B3AB" }} className="text-xs leading-6 mb-4">قوانین، داوری، رده‌های وزنی، مسیر حرفه‌ای و هر چیزی که یک بوکسور باید بدونه.</div>
+      <div style={{ ...BSF, color: "#F3EEE6" }} className="text-xs leading-6 mb-4">قوانین، داوری، رده‌های وزنی، مسیر حرفه‌ای و هر چیزی که یک بوکسور باید بدونه.</div>
       <div className="flex flex-col gap-2.5">
         {topics.map((t) => (
-          <button key={t.id} onClick={() => setOpen(t.id)} className="rounded-xl px-4 py-3.5 text-right flex items-center gap-3" style={{ background: `linear-gradient(135deg, ${t.color}1f, #17161A 65%)`, border: `1px solid ${t.color}`, boxShadow: `0 0 12px ${t.color}44` }}>
+          <button key={t.id} onClick={() => setOpen(t.id)} className="rounded-xl px-4 py-3.5 text-right flex items-center gap-3" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${t.color} 12%, #17161A), #17161A 65%)`, border: `1px solid ${t.color}`, boxShadow: `0 0 12px ${t.color}44` }}>
             <span style={{ fontSize: 28 }}>{t.icon}</span>
             <span className="flex-1 flex flex-col gap-0.5"><span style={{ ...BSF, color: "#F3EEE6" }} className="text-sm font-black">{t.title}</span><span style={{ ...BSF, color: t.color }} className="text-[11px] font-bold">{t.sub}</span></span>
             <span style={{ color: t.color, fontSize: 22 }}>{"‹"}</span>
@@ -7531,22 +7544,156 @@ function hmChapterData(k) {
   const m = { CHAPTER1_IMAGE_SRC, CHAPTER2_IMAGE_SRC, CHAPTER3_IMAGE_SRC, CHAPTER4_IMAGE_SRC, CHAPTER5_IMAGE_SRC, CHAPTER6_IMAGE_SRC, CURRICULUM_BASIC, CURRICULUM_ADVANCED, CURRICULUM_EXTRA, CURRICULUM_FIGHT, CURRICULUM_PARTNER, CURRICULUM_FOCUS };
   return { img: m[k.img], arr: m[k.arr] || [] };
 }
-function HmSectionTitle({ title, sub, color }) {
+function HmSectionTitle({ title, sub, color, gold }) {
   return (
     <div className="flex items-end justify-between mb-2.5 px-0.5">
       <div className="flex items-center gap-2">
         <span style={{ width: 4, height: 18, borderRadius: 3, background: `linear-gradient(180deg, ${color || "#D91E2B"}, transparent)`, boxShadow: `0 0 10px ${color || "#D91E2B"}` }} />
-        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{title}</span>
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", ...(gold ? { background: "linear-gradient(180deg, #FFF3B8 0%, #F2CF5E 38%, #B98A22 62%, #F8DF84 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 1px 4px rgba(0,0,0,0.7))" } : {}) }} className={gold ? "text-2xl font-black" : "text-base font-black"}>{title}</span>
       </div>
-      {sub && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px]">{sub}</span>}
+      {sub && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px]">{sub}</span>}
     </div>
   );
 }
-function HmRow({ children }) {
+async function apiFetchBanners() {
+  if (DEMO_MODE) return [];
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/banners`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
+    return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
+  } catch {
+    return null;
+  }
+}
+// عکس رو قبل از آپلود کوچیک می‌کنه (حداکثر ۱۴۰۰ پیکسل عرض) تا از سقف حجم رد نشه
+function shrinkImageFile(file, maxW = 1400) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, maxW / img.width);
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob((b) => resolve(b ? new File([b], "banner.jpg", { type: "image/jpeg" }) : file), "image/jpeg", 0.88);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    } catch { resolve(file); }
+  });
+}
+async function apiUploadBanner(file, token, replaceId) {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await apiFetch(`${API_BASE_URL}/banners${replaceId ? `?replace=${replaceId}` : ""}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("آپلود عکس با خطا مواجه شد"));
+  return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
+}
+async function apiDeleteBanner(id, token) {
+  const res = await apiFetch(`${API_BASE_URL}/banners/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("ذخیره انجام نشد"));
+  return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
+}
+// بنرهای تبلیغاتی بالای صفحه‌ی هوم؛ ادمین می‌تونه عکس جدید اضافه کنه، عوض کنه یا حذف کنه
+function HmBanners({ isAdmin, authToken }) {
+  const [list, setList] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const addRef = useRef(null);
+  const repRef = useRef(null);
+  const repId = useRef("");
+  useEffect(() => { let alive = true; apiFetchBanners().then((l) => alive && l && setList(l)); return () => { alive = false; }; }, []);
+  const pick = async (e, replaceId) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    setErr(""); setBusy(replaceId || "new");
+    try { setList(await apiUploadBanner(await shrinkImageFile(f), authToken, replaceId)); }
+    catch (x) { setErr(x.message || "خطا"); }
+    finally { setBusy(""); }
+  };
+  const del = async (id) => {
+    if (!window.confirm(tr("این بنر حذف بشه؟"))) return;
+    setErr(""); setBusy(id);
+    try { setList(await apiDeleteBanner(id, authToken)); }
+    catch (x) { setErr(x.message || "خطا"); }
+    finally { setBusy(""); }
+  };
+  const items = list || [];
+  if (!items.length && !isAdmin) return null;
+  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "16 / 9", scrollSnapAlign: "start" };
   return (
-    <div className="relative" style={{ margin: "0 -20px", padding: "14px 0 6px", background: "linear-gradient(180deg, rgba(243,238,230,0.34) 0%, rgba(243,238,230,0.20) 55%, rgba(243,238,230,0.28) 100%)", borderTop: "1px solid rgba(243,238,230,0.5)", borderBottom: "1px solid rgba(243,238,230,0.5)" }}>
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent 0 14px, rgba(255,255,255,0.045) 14px 15px)" }} />
-      <div className="relative flex gap-3 overflow-x-auto pb-3 px-5" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+    <div className="mb-4">
+      <div className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", margin: "0 -20px", padding: "0 20px" }}>
+        {items.map((b) => (
+          <div key={b.id} className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
+            <img src={b.url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
+            {isAdmin && (
+              <div className="absolute top-2 left-2 flex gap-1.5">
+                <button disabled={!!busy} onClick={() => { repId.current = b.id; repRef.current?.click(); }} className="rounded-lg px-2.5 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" }}>{busy === b.id ? "..." : tr("تعویض عکس")}</button>
+                <button disabled={!!busy} onClick={() => del(b.id)} className="rounded-lg px-2.5 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" }}>{tr("حذف")}</button>
+              </div>
+            )}
+          </div>
+        ))}
+        {isAdmin && (
+          <button disabled={!!busy} onClick={() => addRef.current?.click()} className="shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1" style={{ ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" }}>
+            <span style={{ fontSize: 30, lineHeight: 1 }}>{busy === "new" ? "..." : "+"}</span>
+            <span className="text-xs font-black">{tr("افزودن بنر تبلیغاتی")}</span>
+            <span className="text-[10px]">{tr("نسبت پیشنهادی ۱۶ به ۹")}</span>
+          </button>
+        )}
+      </div>
+      {isAdmin && err && <div className="mt-1.5 text-[11px] text-center" style={{ fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }}>{err}</div>}
+      {isAdmin && (
+        <>
+          <input ref={addRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => pick(e, "")} />
+          <input ref={repRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => pick(e, repId.current)} />
+        </>
+      )}
+    </div>
+  );
+}
+function HmRow({ children, auto }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!auto) return undefined;
+    const el = ref.current;
+    if (!el) return undefined;
+    let pausedUntil = 0, idx = 0;
+    const pause = () => { pausedUntil = Date.now() + 6000; };
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("wheel", pause, { passive: true });
+    // هر چند ثانیه یک کارت جلو می‌ره (کارت به کارت)؛ بعد از آخرین کارت برمی‌گرده اول
+    const timer = setInterval(() => {
+      if (Date.now() < pausedUntil) return;
+      const kids = Array.from(el.children);
+      if (kids.length < 2) return;
+      const er = el.getBoundingClientRect();
+      let cur = 0, best = 1e9;
+      kids.forEach((k, i) => { const d = Math.abs(k.getBoundingClientRect().left - er.left - 20); const dr = Math.abs(k.getBoundingClientRect().right - er.right + 20); const m = Math.min(d, dr); if (m < best) { best = m; cur = i; } });
+      idx = (cur + 1) % kids.length;
+      const kr = kids[idx].getBoundingClientRect();
+      const rtl = getComputedStyle(el).direction === "rtl";
+      const delta = rtl ? kr.right - er.right + 20 : kr.left - er.left - 20;
+      el.scrollBy({ left: delta, behavior: "smooth" });
+    }, 3800);
+    return () => {
+      clearInterval(timer);
+      el.removeEventListener("touchstart", pause);
+      el.removeEventListener("wheel", pause);
+    };
+  }, [auto]);
+  return (
+    <div className="relative" style={{ margin: "0 -20px", padding: "14px 0 6px", background: "transparent" }}>
+      <div ref={ref} className="relative flex gap-3 overflow-x-auto pb-3 px-5" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {children}
       </div>
     </div>
@@ -7558,12 +7705,12 @@ function HmHero({ lesson, chapterTitle, percent, onContinue, image }) {
       <img src={image} alt="" draggable={false} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", transform: "scale(1.06)" }} />
       <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,8,10,0.97) 0%, rgba(8,8,10,0.72) 38%, rgba(8,8,10,0.05) 75%)" }} />
       <div className="absolute inset-0" style={{ background: "radial-gradient(120% 80% at 100% 0%, rgba(217,30,43,0.35), transparent 55%)" }} />
-      <div className="absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "rgba(217,30,43,0.85)", color: "#fff", boxShadow: "0 0 14px rgba(217,30,43,0.7)" }}>{lesson ? "ادامه تمرین" : "شروع مسیر"}</div>
+      <div className="absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff", boxShadow: "0 0 14px rgba(217,30,43,0.7)" }}>{lesson ? "ادامه تمرین" : "شروع مسیر"}</div>
       <div className="absolute bottom-0 inset-x-0 p-4">
         <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-bold mb-1">{chapterTitle}</div>
         <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 12px rgba(0,0,0,0.9)" }} className="text-xl font-black leading-8 mb-2.5">{lesson ? lesson.title : "مسیر پیشرفت ۱۰۰ روزه"}</div>
         <div className="flex items-center gap-3">
-          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "rgba(255,255,255,0.15)" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.8)" }} /></div>
+          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "#4A4B4E" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.8)" }} /></div>
           <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">{percent}%</span>
           <span className="rounded-full flex items-center justify-center" style={{ width: 38, height: 38, background: "linear-gradient(135deg,#D91E2B,#ff4b57)", color: "#fff", boxShadow: "0 0 18px rgba(217,30,43,0.8)", fontSize: 14 }}>▶</span>
         </div>
@@ -7578,10 +7725,10 @@ function HmShortcuts({ items }) {
         const Icon = it.icon;
         return (
           <button key={it.key} onClick={it.onClick} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
-            <span className="rounded-2xl flex items-center justify-center" style={{ width: 58, height: 58, background: `linear-gradient(145deg, ${it.color}30, rgba(255,255,255,0.04))`, border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)`, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+            <span className="rounded-2xl flex items-center justify-center" style={{ width: 58, height: 58, background: "#2B2C30", border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)` }}>
               <Icon className="w-7 h-7" style={{ color: it.color, filter: `drop-shadow(0 0 6px ${it.color})` }} />
             </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-[10px] font-bold text-center leading-4">{it.label}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E6E1D8" }} className="text-[12.5px] font-black text-center leading-5">{it.label}</span>
           </button>
         );
       })}
@@ -7589,7 +7736,7 @@ function HmShortcuts({ items }) {
   );
 }
 
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin, completed, nextLesson, onContinue, onOpenProgramCat, plan }) {
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin, completed, nextLesson, onContinue, onOpenProgramCat, plan, authToken }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [inviteOpen, setInviteOpen] = useState(false); // انتخاب نوع لینک دعوت
@@ -7624,7 +7771,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             <div
               className="flex flex-wrap items-center justify-between rounded-xl px-3 py-3"
               style={{
-                background: "rgba(77,163,255,0.08)",
+                background: "#2D3540",
                 border: "1px solid rgba(77,163,255,0.4)",
                 boxShadow: "0 0 22px rgba(77,163,255,0.35), inset 0 0 14px rgba(77,163,255,0.08)",
               }}
@@ -7808,7 +7955,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             onClick={onGuestLogin}
             data-testid="guest-banner"
             className="w-full rounded-xl px-3 py-2.5 mt-3 flex items-center justify-between gap-2"
-            style={{ background: "rgba(243,238,230,0.1)", border: "1px solid rgba(243,238,230,0.5)" }}
+            style={{ background: "#3E3E41", border: "1px solid rgba(243,238,230,0.5)" }}
           >
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.7 }} className="text-xs font-bold text-right">
               {tr("برای ذخیره‌ی پیشرفت و خرید اشتراک وارد شوید")}
@@ -7829,6 +7976,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             const titles = (k) => chapterTitles?.[k] || DEFAULT_CHAPTER_TITLES[k];
             return (
               <>
+                <HmBanners isAdmin={isAdmin} authToken={authToken} />
                 <HmHero lesson={nextLesson} chapterTitle={nextLesson ? titles(nextLesson.curriculumKey) : ""} percent={pct} onContinue={onContinue} image={hmChapterData(heroCh).img} />
 
                 <div className="mt-5">
@@ -7841,7 +7989,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                 </div>
 
                 <div className="mt-6">
-                  <HmSectionTitle title="دوره A" sub="سه فصل اول" color="#4DA3FF" />
+                  <HmSectionTitle title="دوره A" sub="سه فصل اول" color="#F2CF5E" gold />
                   <HmRow tone="blue">
                     {HM_CHAPTERS.filter((c) => !c.gated).map((c) => {
                       const { img, arr } = hmChapterData(c);
@@ -7851,10 +7999,6 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                       const soon = c.gated && !isAdmin && !chapterVisibility?.[c.key];
                       return (
                         <div key={c.key} className="relative shrink-0" style={{ width: "calc(100vw - 40px)", maxWidth: 420, scrollSnapAlign: "start" }}>
-                          <div className="flex items-center justify-between mb-2 px-0.5">
-                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
-                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#8A8790" : c.color }} className="text-[11px] font-bold">{soon ? "به‌زودی" : `${d} از ${real.length} جلسه`}</span>
-                          </div>
                           <button onClick={soon ? undefined : () => onNavigate("curriculum-" + c.key)} className="relative block w-full rounded-2xl overflow-hidden border active:scale-95 transition-transform" style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: `${c.color}99`, cursor: soon ? "default" : "pointer" }}>
                             <img src={img} alt={titles(c.key)} draggable={false} className="absolute inset-0 w-full h-full object-contain" />
                             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(11,11,13,0.7) 0%, rgba(11,11,13,0.05) 45%, transparent 100%)" }} />
@@ -7862,9 +8006,13 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                             <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg" style={{ borderColor: "#D91E2B" }} />
                             <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
                             <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
-                            {soon && <div className="absolute top-2.5 right-12" style={{ fontSize: 16 }}>🔒</div>}
-                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "rgba(255,255,255,0.18)" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                            {soon && <div className="absolute inset-0 flex flex-col items-center justify-center gap-1"><span style={{ fontSize: 28 }}>🔒</span><span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 8px #000" }} className="text-xl font-black">به‌زودی</span></div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
                           </button>
+                          <div className="flex flex-col items-center mt-2 gap-0.5 text-center">
+                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
+                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#D0CCC4" : "#8CC4FF" }} className="text-[11px] font-black">{soon ? "" : `${d} از ${real.length} جلسه`}</span>
+                          </div>
                           {isAdmin && c.gated && (
                             <ChapterVisibilityToggle visible={Boolean(chapterVisibility?.[c.key])} onToggle={(v) => onToggleChapterVisibility?.(c.key, v)} />
                           )}
@@ -7875,24 +8023,26 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                 </div>
 
                 <div className="mt-6">
-                  <HmSectionTitle title="تمرینات تخصصی بوکس" sub="تاباتا رایگانه" color="#D91E2B" />
-                  <HmRow tone="red">
+                  <HmSectionTitle title="تمرینات تخصصی بوکس" sub="تاباتا رایگانه" color="#F2CF5E" gold />
+                  <HmRow tone="red" auto>
                     {PG_DATA.map((c) => {
                       const open = isAdmin || PG_FREE.includes(c.id) || plan === "silver";
                       return (
-                        <button key={c.id} onClick={() => onOpenProgramCat?.(c.id)} className="relative shrink-0 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform" style={{ width: 118, height: 158, scrollSnapAlign: "start", background: `linear-gradient(160deg, ${c.color}30, #141317 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}44, inset 0 0 14px ${c.color}14`, opacity: open ? 1 : 0.85 }}>
-                          {c.img ? <img src={c.img} alt="" draggable={false} style={{ height: 84, width: "auto", maxWidth: "88%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}77)` }} /> : <span style={{ fontSize: 44, height: 84, display: "flex", alignItems: "center" }}>{c.icon}</span>}
-                          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-black leading-4 px-1">{c.title}</span>
+                        <div key={c.id} className="shrink-0 flex flex-col items-center gap-2" style={{ width: 232, scrollSnapAlign: "start" }}>
+                        <button onClick={() => onOpenProgramCat?.(c.id)} className="relative w-full rounded-2xl flex items-center justify-center active:scale-95 transition-transform" style={{ height: 276, background: "#2B2C30", border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}44` }}>
+                          {c.img ? <img src={c.img} alt="" draggable={false} style={{ height: 256, width: "92%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}77)` }} /> : <span style={{ fontSize: 140, height: 256, display: "flex", alignItems: "center" }}>{c.icon}</span>}
                           {!open && <span className="absolute top-2 left-2 text-sm">🔒</span>}
                           {PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && <span className="absolute top-2 left-2 rounded-full px-1.5 py-0.5 text-[8px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#4DA3FF", color: "#0B0B0D" }}>رایگان</span>}
                         </button>
+                        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black leading-6 text-center">{c.title}</span>
+                      </div>
                       );
                     })}
                   </HmRow>
                 </div>
                 <div className="mt-6">
-                  <HmSectionTitle title="دوره A+" sub="فصل‌های ۴ تا ۷" color="#D91E2B" />
-                  <HmRow tone="blue">
+                  <HmSectionTitle title="دوره A+" sub="فصل‌های ۴ تا ۷" color="#F2CF5E" gold />
+                  <HmRow tone="blue" auto>
                     {HM_CHAPTERS.filter((c) => c.gated).map((c) => {
                       const { img, arr } = hmChapterData(c);
                       const real = arr.filter((it) => it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
@@ -7901,10 +8051,6 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                       const soon = c.gated && !isAdmin && !chapterVisibility?.[c.key];
                       return (
                         <div key={c.key} className="relative shrink-0" style={{ width: "calc(100vw - 40px)", maxWidth: 420, scrollSnapAlign: "start" }}>
-                          <div className="flex items-center justify-between mb-2 px-0.5">
-                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
-                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#8A8790" : c.color }} className="text-[11px] font-bold">{soon ? "به‌زودی" : `${d} از ${real.length} جلسه`}</span>
-                          </div>
                           <button onClick={soon ? undefined : () => onNavigate("curriculum-" + c.key)} className="relative block w-full rounded-2xl overflow-hidden border active:scale-95 transition-transform" style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: `${c.color}99`, cursor: soon ? "default" : "pointer" }}>
                             <img src={img} alt={titles(c.key)} draggable={false} className="absolute inset-0 w-full h-full object-contain" />
                             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(11,11,13,0.7) 0%, rgba(11,11,13,0.05) 45%, transparent 100%)" }} />
@@ -7912,9 +8058,13 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                             <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg" style={{ borderColor: "#D91E2B" }} />
                             <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
                             <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
-                            {soon && <div className="absolute top-2.5 right-12" style={{ fontSize: 16 }}>🔒</div>}
-                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "rgba(255,255,255,0.18)" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                            {soon && <div className="absolute inset-0 flex flex-col items-center justify-center gap-1"><span style={{ fontSize: 28 }}>🔒</span><span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 8px #000" }} className="text-xl font-black">به‌زودی</span></div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
                           </button>
+                          <div className="flex flex-col items-center mt-2 gap-0.5 text-center">
+                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
+                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#D0CCC4" : "#8CC4FF" }} className="text-[11px] font-black">{soon ? "" : `${d} از ${real.length} جلسه`}</span>
+                          </div>
                           {isAdmin && c.gated && (
                             <ChapterVisibilityToggle visible={Boolean(chapterVisibility?.[c.key])} onToggle={(v) => onToggleChapterVisibility?.(c.key, v)} />
                           )}
@@ -7946,7 +8096,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
               <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", letterSpacing: "0.1em" }} className="text-xs font-semibold">
                 {tr("منو")}</span>
               <button onClick={() => setMenuOpen(false)}>
-                <CloseIcon className="w-5 h-5" style={{ color: "#8A8790" }} />
+                <CloseIcon className="w-5 h-5" style={{ color: "#F3EEE6" }} />
               </button>
             </div>
 
@@ -7963,7 +8113,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             >
               <div
                 className="rounded-full flex items-center justify-center shrink-0"
-                style={{ width: "54px", height: "54px", background: "rgba(77,163,255,0.25)", border: "1.5px solid #4DA3FF", boxShadow: "0 0 12px rgba(77,163,255,0.5)" }}
+                style={{ width: "54px", height: "54px", background: "#334963", border: "1.5px solid #4DA3FF", boxShadow: "0 0 12px rgba(77,163,255,0.5)" }}
               >
                 <UserIcon className="w-7 h-7" style={{ color: "#1C4FB0" }} />
               </div>
@@ -8039,7 +8189,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                 onLogout();
               }}
               className="flex items-center gap-3 rounded-xl px-3 py-3 mt-auto mb-2"
-              style={{ background: "rgba(217,30,43,0.1)", border: "1px solid rgba(217,30,43,0.4)" }}
+              style={{ background: "#3C2A2F", border: "1px solid rgba(217,30,43,0.4)" }}
             >
               <LogoutIcon className="w-5 h-5" style={{ color: "#D91E2B" }} />
               <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }} className="text-sm font-bold">
@@ -8082,10 +8232,10 @@ function TelegramLogo({ className }) {
 
 // بدون باکس: یه تیتر کوچیک و دو خط (آیکون + متن) که با لمس، جیمیل یا تلگرام باز می‌شه
 function ContactUs() {
-  const row = { fontFamily: "Oswald, sans-serif", color: "#DAD6CE", letterSpacing: "0.02em" };
+  const row = { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", letterSpacing: "0.02em" };
   return (
     <div data-testid="contact-us" className="mt-4 mb-4 flex flex-col items-start text-right">
-      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs font-bold mb-2">
+      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mb-2">
         {tr("ارتباط با ما")}</span>
       <a
         href={`mailto:${CONTACT_EMAIL}`}
@@ -9085,7 +9235,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 11 }}>{NETWORK_VPN_HINT}</span>
           )}
           {netState !== "ok" && (
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", fontSize: 11 }}>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 11 }}>
               {tr("وقتی اتصال برقرار شد، پخش خودکار ادامه پیدا می‌کنه")}</span>
           )}
           <button
@@ -9306,7 +9456,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
               width: "100%",
               height: dragRatio !== null ? 6 : 4,
               borderRadius: 9999,
-              background: "rgba(255,255,255,0.25)",
+              background: "#5F6063",
               transition: "height 120ms",
             }}
           >
@@ -9354,7 +9504,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             <button onClick={toggleMute} aria-label={muted ? tr("پخش صدا") : tr("بی‌صدا")} style={{ padding: 4, color: "#F3EEE6" }}>
               <MuteIcon className="w-5 h-5" muted={muted} style={{ color: "#F3EEE6" }} />
             </button>
-            <span style={{ fontFamily: "Oswald, sans-serif", color: "#DAD6CE", fontSize: 11 }}>
+            <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", fontSize: 11 }}>
               {formatTime(displayTime)} / {formatTime(duration)}
             </span>
           </div>
@@ -9476,9 +9626,10 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
 
   // تا وقتی کاربر توی صفحه‌ی ویدیوئه، اسکرین‌شات و ضبط صفحه مسدود می‌شه؛ با خروج از این صفحه دوباره آزاد می‌شه
   useEffect(() => {
-    setScreenCaptureBlocked(true);
+    // ادمین آزاده اسکرین‌شات و ضبط صفحه بگیره
+    setScreenCaptureBlocked(!isAdmin);
     return () => setScreenCaptureBlocked(false);
-  }, []);
+  }, [isAdmin]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -9606,7 +9757,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           </button>
           <button
             onClick={() => setEditingTitle(false)}
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }}
+            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
             className="text-xs shrink-0"
           >
             {tr("انصراف")}</button>
@@ -9629,7 +9780,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
               style={{ width: `${progress}%`, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }}
             />
           </div>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
             {tr("در حال آپلود ویدیو…")}</span>
         </div>
       ) : connectivityState !== "ok" ? (
@@ -9646,7 +9797,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
               {NETWORK_VPN_HINT}
             </span>
           )}
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
             {tr("وقتی اتصال برقرار شد، ویدیو خودکار بارگذاری می‌شه")}</span>
         </div>
       ) : videosStatus === "loading" ? (
@@ -9654,7 +9805,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           className="relative w-full rounded-xl flex flex-col items-center justify-center gap-2 border px-4 text-center"
           style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: "#2a292e" }}
         >
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm">
             {tr("در حال دریافت لیست ویدیوها…")}</span>
         </div>
       ) : videosStatus === "error" ? (
@@ -9690,11 +9841,11 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           />
           <div
             className="relative rounded-full flex items-center justify-center"
-            style={{ width: "48px", height: "48px", background: "rgba(217,30,43,0.12)", border: "1px solid rgba(217,30,43,0.4)" }}
+            style={{ width: "48px", height: "48px", background: "#3F292F", border: "1px solid rgba(217,30,43,0.4)" }}
           >
             <UploadCloudIcon className="w-6 h-6" style={{ color: "#D91E2B" }} />
           </div>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="relative text-xs">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="relative text-xs">
             {tr("آپلود ویدیوی این جلسه")}</span>
         </button>
       ) : (
@@ -9738,7 +9889,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
                     <button
                       disabled={subBusy !== ""}
                       onClick={() => handleSubDelete(code)}
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
                       className="text-xs"
                     >
                       {tr("حذف")}
@@ -9756,7 +9907,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
                         }
                       }}
                       aria-label={tr("حذف از لیست")}
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
                       className="text-xs"
                     >
                       ✕
@@ -9768,7 +9919,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           })}
 
           <div className="mt-3 pt-3" style={{ borderTop: "1px solid #2a292e" }}>
-            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mb-2">
+            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs mb-2">
               {tr("افزودن زبان دیگر")}
             </p>
             <div className="flex items-center gap-2">
@@ -9835,14 +9986,14 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
       {videoSrc && isAdmin && !uploading && (
         <button
           onClick={() => fileRef.current?.click()}
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", border: "1px solid #2a292e" }}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", border: "1px solid #2a292e" }}
           className="mt-3 w-full rounded-lg py-2.5 text-xs"
         >
           {tr("تعویض ویدیو")}</button>
       )}
 
       <div className="mt-6 rounded-xl p-4" style={{ background: "#17161A", border: "1px solid #232227" }}>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs leading-6">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6">
           {tr("© تمامی حقوق این ویدیو متعلق به آکادمی آموزش بوکس ناصری است. هرگونه کپی‌برداری، دانلود یا بازنشر آن بدون اجازه‌ی کتبی، پیگرد قانونی دارد.")}</p>
       </div>
     </div>
@@ -9932,7 +10083,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
           </button>
           <button
             onClick={() => setEditingTitle(false)}
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }}
+            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
             className="text-xs shrink-0"
           >
             {tr("انصراف")}</button>
@@ -9940,97 +10091,45 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
       )}
       <div className="w-full rounded-full mb-4" style={{ background: "#D91E2B", height: "3px" }} />
 
-      <div className="grid grid-cols-5 gap-x-1.5 gap-y-3">
+      <div className="flex flex-col gap-3">
+        <style>{`@keyframes lessonShine { 0% { transform: translateX(-140%) skewX(-18deg); } 55%, 100% { transform: translateX(380%) skewX(-18deg); } }`}</style>
         {items.map((it) => {
-          const isHi = HIGHLIGHT_YELLOW.has(it.n);
           const hasVid = hasVideo?.(it.n);
           const locked = it.n > FREE_LESSONS_COUNT && !hasAccess;
           const done = isCompleted?.(it.n);
-          const squareColor = done ? "#1C6FD1" : isGoldChapter ? "#F3EEE6" : "#D91E2B";
+          const squareColor = done ? "#2FD27A" : "#DCEBF5";
           return (
             <button
               key={it.n}
               onClick={() => (locked ? onLockedSelect?.() : onSelect(it))}
-              className="flex flex-col items-center active:scale-95 transition-transform"
+              className="relative w-full rounded-xl overflow-hidden flex items-center gap-3 px-4 active:scale-[0.98] transition-transform"
+              style={{ height: "70px", background: "#2B2C30", border: `1.5px solid ${squareColor}` }}
             >
-              <div className="relative w-full aspect-square">
-                <div
-                  className="absolute -inset-1.5 rounded-xl"
-                  style={{
-                    background: `radial-gradient(circle, ${squareColor}80 0%, ${squareColor}00 72%)`,
-                    filter: "blur(3px)",
-                  }}
-                />
-                <div
-                  className="relative w-full h-full rounded-lg overflow-hidden"
-                  style={{
-                    background: "#17161A",
-                    border: `1.5px solid ${squareColor}`,
-                  }}
-                >
-                  <img
-                    src={LOGO_SRC}
-                    alt=""
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ opacity: 0.35 }}
-                  />
-                  <div className="absolute inset-0" style={{ background: "rgba(11,11,13,0.35)" }} />
-                  {locked ? (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.45)" }}>
-                      <span style={{ fontSize: "16px", lineHeight: 1 }}>🔒</span>
-                    </div>
-                  ) : (
-                    hasVid && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div
-                          className="rounded-full flex items-center justify-center"
-                          style={{ width: "22px", height: "22px", background: isGoldChapter ? "rgba(243,238,230,0.9)" : "rgba(217,30,43,0.85)" }}
-                        >
-                          <div
-                            style={{
-                              width: 0,
-                              height: 0,
-                              borderTop: "4.5px solid transparent",
-                              borderBottom: "4.5px solid transparent",
-                              borderRight: "7px solid #F3EEE6",
-                              marginRight: "2px",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  )}
-                  <span
-                    style={{
-                      fontFamily: "Oswald, sans-serif",
-                      color: isHi ? "#F3EEE6" : "#F3EEE6",
-                      fontSize: "12px",
-                      textShadow: "0 1px 3px rgba(0,0,0,0.9)",
-                      top: "3px",
-                      right: "4px",
-                    }}
-                    className="absolute font-bold"
-                  >
-                    {it.n}
-                  </span>
-                </div>
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div style={{ position: "absolute", top: 0, bottom: 0, width: "38%", background: "linear-gradient(90deg, transparent, rgba(220,235,245,0.22), transparent)", animation: `lessonShine 3.6s ease-in-out ${(it.n % 6) * 0.45}s infinite`, willChange: "transform" }} />
+              </div>
+              <div className="relative shrink-0 rounded-lg flex items-center justify-center" style={{ width: "40px", height: "40px", background: "#1E1F22", border: `1px solid ${squareColor}` }}>
+                <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", fontSize: "20px" }} className="font-bold">{it.n}</span>
               </div>
               <span
-                style={{
-                  fontFamily: "Vazirmatn, sans-serif",
-                  color: "#F3EEE6",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  lineHeight: 1.4,
-                  display: "-webkit-box",
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-                className="text-center mt-1.5 break-words"
+                style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "linear-gradient(180deg, #FFF3B8 0%, #F2CF5E 38%, #B98A22 62%, #F8DF84 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))", fontSize: "15px", fontWeight: 800, lineHeight: 1.6, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                className="relative flex-1 text-right break-words"
               >
                 {it.t}
               </span>
+              <div className="relative shrink-0 flex items-center justify-center">
+                {locked ? (
+                  <span style={{ fontSize: "22px", lineHeight: 1 }}>🔒</span>
+                ) : done ? (
+                  <CheckIcon className="w-7 h-7" style={{ color: "#2FD27A" }} />
+                ) : (
+                  hasVid && (
+                    <div className="rounded-full flex items-center justify-center" style={{ width: "34px", height: "34px", background: "#DCEBF5" }}>
+                      <div style={{ width: 0, height: 0, borderTop: "7px solid transparent", borderBottom: "7px solid transparent", borderRight: "11px solid #2B2C30", marginRight: "3px" }} />
+                    </div>
+                  )
+                )}
+              </div>
             </button>
           );
         })}
@@ -10039,9 +10138,9 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
   );
 }
 
-function CheckIcon({ className }) {
+function CheckIcon({ className, style }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" className={className} style={style} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6L9 17l-5-5" />
     </svg>
   );
@@ -10275,7 +10374,7 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
   const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
 
   const fieldStyle = { fontFamily: "Vazirmatn, sans-serif", background: "#0B0B0D", color: "#F3EEE6", border: "1px solid #2a292e" };
-  const labelStyle = { fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" };
+  const labelStyle = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
 
   const save = async () => {
     setError("");
@@ -10366,7 +10465,7 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
           <button onClick={save} disabled={busy} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#D91E2B", opacity: busy ? 0.6 : 1 }} className="flex-1 rounded-xl py-2.5 text-sm font-bold">
             {busy ? "..." : tr("ذخیره")}
           </button>
-          <button onClick={onClose} disabled={busy} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", border: "1px solid #2a292e" }} className="rounded-xl px-4 py-2.5 text-sm">
+          <button onClick={onClose} disabled={busy} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", border: "1px solid #2a292e" }} className="rounded-xl px-4 py-2.5 text-sm">
             {tr("انصراف")}
           </button>
         </div>
@@ -10465,7 +10564,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
           {badgeLabel}
         </h1>
         <PromoBanner text={promoText} isAdmin={isAdmin} onSave={onSavePromoText} />
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", maxWidth: "280px" }} className="text-xs leading-6">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", maxWidth: "280px" }} className="text-xs leading-6">
           {tr("دسترسی به دوره‌های آموزشی رو با یکی از این دو پلن باز کن")}</p>
       </div>
 
@@ -10495,7 +10594,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
         {pl.silver.badge !== "-" ? (
           <div className="flex justify-center mb-5">
             <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B6B38", background: "rgba(31,168,85,0.16)", border: "1px solid rgba(11,107,56,0.45)" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B6B38", background: "#283F35", border: "1px solid rgba(11,107,56,0.45)" }}
               className="text-xs font-black rounded-full px-3.5 py-1.5"
             >
               {pl.silver.badge || tr("تخفیف آغازین")}</span>
@@ -10662,14 +10761,14 @@ function ComingSoonScreen({ title, onBack }) {
     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center" dir={APP_DIR}>
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
-        style={{ background: "rgba(243,238,230,0.12)", border: "1px solid rgba(243,238,230,0.4)" }}
+        style={{ background: "#424245", border: "1px solid rgba(243,238,230,0.4)" }}
       >
         <BeltIcon className="w-7 h-7" style={{ color: "#F3EEE6" }} />
       </div>
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-2">
         {title}
       </h1>
-      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm leading-7 mb-8">
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7 mb-8">
         {tr("سرفصل‌های این بخش به‌زودی اضافه می‌شود.")}</p>
       <button
         onClick={onBack}
@@ -11922,7 +12021,7 @@ function App() {
           }
         `}</style>
         <IosInstallHint />
-        <PhoneMock bgImage={getScreenBackground(step)}>
+        <PhoneMock bgImage={getScreenBackground(step)} pencil={!(step === "subscription" || step === "lesson" || (typeof step === "string" && step.startsWith("curriculum-")))}>
           <TopNotch />
           <NetworkBanner />
           {bootGate === "offline" ? (
@@ -11989,6 +12088,7 @@ function App() {
               completed={effectiveCompleted}
               nextLesson={nextLesson}
               plan={authUser?.plan || "none"}
+              authToken={authToken}
               onOpenProgramCat={(id) => { setProgramsCat(id); setStep("programs"); }}
               onContinue={() => {
                 const byKey = { basic: curriculumBasicMerged, advanced: curriculumAdvancedMerged, extra: curriculumExtraMerged, fight: curriculumFightMerged, fightb: curriculumFightbMerged, partner: curriculumPartnerMerged, focus: curriculumFocusMerged };
