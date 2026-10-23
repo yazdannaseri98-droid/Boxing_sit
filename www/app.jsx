@@ -86,7 +86,7 @@ if (typeof document !== "undefined") {
 // Background: #0B0B0D (near-black canvas)
 // Card: #17161A
 // Accent Red: #D91E2B (ring-rope red)
-// Accent Gold: #E8B33D (championship belt gold)
+// Accent Gold: #F3EEE6 (championship belt gold)
 // Off-white text: #F3EEE6
 // Muted gray text: #8A8790
 
@@ -1041,7 +1041,7 @@ async function apiSetMemberCount(count, token) {
   return data.count;
 }
 
-const NEW_CHAPTER_KEYS = ["fight", "partner", "focus"];
+const NEW_CHAPTER_KEYS = ["fight", "fightb", "partner", "focus"];
 
 async function apiFetchChapterVisibility() {
   if (DEMO_MODE) {
@@ -1053,22 +1053,22 @@ async function apiFetchChapterVisibility() {
         // نادیده می‌گیریم و پیش‌فرض برمی‌گردونیم
       }
     }
-    return { fight: false, partner: false, focus: false };
+    return { fight: false, fightb: false, partner: false, focus: false };
   }
   try {
     const res = await apiFetch(`${API_BASE_URL}/settings/chapters`);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) return { fight: false, partner: false, focus: false };
-    return data.visibility || { fight: false, partner: false, focus: false };
+    if (!res.ok || !data.ok) return { fight: false, fightb: false, partner: false, focus: false };
+    return data.visibility || { fight: false, fightb: false, partner: false, focus: false };
   } catch {
-    return { fight: false, partner: false, focus: false };
+    return { fight: false, fightb: false, partner: false, focus: false };
   }
 }
 
 async function apiSetChapterVisibility(key, visible, token) {
   if (DEMO_MODE) {
     const stored = await AppStorage.get("demo-chapter-visibility");
-    const visibility = stored ? JSON.parse(stored) : { fight: false, partner: false, focus: false };
+    const visibility = stored ? JSON.parse(stored) : { fight: false, fightb: false, partner: false, focus: false };
     visibility[key] = visible;
     await AppStorage.set("demo-chapter-visibility", JSON.stringify(visibility));
     return visible;
@@ -1534,6 +1534,7 @@ function RingIcon({ className }) {
 function RopeDivider() {
   return (
     <div className="relative h-3 my-1 overflow-hidden">
+      <div className="absolute inset-x-0 bottom-0" style={{ height: 3, borderRadius: 2, background: "linear-gradient(90deg,#1C6FD1 0 33.3%,#F3EEE6 33.3% 66.6%,#D91E2B 66.6% 100%)", opacity: 0.9, boxShadow: "0 0 10px rgba(77,163,255,0.35)" }} />
       <div
         className="absolute inset-0"
         style={{
@@ -1587,7 +1588,7 @@ function NetworkBanner() {
       : state === "offline"
         ? { bg: "#4a1015", border: "#D91E2B", text: NETWORK_OFFLINE_MESSAGE, sub: NETWORK_VPN_HINT, icon: true }
         : state === "weak"
-          ? { bg: "#4a3a0e", border: "#E8B33D", text: tr("اینترنت ضعیف است"), sub: NETWORK_VPN_HINT, icon: true }
+          ? { bg: "#4a3a0e", border: "#F3EEE6", text: tr("اینترنت ضعیف است"), sub: NETWORK_VPN_HINT, icon: true }
           : { bg: "#10361f", border: "#2e9d57", text: tr("اینترنت وصل شد"), icon: false };
 
   return (
@@ -1608,7 +1609,7 @@ function NetworkBanner() {
 
 function PhoneMock({ children, bgImage }) {
   return (
-    <div className="relative w-full h-full overflow-hidden flex flex-col" style={{ background: "#0B0B0D" }}>
+    <div className="relative w-full h-full overflow-hidden flex flex-col" style={{ background: bgImage ? "#26272B" : "#0B0B0D" }}>
       {/* تکسچر پس‌زمینه‌ی رینگ بوکس - پشت همه‌ی محتوا، روی باکس‌ها و عکس‌های فصل‌ها اصلاً تاثیری نداره */}
       {bgImage && (
         <div
@@ -1617,7 +1618,8 @@ function PhoneMock({ children, bgImage }) {
             backgroundImage: `url(${bgImage})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            opacity: 0.2,
+            opacity: 0.34,
+            filter: "grayscale(1) contrast(1.1) brightness(0.9)",
             zIndex: 0,
             pointerEvents: "none",
           }}
@@ -1700,7 +1702,7 @@ function SplashScreen({ onStart, loading }) {
       {/* faint ring ropes at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-40 opacity-40">
         <div className="absolute left-0 right-0" style={{ background: "#D91E2B", height: "2px", bottom: "1.5rem" }} />
-        <div className="absolute left-0 right-0" style={{ background: "#E8B33D", height: "2px", bottom: "3.5rem" }} />
+        <div className="absolute left-0 right-0" style={{ background: "#F3EEE6", height: "2px", bottom: "3.5rem" }} />
         <div className="absolute left-0 right-0" style={{ background: "#D91E2B", height: "2px", bottom: "5.5rem" }} />
       </div>
 
@@ -1712,7 +1714,7 @@ function SplashScreen({ onStart, loading }) {
               width: "416px",
               height: "416px",
               background:
-                "radial-gradient(circle, rgba(232,179,61,0.35) 0%, rgba(217,30,43,0.25) 45%, transparent 72%)",
+                "radial-gradient(circle, rgba(243,238,230,0.35) 0%, rgba(217,30,43,0.25) 45%, transparent 72%)",
               filter: "blur(2px)",
             }}
           />
@@ -1723,7 +1725,7 @@ function SplashScreen({ onStart, loading }) {
             style={{
               width: "320px",
               height: "320px",
-              filter: "drop-shadow(0 0 18px rgba(217,30,43,0.55)) drop-shadow(0 0 6px rgba(232,179,61,0.4))",
+              filter: "drop-shadow(0 0 18px rgba(217,30,43,0.55)) drop-shadow(0 0 6px rgba(243,238,230,0.4))",
             }}
           />
         </div>
@@ -1745,7 +1747,7 @@ function SplashScreen({ onStart, loading }) {
               <div
                 style={{
                   height: "100%",
-                  background: "linear-gradient(90deg, #2E9FE8, #5FD3E8)",
+                  background: "linear-gradient(90deg, #2E9FE8, #4DA3FF)",
                   animation: "splashLoadFill 5000ms ease-out forwards",
                 }}
               />
@@ -1792,7 +1794,7 @@ function AuthPhoneField({ value, onChange, onEnter, hasError, autoFocus }) {
       className="flex items-center rounded-xl px-4 py-3.5 border"
       style={{ background: "#17161A", borderColor: hasError ? "#D91E2B" : "#2a292e" }}
     >
-      <span style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D", marginInlineEnd: "0.75rem" }} className="text-sm font-semibold">
+      <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", marginInlineEnd: "0.75rem" }} className="text-sm font-semibold">
         +98
       </span>
       <div className="w-px h-5" style={{ background: "#2a292e", marginInlineEnd: "0.75rem" }} />
@@ -2037,7 +2039,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
     background: enabled ? "#D91E2B" : "#3a2226",
     color: enabled ? "#F3EEE6" : "#7a5a5d",
   });
-  const linkBtn = { fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" };
+  const linkBtn = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
 
   const errorBox = error ? (
     <div className="mb-4">
@@ -2092,7 +2094,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
       )}
       {DEMO_MODE && (
         <span
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)", border: "1px solid rgba(232,179,61,0.4)", fontSize: "9px" }}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)", border: "1px solid rgba(243,238,230,0.4)", fontSize: "9px" }}
           className="rounded-full px-2 py-1 mr-auto"
         >
           {tr("حالت آزمایشی")}</span>
@@ -2153,7 +2155,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
             onClick={onGuest}
             data-testid="guest-login"
             className="w-full rounded-xl py-3 font-bold text-sm mb-2"
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "transparent", border: "1px solid #5FD3E8" }}
+            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "transparent", border: "1px solid #4DA3FF" }}
           >
             {tr("ورود به‌عنوان مهمان")}
           </button>
@@ -2210,7 +2212,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         <p style={label} className="text-sm mb-6 leading-7">
           {trNode("کد {n} رقمی به شماره {phone} پیامک شد.", {
             n: OTP_CODE_LENGTH.toLocaleString(NUM_LOCALE),
-            phone: <span style={{ color: "#E8B33D", direction: "ltr", display: "inline-block" }}>{normalizedPhone}</span>,
+            phone: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{normalizedPhone}</span>,
           })}
         </p>
         <div className="mb-4">
@@ -2319,9 +2321,9 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
           <span
             style={{
               fontFamily: "Vazirmatn, sans-serif",
-              color: "#E8B33D",
-              background: "rgba(232,179,61,0.12)",
-              border: "1px solid rgba(232,179,61,0.4)",
+              color: "#F3EEE6",
+              background: "rgba(243,238,230,0.12)",
+              border: "1px solid rgba(243,238,230,0.4)",
               fontSize: "9px",
             }}
             className="rounded-full px-2 py-1 mr-auto"
@@ -2376,7 +2378,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
       >
         {method === "phone" && (
           <>
-            <span style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D", marginInlineEnd: "0.75rem" }} className="text-sm font-semibold">
+            <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", marginInlineEnd: "0.75rem" }} className="text-sm font-semibold">
               +98
             </span>
             <div className="w-px h-5" style={{ background: "#2a292e", marginInlineEnd: "0.75rem" }} />
@@ -2426,7 +2428,7 @@ function SignupScreen({ contact, setContact, method, setMethod, onSubmit, onUseP
       {onUsePassword && (
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm text-center mb-3">
           {tr("با شماره موبایل و رمز عبور وارد می‌شی؟")}{" "}
-          <button onClick={onUsePassword} style={{ color: "#E8B33D" }} className="font-bold">
+          <button onClick={onUsePassword} style={{ color: "#F3EEE6" }} className="font-bold">
             {tr("ورود با رمز عبور")}</button>
         </p>
       )}
@@ -2526,7 +2528,7 @@ function OtpScreen({ contact, method, onVerify, code, setCode }) {
         {tr("کد تایید رو وارد کن")}</h1>
       <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm mb-8 leading-7">
         {trNode(method === "email" ? tr("کد ۴ رقمی به ایمیل {contact} ارسال شد.") : tr("کد ۴ رقمی به شماره {contact} پیامک شد."), {
-          contact: <span style={{ color: "#E8B33D", direction: "ltr", display: "inline-block" }}>{contact || "example@email.com"}</span>,
+          contact: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{contact || "example@email.com"}</span>,
         })}
       </p>
 
@@ -2584,7 +2586,7 @@ function OtpScreen({ contact, method, onVerify, code, setCode }) {
           ) : (
             <>
               {tr("کد رو دریافت نکردی؟")}{" "}
-              <button onClick={handleResend} disabled={resending} style={{ color: "#E8B33D" }}>
+              <button onClick={handleResend} disabled={resending} style={{ color: "#F3EEE6" }}>
                 {resending ? tr("در حال ارسال…") : tr("ارسال مجدد")}
               </button>
             </>
@@ -2742,10 +2744,10 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
         <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-sm">
           {tr("پروفایل حرفه‌ای")}</span>
         <div className="flex items-center gap-1.5">
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D" }} className="text-xs font-semibold tracking-wider">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs font-semibold tracking-wider">
             PRO
           </span>
-          <div className="w-2 h-2 rounded-full" style={{ background: "#E8B33D" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: "#F3EEE6" }} />
         </div>
       </div>
 
@@ -2754,7 +2756,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
         <div
           className="relative w-28 h-28 rounded-full flex items-center justify-center mb-4"
           style={{
-            background: "conic-gradient(from 90deg, #E8B33D, #D91E2B, #E8B33D)",
+            background: "conic-gradient(from 90deg, #F3EEE6, #D91E2B, #F3EEE6)",
             padding: "3px",
           }}
         >
@@ -2804,7 +2806,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
             />
             <button
               onClick={saveName}
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
               className="text-xs font-bold"
             >
               {tr("ثبت")}</button>
@@ -2823,7 +2825,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
       </div>
 
       {/* اطلاعات حساب: اشتراک فعلی، شماره حساب، اعتبار اشتراک */}
-      <div data-testid="account-info" className="rounded-2xl mb-6 overflow-hidden" style={glowBox("#5FD3E8", true)}>
+      <div data-testid="account-info" className="rounded-2xl mb-6 overflow-hidden" style={glowBox("#4DA3FF", true)}>
         {[
           {
             key: "plan",
@@ -2863,7 +2865,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
             key={row.key}
             data-testid={`account-row-${row.key}`}
             className="flex items-center justify-between px-4 py-3.5"
-            style={{ borderTop: i === 0 ? "none" : "1px solid rgba(95,211,232,0.18)", fontFamily: "Vazirmatn, sans-serif", fontSize: "14px" }}
+            style={{ borderTop: i === 0 ? "none" : "1px solid rgba(77,163,255,0.18)", fontFamily: "Vazirmatn, sans-serif", fontSize: "14px" }}
           >
             <span style={{ color: "#B7B3AB", fontWeight: 700 }}>{row.label}</span>
             {row.value}
@@ -2909,14 +2911,14 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
         <div className="h-3 rounded-full overflow-hidden" style={{ background: "#0B0B0D", border: "1px solid #2a292e" }}>
           <div
             className="h-full rounded-full"
-            style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,#D91E2B,#E8B33D)", boxShadow: "0 0 10px rgba(232,179,61,0.7)" }}
+            style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.7)" }}
           />
         </div>
       </div>
 
       {/* Badges */}
-      <div className="mb-6 rounded-2xl p-4" style={glowBox("#E8B33D")}>
-        <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", textShadow: "0 0 10px rgba(232,179,61,0.5)" }} className="text-sm font-black mb-4">
+      <div className="mb-6 rounded-2xl p-4" style={glowBox("#F3EEE6")}>
+        <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 0 10px rgba(243,238,230,0.5)" }} className="text-sm font-black mb-4">
           {tr("نشان‌های افتخار")}</h3>
         <div className="grid grid-cols-3 gap-4">
           {badges.map((b) => {
@@ -2926,9 +2928,9 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
                 <div
                   className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
                   style={{
-                    background: b.unlocked ? "conic-gradient(from 90deg, #E8B33D, #D91E2B, #E8B33D)" : "#17161A",
+                    background: b.unlocked ? "conic-gradient(from 90deg, #F3EEE6, #D91E2B, #F3EEE6)" : "#17161A",
                     padding: b.unlocked ? "2.5px" : "0",
-                    boxShadow: b.unlocked ? "0 0 14px rgba(232,179,61,0.5)" : "none",
+                    boxShadow: b.unlocked ? "0 0 14px rgba(243,238,230,0.5)" : "none",
                     border: b.unlocked ? "none" : "1px solid #2a292e",
                   }}
                 >
@@ -2944,7 +2946,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
                         style={{ filter: b.unlocked ? "none" : "grayscale(1) brightness(0.5)" }}
                       />
                     ) : (
-                      <Icon className="w-6 h-6" style={{ color: b.unlocked ? "#E8B33D" : "#3a393e" }} />
+                      <Icon className="w-6 h-6" style={{ color: b.unlocked ? "#F3EEE6" : "#3a393e" }} />
                     )}
                   </div>
                 </div>
@@ -2972,7 +2974,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
       >
         <div className="flex items-center justify-between">
           <div>
-            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-bold mb-1">
+            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mb-1">
               {tr("تنظیم یادآور روزانه")}</p>
             <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
               {nextSessionTitle}
@@ -3015,11 +3017,11 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
               }}
               className="flex items-center gap-1.5"
             >
-              <BellIcon className="w-4 h-4" style={{ color: reminderEnabled ? "#E8B33D" : "#8A8790" }} />
+              <BellIcon className="w-4 h-4" style={{ color: reminderEnabled ? "#F3EEE6" : "#8A8790" }} />
               <span
                 style={{
                   fontFamily: "Vazirmatn, sans-serif",
-                  color: reminderEnabled ? "#E8B33D" : "#8A8790",
+                  color: reminderEnabled ? "#F3EEE6" : "#8A8790",
                 }}
                 className="text-xs"
               >
@@ -3050,9 +3052,9 @@ function ChapterVisibilityToggle({ visible, onToggle }) {
       className="absolute top-2 left-2 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-1"
       style={{
         fontFamily: "Vazirmatn, sans-serif",
-        background: visible ? "rgba(34,197,94,0.15)" : "rgba(217,30,43,0.15)",
-        border: `1px solid ${visible ? "rgba(34,197,94,0.5)" : "rgba(217,30,43,0.5)"}`,
-        color: visible ? "#22c55e" : "#D91E2B",
+        background: visible ? "rgba(77,163,255,0.15)" : "rgba(217,30,43,0.15)",
+        border: `1px solid ${visible ? "rgba(77,163,255,0.5)" : "rgba(217,30,43,0.5)"}`,
+        color: visible ? "#4DA3FF" : "#D91E2B",
       }}
     >
       <span className="text-[10px] font-bold">{saving ? "..." : visible ? tr("عمومی ✓") : tr("فقط ادمین")}</span>
@@ -3074,11 +3076,11 @@ function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
         onClick={comingSoon ? undefined : onClick}
         className="relative w-full rounded-2xl overflow-hidden border block active:scale-95 transition-transform"
         style={{
-          borderColor: "rgba(95,211,232,0.45)",
+          borderColor: "rgba(77,163,255,0.45)",
           background: "#141317",
           aspectRatio: "16 / 9",
           cursor: comingSoon ? "default" : "pointer",
-          boxShadow: "0 0 24px rgba(95,211,232,0.3), inset 0 0 18px rgba(95,211,232,0.06)",
+          boxShadow: "0 0 24px rgba(77,163,255,0.3), inset 0 0 18px rgba(77,163,255,0.06)",
         }}
       >
         {image ? (
@@ -3104,7 +3106,7 @@ function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
 
         {/* corner rope accents */}
         <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg" style={{ borderColor: "#D91E2B" }} />
-        <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#E8B33D" }} />
+        <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
 
         {isBlocked && (
           <div
@@ -3136,7 +3138,7 @@ function TrainingWindow({ title, onClick, image, locked, comingSoon }) {
             >
               {tr("نیازمند اشتراک")}</span>
             <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
               className="text-xs"
             >
               {tr("خرید اشتراک ‹")}</span>
@@ -3289,7 +3291,7 @@ const TIMER_PRESETS = [
   { id: "tabata", name: "تاباتا", rounds: 8, roundSec: 20, restSec: 10 },
 ];
 const TIMER_DEFAULT = { rounds: 3, roundSec: 180, restSec: 60, prepSec: 10, warn: true, sound: true, vibrate: true };
-const TIMER_COLORS = { prep: "#5FD3E8", round: "#D91E2B", rest: "#E8B33D", done: "#3DE08A" };
+const TIMER_COLORS = { prep: "#4DA3FF", round: "#D91E2B", rest: "#F3EEE6", done: "#4DA3FF" };
 
 function timerClampCfg(c) {
   const n = (v, a, b, d) => {
@@ -3744,18 +3746,18 @@ function TimerScreen({ onBack }) {
             })}
             <span
               className="rounded-full px-3 py-1.5 text-xs font-black"
-              style={{ fontFamily: "Vazirmatn, sans-serif", background: isCustom ? "#5FD3E8" : "#17161A", color: isCustom ? "#0B0B0D" : "#6d6a72", border: "1px solid #3a3840" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: isCustom ? "#4DA3FF" : "#17161A", color: isCustom ? "#0B0B0D" : "#6d6a72", border: "1px solid #3a3840" }}
             >
               {tr("دلخواه")}
             </span>
           </div>
 
-          <div className="rounded-2xl py-4 flex flex-col items-center" style={{ background: "#17161A", border: "1px solid #5FD3E8", boxShadow: "0 0 18px rgba(95,211,232,0.25)" }}>
+          <div className="rounded-2xl py-4 flex flex-col items-center" style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 18px rgba(77,163,255,0.25)" }}>
             <span style={{ fontFamily: '"Bebas Neue", Oswald, sans-serif', color: "#F3EEE6", fontSize: 56, letterSpacing: 2, lineHeight: 1 }} dir="ltr">{fmtClock(cfg.roundSec * 1000)}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f" }} className="text-xs mt-1">
               {tr("{n} راند", { n: cfg.rounds })} · {tr("استراحت")} {fmtClock(cfg.restSec * 1000)}
             </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-bold mt-1">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mt-1">
               {tr("مجموع زمان: {time}", { time: fmtClock(tl.total) })}
             </span>
           </div>
@@ -3819,7 +3821,7 @@ function TimerScreen({ onBack }) {
                 </span>
               )}
               {mode === "paused" && (
-                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mt-1">{tr("متوقف شد")}</span>
+                <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mt-1">{tr("متوقف شد")}</span>
               )}
             </div>
           </div>
@@ -3863,7 +3865,7 @@ function TimerScreen({ onBack }) {
               <>
                 <button onClick={reset} className="flex-1 py-4" style={ctrlBtn("#26242A", "#F3EEE6", { border: "1px solid #3a3840" })}>{tr("ریست")}</button>
                 {mode === "running" ? (
-                  <button onClick={pause} className="flex-[2] py-4 text-lg" style={ctrlBtn("#E8B33D", "#0B0B0D")}>❚❚ {tr("توقف")}</button>
+                  <button onClick={pause} className="flex-[2] py-4 text-lg" style={ctrlBtn("#F3EEE6", "#0B0B0D")}>❚❚ {tr("توقف")}</button>
                 ) : (
                   <button onClick={resume} className="flex-[2] py-4 text-lg" style={ctrlBtn("#D91E2B", "#fff", { boxShadow: "0 0 22px rgba(217,30,43,0.55)" })}>▶ {tr("ادامه")}</button>
                 )}
@@ -3961,12 +3963,12 @@ function UpdateModal({ update, onLater }) {
     >
       <div
         className="w-full rounded-2xl p-5 flex flex-col items-center text-center"
-        style={{ maxWidth: 340, background: "#17161A", border: "1px solid #5FD3E8", boxShadow: "0 0 28px rgba(95,211,232,0.4)" }}
+        style={{ maxWidth: 340, background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 28px rgba(77,163,255,0.4)" }}
       >
         <div style={{ width: 64, height: 64, borderRadius: 32, background: "rgba(217,30,43,0.15)", border: "1px solid #D91E2B", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 18px rgba(217,30,43,0.45)" }}>
           <UpdateIcon className="w-8 h-8" style={{ color: "#D91E2B" }} />
         </div>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }} className="text-xs font-black mt-3">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-xs font-black mt-3">
           {tr("بروزرسانی اپ")}
         </p>
         <h2 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mt-1">
@@ -4032,7 +4034,7 @@ function AdminUpdateScreen({ update, build, authToken, onSave, onCheck, onBack }
           disabled={checking}
           onClick={async () => { setChecking(true); try { await onCheck(); } catch {} setChecking(false); }}
           className="mt-2 rounded-lg px-3 py-1.5 text-xs font-black"
-          style={{ background: "#5FD3E8", color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", opacity: checking ? 0.6 : 1 }}
+          style={{ background: "#4DA3FF", color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", opacity: checking ? 0.6 : 1 }}
         >
           {tr("بررسی همین الان")}
         </button>
@@ -4059,7 +4061,7 @@ function AdminUpdateScreen({ update, build, authToken, onSave, onCheck, onBack }
         <button onClick={save} disabled={busy} className="w-full py-3 text-base" style={{ background: "#D91E2B", color: "#fff", borderRadius: 14, fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, opacity: busy ? 0.6 : 1 }}>
           {tr("ذخیره")}
         </button>
-        {msg && <p style={{ ...lab, color: "#E8B33D" }} className="text-sm font-bold text-center">{msg}</p>}
+        {msg && <p style={{ ...lab, color: "#F3EEE6" }} className="text-sm font-bold text-center">{msg}</p>}
       </div>
     </div>
   );
@@ -4085,12 +4087,12 @@ function IosInstallHint() {
     <div
       data-testid="ios-install-hint"
       dir={APP_DIR}
-      style={{ position: "fixed", left: 12, right: 12, bottom: 12, zIndex: 80, background: "#17161A", border: "1px solid #5FD3E8", borderRadius: 14, padding: "12px 14px", boxShadow: "0 0 18px rgba(95,211,232,0.35)" }}
+      style={{ position: "fixed", left: 12, right: 12, bottom: 12, zIndex: 80, background: "#17161A", border: "1px solid #4DA3FF", borderRadius: 14, padding: "12px 14px", boxShadow: "0 0 18px rgba(77,163,255,0.35)" }}
     >
       <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.9 }} className="text-xs font-bold">
         {tr("برای نصب اپ روی آیفون: دکمه‌ی اشتراک‌گذاری (Share) را بزنید و «Add to Home Screen» را انتخاب کنید.")}
       </p>
-      <button onClick={close} className="mt-2 rounded-lg px-3 py-1 text-xs font-black" style={{ background: "#5FD3E8", color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif" }}>
+      <button onClick={close} className="mt-2 rounded-lg px-3 py-1 text-xs font-black" style={{ background: "#4DA3FF", color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif" }}>
         {tr("متوجه شدم")}
       </button>
     </div>
@@ -4133,14 +4135,14 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
         {tr("› بازگشت")}
       </button>
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-1 flex items-center gap-2">
-        <BellIcon className="w-5 h-5" style={{ color: "#E8B33D" }} />
+        <BellIcon className="w-5 h-5" style={{ color: "#F3EEE6" }} />
         {tr("یادآور روزانه")}
       </h1>
       <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9a968f", lineHeight: 1.9 }} className="text-xs mb-4">
         {tr("هر روز سر ساعت انتخابی، جلسه‌ی بعدی تمرینت یادآوری می‌شه.")}
       </p>
 
-      <div className="rounded-2xl p-5 flex flex-col items-center mb-4" style={glowBox(enabled ? "#E8B33D" : "#5FD3E8", true)}>
+      <div className="rounded-2xl p-5 flex flex-col items-center mb-4" style={glowBox(enabled ? "#F3EEE6" : "#4DA3FF", true)}>
         <input
           type="time"
           value={time}
@@ -4148,7 +4150,7 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
           dir="ltr"
           style={{ fontFamily: '"Bebas Neue", Oswald, sans-serif', fontSize: 56, letterSpacing: 2, color: "#F3EEE6", background: "transparent", border: "none", outline: "none", textAlign: "center", lineHeight: 1.1 }}
         />
-        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: enabled ? "#E8B33D" : "#8A8790" }} className="text-xs font-bold mt-1">
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: enabled ? "#F3EEE6" : "#8A8790" }} className="text-xs font-bold mt-1">
           {enabled ? tr("یادآور برای ساعت {time} فعاله", { time: reminder.time }) : tr("یادآور خاموشه")}
         </span>
         <div className="flex flex-wrap justify-center gap-2 mt-4" dir="ltr">
@@ -4166,7 +4168,7 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
       </div>
 
       <div className="rounded-xl px-4 py-3 mb-4" style={glowBox("#D91E2B")}>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-bold mb-1">{tr("متن یادآور")}</p>
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mb-1">{tr("متن یادآور")}</p>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">{lessonTitle}</p>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs mt-1">{day} · {time}</p>
       </div>
@@ -4179,7 +4181,7 @@ function ReminderScreen({ reminder, nextLesson, onSet, onDisable, onBack }) {
           {tr("خاموش کردن یادآور")}
         </button>
       )}
-      {msg && <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-sm font-bold text-center mt-3">{msg}</p>}
+      {msg && <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold text-center mt-3">{msg}</p>}
     </div>
   );
 }
@@ -4592,7 +4594,7 @@ function CoachHub({ chapterNames, counts, legacyCount, onOpen, onBack }) {
             data-testid={`coach-box-${b.key}`}
             onClick={() => onOpen(b.key)}
             className="rounded-xl p-4 transition-all"
-            style={{ background: "#17161A", border: "1px solid #5FD3E8", boxShadow: "0 0 12px rgba(95,211,232,0.45)", textAlign: "start" }}
+            style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 12px rgba(77,163,255,0.45)", textAlign: "start" }}
           >
             <div className="flex items-center gap-3">
               <div className="rounded-full flex items-center justify-center shrink-0" style={{ width: "34px", height: "34px", background: "rgba(217,30,43,0.15)" }}>
@@ -4767,7 +4769,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
       "data-testid": testId,
       onChange: (e) => onChange(e.target.value),
       className: "w-full rounded-lg p-2 text-sm leading-7 outline-none",
-      style: { ...CONTENT_FONT, color: "#F3EEE6", background: "#0B0B0D", border: "1px solid rgba(95,211,232,0.5)", resize: "vertical" },
+      style: { ...CONTENT_FONT, color: "#F3EEE6", background: "#0B0B0D", border: "1px solid rgba(77,163,255,0.5)", resize: "vertical" },
     });
 
   const smallBtn = (label, onClick, style, testId) =>
@@ -4777,7 +4779,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
     "div",
     { className: "flex items-center justify-between gap-2 mb-4" },
     smallBtn(tr("› انصراف"), onCancel, { color: "#0B0B0D", background: "#DAD6CE" }, "content-cancel"),
-    smallBtn(busy ? tr("در حال ذخیره…") : tr("ذخیره"), save, { color: "#0B0B0D", background: "#5FD3E8" }, "content-save")
+    smallBtn(busy ? tr("در حال ذخیره…") : tr("ذخیره"), save, { color: "#0B0B0D", background: "#4DA3FF" }, "content-save")
   );
 
   const cards = isPara
@@ -4785,7 +4787,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
     : draft.map((it, i) =>
         h(
           "div",
-          { key: i, className: "rounded-xl p-3 flex flex-col gap-2", style: { background: "#17161A", border: "1px solid #5FD3E8" } },
+          { key: i, className: "rounded-xl p-3 flex flex-col gap-2", style: { background: "#17161A", border: "1px solid #4DA3FF" } },
           h(
             "div",
             { className: "flex items-center justify-between" },
@@ -4833,7 +4835,7 @@ function ContentEditor({ kind, title, initial, onSave, onReset, onCancel }) {
           disabled: busy,
           "data-testid": "content-add",
           className: "w-full rounded-xl py-3 mt-3 text-sm font-bold",
-          style: { ...CONTENT_FONT, color: "#5FD3E8", background: "rgba(95,211,232,0.08)", border: "1px dashed #5FD3E8" },
+          style: { ...CONTENT_FONT, color: "#4DA3FF", background: "rgba(77,163,255,0.08)", border: "1px dashed #4DA3FF" },
         },
         tr("+ افزودن باکس جدید")
       ),
@@ -4872,7 +4874,7 @@ function EditableContent({ kind, title, items, paragraph, isAdmin, onSave, onRes
           onClick: () => setEditing(true),
           "data-testid": "content-edit",
           className: "mb-4 rounded-lg px-3 py-1.5 text-xs font-bold",
-          style: { ...CONTENT_FONT, color: "#0B0B0D", background: "#5FD3E8" },
+          style: { ...CONTENT_FONT, color: "#0B0B0D", background: "#4DA3FF" },
         },
         tr("✎ ویرایش و افزودن (ادمین)")
       )
@@ -4912,8 +4914,8 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
               className="text-right rounded-xl p-3 transition-all"
               style={{
                 background: "#17161A",
-                border: "1px solid #5FD3E8",
-                boxShadow: "0 0 12px rgba(95,211,232,0.45)",
+                border: "1px solid #4DA3FF",
+                boxShadow: "0 0 12px rgba(77,163,255,0.45)",
               }}
             >
               <div className="flex items-center gap-3">
@@ -4938,7 +4940,7 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
                   style={{ fontFamily: "Vazirmatn, sans-serif", color: "#DAD6CE" }}
                   className="text-xs leading-7 mt-3 pt-3"
                 >
-                  <span style={{ display: "block", borderTop: "1px solid rgba(95,211,232,0.25)", marginBottom: "10px" }} />
+                  <span style={{ display: "block", borderTop: "1px solid rgba(77,163,255,0.25)", marginBottom: "10px" }} />
                   {item.a}
                 </p>
               )}
@@ -5165,12 +5167,12 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
           <div
             className="mt-3 rounded-xl px-3.5 py-2.5 text-center"
             style={{
-              background: isAnswered ? "rgba(31,168,85,0.15)" : "rgba(232,179,61,0.15)",
-              border: `1px solid ${isAnswered ? "#1FA855" : "#E8B33D"}`,
+              background: isAnswered ? "rgba(28,111,209,0.15)" : "rgba(243,238,230,0.15)",
+              border: `1px solid ${isAnswered ? "#1C6FD1" : "#F3EEE6"}`,
             }}
           >
             <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: isAnswered ? "#1FA855" : "#E8B33D" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", color: isAnswered ? "#1C6FD1" : "#F3EEE6" }}
               className="text-xs font-bold"
             >
               {isAnswered ? tr("✓ پاسخ پشتیبان") : tr("⏳ پیام شما در حال بررسیه")}
@@ -5191,7 +5193,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
             <div key={i} className={`flex flex-col ${isMine ? "items-start" : "items-end"}`}>
               {showSenderLabel && (
                 <span
-                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }}
+                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }}
                   className="text-[10px] font-bold mb-1 px-1"
                 >
                   {tr("🤖 پاسخ خودکار")}</span>
@@ -5236,7 +5238,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
           {voicePermissionDenied && (
             <button
               onClick={openAppSettings}
-              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#17161A", color: "#5FD3E8", border: "1px solid #5FD3E8" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#17161A", color: "#4DA3FF", border: "1px solid #4DA3FF" }}
               className="rounded-lg px-3 py-1.5 text-xs font-bold"
             >
               {tr("برو به تنظیمات و مجوز میکروفون رو فعال کن")}</button>
@@ -5414,7 +5416,7 @@ function AdminUsersScreen({ authToken, onBack }) {
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black">
           {tr("لیست کاربران")}</h1>
         <span
-          style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" }}
+          style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)" }}
           className="text-xs font-bold rounded-full px-3 py-1"
         >
           {tr("{n} نفر", { n: total.toLocaleString("en-US") })}
@@ -5452,17 +5454,17 @@ function AdminUsersScreen({ authToken, onBack }) {
                 <div className="flex items-center gap-1.5 shrink-0">
                   {u.isAdmin && (
                     <span
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", background: "rgba(232,179,61,0.12)" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "rgba(243,238,230,0.12)" }}
                       className="text-[10px] font-bold rounded-full px-2 py-0.5"
                     >
                       {tr("ادمین")}</span>
                   )}
                   {isActivePaid && (
                     <span
-                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#1FA855", background: "rgba(31,168,85,0.12)" }}
+                      style={{ fontFamily: "Vazirmatn, sans-serif", color: "#1C6FD1", background: "rgba(28,111,209,0.12)" }}
                       className="text-[10px] font-bold rounded-full px-2 py-0.5 flex items-center gap-1"
                     >
-                      <span style={{ background: "#1FA855" }} className="w-1.5 h-1.5 rounded-full" />
+                      <span style={{ background: "#1C6FD1" }} className="w-1.5 h-1.5 rounded-full" />
                       {tr("فعال")}</span>
                   )}
                 </div>
@@ -5506,7 +5508,7 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
         <div className="flex-1 flex flex-col items-center justify-center">
           <div
             className="relative w-full rounded-2xl overflow-hidden mb-5"
-            style={{ aspectRatio: "1 / 1", background: "#0B0B0D", border: "1px solid #5FD3E8", boxShadow: "0 0 20px rgba(95,211,232,0.4)" }}
+            style={{ aspectRatio: "1 / 1", background: "#0B0B0D", border: "1px solid #4DA3FF", boxShadow: "0 0 20px rgba(77,163,255,0.4)" }}
           >
             <img src={expandedItem.image} alt={expandedItem.text} className="w-full h-full object-contain" />
           </div>
@@ -5557,8 +5559,8 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
                 className="flex items-center gap-3 rounded-xl p-3"
                 style={{
                   background: "#17161A",
-                  border: "1px solid #5FD3E8",
-                  boxShadow: "0 0 12px rgba(95,211,232,0.45)",
+                  border: "1px solid #4DA3FF",
+                  boxShadow: "0 0 12px rgba(77,163,255,0.45)",
                 }}
               >
                 {item.image ? (
@@ -5594,15 +5596,15 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
 // مهمان = ورود با رمز یکبار مصرف | ثابت = ثبت‌نام‌شده با رمز عبور | اشتراک فعال = خریداران اشتراکِ منقضی‌نشده
 function AdminStatsRows({ stats }) {
   const rows = [
-    { key: "guestdev", label: tr("کاربران مهمان"), hint: tr("ورود بدون ثبت‌نام"), value: stats?.guestDevices, color: "#E8B33D" },
-    { key: "registered", label: tr("کاربران ثابت"), hint: tr("ثبت‌نام‌شده"), value: stats?.registeredUsers, color: "#5FD3E8" },
-    { key: "subscribed", label: tr("اشتراک فعال"), hint: tr("خریداران اشتراک"), value: stats?.activeSubscriptions, color: "#22c55e" },
+    { key: "guestdev", label: tr("کاربران مهمان"), hint: tr("ورود بدون ثبت‌نام"), value: stats?.guestDevices, color: "#F3EEE6" },
+    { key: "registered", label: tr("کاربران ثابت"), hint: tr("ثبت‌نام‌شده"), value: stats?.registeredUsers, color: "#4DA3FF" },
+    { key: "subscribed", label: tr("اشتراک فعال"), hint: tr("خریداران اشتراک"), value: stats?.activeSubscriptions, color: "#4DA3FF" },
   ];
   return (
     <div
       data-testid="admin-stats"
       className="w-full mt-3 pt-3 flex flex-col gap-2"
-      style={{ borderTop: "1px solid rgba(95,211,232,0.25)" }}
+      style={{ borderTop: "1px solid rgba(77,163,255,0.25)" }}
     >
       {rows.map((r) => (
         <div key={r.key} data-testid={`admin-stat-${r.key}`} className="flex items-center justify-between gap-2">
@@ -5715,14 +5717,14 @@ function ExerciseVideoAdmin({ names, exVideos, authToken, onChanged }) {
     finally { setBusy(""); }
   };
   return (
-    <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px dashed #E8B33D" }}>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">ویدیوی حرکت‌ها (فقط ادمین)</div>
+    <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px dashed #F3EEE6" }}>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">ویدیوی حرکت‌ها (فقط ادمین)</div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[10px] leading-4 mb-2">ویدیو کوتاه (۵ تا ۱۰ ثانیه) بذار؛ توی اپ بی‌صدا و تکراری پخش می‌شه. ویدیوی هر حرکت توی همه‌ی برنامه‌ها مشترکه.</div>
       {uniq.map(({ k, label }) => (
         <div key={k} className="flex items-center justify-between gap-2 py-1.5" style={{ borderTop: "1px solid #2a292e" }}>
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs flex-1">{label}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: exVideos && exVideos[k] ? "#3DE08A" : "#8A8790" }} className="text-[10px]">{exVideos && exVideos[k] ? "دارد ✓" : "ندارد"}</span>
-          <button disabled={busy === k} onClick={() => pick(k)} className="rounded-lg px-2.5 py-1 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#E8B33D", color: "#0B0B0D", opacity: busy === k ? 0.6 : 1 }}>
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: exVideos && exVideos[k] ? "#4DA3FF" : "#8A8790" }} className="text-[10px]">{exVideos && exVideos[k] ? "دارد ✓" : "ندارد"}</span>
+          <button disabled={busy === k} onClick={() => pick(k)} className="rounded-lg px-2.5 py-1 text-[11px] font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D", opacity: busy === k ? 0.6 : 1 }}>
             {busy === k ? "..." : exVideos && exVideos[k] ? "جایگزینی" : "آپلود"}
           </button>
           {exVideos && exVideos[k] && (
@@ -5797,7 +5799,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "hiit", img: "assets/prog-hiit.webp", icon: "🔥", color: "#E8B33D", title: "HIIT (تمرین تناوبی شدید)",
+    id: "hiit", img: "assets/prog-hiit.webp", icon: "🔥", color: "#F3EEE6", title: "HIIT (تمرین تناوبی شدید)",
     desc: "تناوب بین تلاش شدید و استراحت کوتاه. چربی‌سوزی بالا در زمان کم.",
     programs: [
       { id: "hiit-beg", name: "HIIT مبتدی ۱۵ دقیقه", level: "مبتدی", mode: "interval", desc: "۳۰ ثانیه کار / ۳۰ ثانیه استراحت، ۳ دور ۵ حرکتی.",
@@ -5811,7 +5813,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "crossfit", img: "assets/prog-crossfit.webp", icon: "🏋️", color: "#B08CFF", title: "کراس‌فیت",
+    id: "crossfit", img: "assets/prog-crossfit.webp", icon: "🏋️", color: "#4DA3FF", title: "کراس‌فیت",
     desc: "تمرین‌های عملکردی با شدت بالا و متنوع (WOD). با شمارش دور یا زمان انجام می‌شن.",
     programs: [
       { id: "cf-amrap", name: "AMRAP ۱۲ دقیقه", level: "متوسط", mode: "amrap", total: 720,
@@ -5827,7 +5829,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "fitness", img: "assets/prog-fitness.webp", icon: "💪", color: "#3DE08A", title: "فیتنس و تمام‌بدن",
+    id: "fitness", img: "assets/prog-fitness.webp", icon: "💪", color: "#4DA3FF", title: "فیتنس و تمام‌بدن",
     desc: "برنامه‌های عمومی برای تناسب اندام، قدرت پایه و آمادگی جسمانی.",
     programs: [
       { id: "ft-circuit", name: "سیرکویت تمام‌بدن (۲۰ دقیقه)", level: "مبتدی", mode: "interval", desc: "۴۰ ثانیه کار / ۲۰ ثانیه استراحت، ۳ دور ۶ حرکتی.",
@@ -5839,7 +5841,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "bodybuilding", img: "assets/prog-bodybuilding.webp", icon: "🏆", color: "#FF7A45", title: "بدنسازی (با وزنه)",
+    id: "bodybuilding", img: "assets/prog-bodybuilding.webp", icon: "🏆", color: "#D91E2B", title: "بدنسازی (با وزنه)",
     desc: "برنامه‌های تقسیم‌بندی‌شده برای افزایش حجم و قدرت. وزنه رو طوری انتخاب کن که ۲-۳ تکرار آخر سخت باشه.",
     programs: [
       { id: "bb-full", name: "تمام‌بدن ۳ روز در هفته", level: "مبتدی", mode: "list", desc: "شنبه / دوشنبه / چهارشنبه. بین ست‌ها ۹۰ ثانیه استراحت.", rest: 90,
@@ -5865,7 +5867,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "cardio", img: "assets/prog-cardio.webp", icon: "🏃", color: "#5FD3E8", title: "ورزش‌های هوازی",
+    id: "cardio", img: "assets/prog-cardio.webp", icon: "🏃", color: "#4DA3FF", title: "ورزش‌های هوازی",
     desc: "تقویت قلب و ریه و چربی‌سوزی؛ پایه‌ی آمادگی بوکسور.",
     programs: [
       { id: "cd-walkrun", name: "راه رفتن/دویدن مبتدی (۲۵ دقیقه)", level: "مبتدی", mode: "interval", desc: "۱ دقیقه دویدن آرام، ۲ دقیقه راه رفتن؛ ۸ بار.",
@@ -5907,7 +5909,7 @@ const PG_DATA = [
     ],
   },
   {
-    id: "calisthenics", img: "assets/prog-calisthenics.webp", icon: "🤸", color: "#2EC4B6", title: "تمرین با وزن بدن",
+    id: "calisthenics", img: "assets/prog-calisthenics.webp", icon: "🤸", color: "#4DA3FF", title: "تمرین با وزن بدن",
     desc: "قدرت و کنترل بدن بدون وسیله — هر جا و هر زمان.",
     programs: [
       { id: "cal-beg", name: "پایه (۳ روز در هفته)", level: "مبتدی", mode: "list", desc: "۳ ست، بین ست‌ها ۶۰ ثانیه.", rest: 60,
@@ -5933,8 +5935,9 @@ const PG_ORDER = ["tabata", "bodybuilding", "crossfit", "fitness", "hiit", "card
 PG_DATA.sort((a, b) => PG_ORDER.indexOf(a.id) - PG_ORDER.indexOf(b.id));
 // فقط تاباتا برای همه بازه؛ بقیه با اشتراک دوره اول (یا ادمین)
 const PG_FREE = ["tabata"];
+PG_DATA.forEach((c, i) => { c.color = ["#D91E2B", "#4DA3FF", "#F3EEE6"][i % 3]; });
 
-const PG_LEVEL_COLOR = { "مبتدی": "#3DE08A", "متوسط": "#E8B33D", "پیشرفته": "#D91E2B" };
+const PG_LEVEL_COLOR = { "مبتدی": "#4DA3FF", "متوسط": "#F3EEE6", "پیشرفته": "#D91E2B" };
 const fmtMMSS = (sec) => { const s = Math.max(0, Math.ceil(sec)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 
 // پخش‌کننده‌ی تایمر مشترک: لیستی از مرحله‌ها (steps) رو یکی‌یکی اجرا می‌کنه
@@ -5993,8 +5996,8 @@ function ProgramPlayer({ title, steps, onExit, extra, exVideos, onComplete }) {
   const reset = () => { setM("idle"); setIdx(0); setLeft(steps[0] ? steps[0].dur : 0); };
 
   const s = steps[idx] || steps[0];
-  const colorOf = { prep: "#5FD3E8", work: "#D91E2B", rest: "#3DE08A" };
-  const col = mode === "done" ? "#E8B33D" : colorOf[s.type] || "#D91E2B";
+  const colorOf = { prep: "#4DA3FF", work: "#D91E2B", rest: "#4DA3FF" };
+  const col = mode === "done" ? "#F3EEE6" : colorOf[s.type] || "#D91E2B";
   const nextWork = s.type === "rest" ? s.next : (steps.slice(idx + 1).find((x) => x.type === "work") || {}).name;
   const R = 104, C = 2 * Math.PI * R;
   const prog = s ? 1 - Math.min(1, Math.max(0, left / s.dur)) : 1;
@@ -6042,19 +6045,19 @@ function ProgramPlayer({ title, steps, onExit, extra, exVideos, onComplete }) {
 
       <div className="flex items-center justify-center gap-3 mt-3">
         {mode === "idle" && (
-          <button onClick={start} className="rounded-2xl px-10 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff", boxShadow: "0 0 18px rgba(47,211,122,0.5)" }}>شروع</button>
+          <button onClick={start} className="rounded-2xl px-10 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff", boxShadow: "0 0 18px rgba(77,163,255,0.5)" }}>شروع</button>
         )}
         {mode === "running" && (<>
           <button onClick={prev} className="rounded-2xl px-4 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>قبلی</button>
-          <button onClick={pause} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" }}>توقف</button>
+          <button onClick={pause} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#F3EEE6", color: "#0B0B0D" }}>توقف</button>
           <button onClick={skip} className="rounded-2xl px-4 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>بعدی</button>
         </>)}
         {mode === "paused" && (<>
-          <button onClick={resume} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>ادامه</button>
+          <button onClick={resume} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}>ادامه</button>
           <button onClick={reset} className="rounded-2xl px-5 py-3.5 text-sm" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#2a292e", color: "#F3EEE6" }}>از اول</button>
         </>)}
         {mode === "done" && (
-          <button onClick={reset} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#E8B33D", color: "#0B0B0D" }}>دوباره</button>
+          <button onClick={reset} className="rounded-2xl px-8 py-3.5 text-base" style={{ fontFamily: "Vazirmatn, sans-serif", fontWeight: 900, background: "#F3EEE6", color: "#0B0B0D" }}>دوباره</button>
         )}
       </div>
       {extra}
@@ -6067,7 +6070,7 @@ function ProgramMoveList({ steps }) {
   const works = steps.filter((x) => x.type === "work");
   return (
     <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">{`حرکت‌ها (${works.length})`}</div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">{`حرکت‌ها (${works.length})`}</div>
       <div className="flex flex-col gap-1">
         {works.map((w, i) => (
           <div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${w.name} — ${w.dur >= 60 ? Math.round(w.dur / 60) + " دقیقه" : w.dur + " ثانیه"}`}</div>
@@ -6082,13 +6085,13 @@ function AmrapPlayer({ program, onExit, exVideos }) {
   const steps = useMemo(() => [{ type: "prep", name: "آماده شو", dur: PG_PREP }, { type: "work", name: "AMRAP", dur: program.total, round: 1, rounds: 1 }], [program]);
   const [rounds, setRounds] = useState(0);
   const extra = (
-    <div className="mt-4 rounded-xl p-3" style={{ background: "#17161A", border: "1px solid #B08CFF" }}>
-      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#B08CFF" }} className="text-xs font-black mb-2">در هر دور:</div>
+    <div className="mt-4 rounded-xl p-3" style={{ background: "#17161A", border: "1px solid #4DA3FF" }}>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-xs font-black mb-2">در هر دور:</div>
       {program.items.map((it, i) => (<div key={i}><ExerciseClip name={it} exVideos={exVideos} height={120} /><div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm leading-7">{it}</div></div>))}
       <div className="flex items-center justify-center gap-4 mt-3">
         <button onClick={() => setRounds((r) => Math.max(0, r - 1))} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#2a292e", color: "#F3EEE6" }}>−</button>
-        <div style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" }}>{" دور"}</span></div>
-        <button onClick={() => setRounds((r) => r + 1)} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#B08CFF", color: "#0B0B0D" }}>+</button>
+        <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-3xl font-bold w-24 text-center">{rounds}<span style={{ fontFamily: "Vazirmatn, sans-serif", fontSize: 12, color: "#B7B3AB" }}>{" دور"}</span></div>
+        <button onClick={() => setRounds((r) => r + 1)} className="rounded-xl w-11 h-11 text-xl font-black" style={{ background: "#4DA3FF", color: "#0B0B0D" }}>+</button>
       </div>
     </div>
   );
@@ -6126,20 +6129,20 @@ function ListWorkout({ program, onExit, exVideos, onComplete }) {
           <div key={i}>
           <ExerciseClip name={it} exVideos={exVideos} height={150} />
           <button onClick={() => setDone((d) => ({ ...d, [i]: !d[i] }))} className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-right"
-            style={{ background: done[i] ? "rgba(61,224,138,0.12)" : "#17161A", border: `1px solid ${done[i] ? "#3DE08A" : "#2a292e"}` }}>
-            <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 24, height: 24, border: `2px solid ${done[i] ? "#3DE08A" : "#55535a"}`, background: done[i] ? "#3DE08A" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 14 }}>{done[i] ? "✓" : ""}</span>
+            style={{ background: done[i] ? "rgba(77,163,255,0.12)" : "#17161A", border: `1px solid ${done[i] ? "#4DA3FF" : "#2a292e"}` }}>
+            <span className="rounded-full flex items-center justify-center shrink-0" style={{ width: 24, height: 24, border: `2px solid ${done[i] ? "#4DA3FF" : "#55535a"}`, background: done[i] ? "#4DA3FF" : "transparent", color: "#0B0B0D", fontWeight: 900, fontSize: 14 }}>{done[i] ? "✓" : ""}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: done[i] ? "#8A8790" : "#F3EEE6", textDecoration: done[i] ? "line-through" : "none" }} className="text-sm font-bold">{it}</span>
           </button>
           </div>
         ))}
       </div>
-      <div className="rounded-2xl p-4 text-center" style={{ background: "#17161A", border: "1px solid #3DE08A", boxShadow: "0 0 14px rgba(61,224,138,0.3)" }}>
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3DE08A" }} className="text-xs font-black mb-1">{`تایمر استراحت بین ست‌ها (${restSec} ثانیه)`}</div>
+      <div className="rounded-2xl p-4 text-center" style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 14px rgba(77,163,255,0.3)" }}>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-xs font-black mb-1">{`تایمر استراحت بین ست‌ها (${restSec} ثانیه)`}</div>
         <div style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-4xl font-bold mb-2">{fmtMMSS(restLeft || restSec)}</div>
         {restLeft > 0 ? (
           <button onClick={() => setRestLeft(0)} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" }}>لغو</button>
         ) : (
-          <button onClick={startRest} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>شروع استراحت</button>
+          <button onClick={startRest} className="rounded-xl px-6 py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}>شروع استراحت</button>
         )}
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs text-center mt-3">{`${count} از ${program.items.length} حرکت انجام شد`}</div>
@@ -6147,13 +6150,14 @@ function ListWorkout({ program, onExit, exVideos, onComplete }) {
   );
 }
 
-function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
+function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe, initialCat }) {
   const canOpen = (c) => isAdmin || PG_FREE.includes(c.id) || plan === "silver";
-  const [lockedCat, setLockedCat] = useState(null);
+  const initC = initialCat ? PG_DATA.find((x) => x.id === initialCat) : null;
+  const [lockedCat, setLockedCat] = useState(initC && !canOpen(initC) ? initC : null);
   const [exVideos, setExVideos] = useState({});
   useEffect(() => { let alive = true; apiFetchExerciseVideos().then((m) => { if (alive && m) setExVideos(m); }); return () => { alive = false; }; }, []);
   const onVideoChanged = (k, url) => setExVideos((m) => { const n = { ...m }; if (url) n[k] = url; else delete n[k]; return n; });
-  const [cat, setCat] = useState(null);
+  const [cat, setCat] = useState(initC && canOpen(initC) ? initC : null);
   const [prog, setProg] = useState(null);
   const [playing, setPlaying] = useState(false);
 
@@ -6187,7 +6191,7 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
         {steps && <ProgramMoveList steps={steps} />}
         {prog.mode !== "interval" && (
           <div className="rounded-xl p-3 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
-            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-black mb-2">{prog.mode === "amrap" ? "حرکت‌های هر دور" : "حرکت‌ها"}</div>
+            <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-black mb-2">{prog.mode === "amrap" ? "حرکت‌های هر دور" : "حرکت‌ها"}</div>
             {prog.items.map((it, i) => (<div key={i} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D8D3CA" }} className="text-xs leading-6">{`${i + 1}. ${it}`}</div>))}
           </div>
         )}
@@ -6247,18 +6251,18 @@ function ProgramsScreen({ onBack, isAdmin, authToken, plan, onSubscribe }) {
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black leading-5">{c.title}</span>
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: c.color }} className="text-[10px] font-bold">{`${c.programs.length} برنامه`}</span>
             {!canOpen(c) && <span className="absolute top-2 left-2 text-base" style={{ filter: "drop-shadow(0 0 4px #000)" }}>🔒</span>}
-            {PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && <span className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#3DE08A", color: "#0B0B0D" }}>رایگان</span>}
+            {PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && <span className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#4DA3FF", color: "#0B0B0D" }}>رایگان</span>}
           </button>
         ))}
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px] leading-5 mt-5">{PG_SAFETY}</div>
       {lockedCat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setLockedCat(null)}>
-          <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #E8B33D", boxShadow: "0 0 22px rgba(232,179,61,0.35)" }} onClick={(e) => e.stopPropagation()}>
+          <div className="w-full rounded-2xl p-5 text-center" dir={APP_DIR} style={{ maxWidth: 320, background: "#17161A", border: "1px solid #F3EEE6", boxShadow: "0 0 22px rgba(243,238,230,0.35)" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ fontSize: 38 }}>🔒</div>
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black mt-1 mb-2">{lockedCat.title}</div>
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-sm leading-7 mb-4">این بخش با خرید «اشتراک دوره اول» باز می‌شه. فقط تاباتا برای همه رایگانه.</div>
-            <button onClick={() => { setLockedCat(null); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg, #7A4300, #B86A00)", color: "#FFF6D8" }}>مشاهده اشتراک</button>
+            <button onClick={() => { setLockedCat(null); onSubscribe && onSubscribe(); }} className="w-full rounded-xl py-3 text-sm font-bold mb-2" style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg, #8F1019, #D91E2B)", color: "#FFFFFF" }}>مشاهده اشتراک</button>
             <button onClick={() => setLockedCat(null)} className="w-full rounded-xl py-2.5 text-sm font-bold" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#2a292e", color: "#F3EEE6" }}>بستن</button>
           </div>
         </div>
@@ -6688,7 +6692,7 @@ function JourneyChartBox({ done, onOpen }) {
         {onOpen && <button onClick={onOpen} className="rounded-lg px-2.5 py-1 text-[11px] font-bold" style={{ ...JR_FONT, background: "#4DA3FF22", color: "#4DA3FF", border: "1px solid #4DA3FF" }}>ادامه تمرین ›</button>}
       </div>
       <div className="grid grid-cols-4 gap-2 mb-3">
-        {[[jrFa(st.days), "روز انجام‌شده", "#3DE08A"], [jrFa(st.medals), "مدال طلا", "#E8B33D"], [jrFa(st.streak), "روز پیاپی", "#FF7A45"], [jrFa(st.minutes), "دقیقه تمرین", "#4DA3FF"]].map(([v, l, c]) => (
+        {[[jrFa(st.days), "روز انجام‌شده", "#3DE08A"], [jrFa(st.medals), "مدال طلا", "#E8B33D"], [jrFa(st.streak), "روز پیاپی", "#D91E2B"], [jrFa(st.minutes), "دقیقه تمرین", "#4DA3FF"]].map(([v, l, c]) => (
           <div key={l} className="rounded-xl py-2 text-center" style={{ background: "#0B0B0D", border: `1px solid ${c}55` }}>
             <div style={{ fontFamily: "Oswald, sans-serif", color: c }} className="text-lg font-bold leading-6">{v}</div>
             <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[9px]">{l}</div>
@@ -6918,7 +6922,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
               </div>
             ))}
             <div style={{ ...JR_FONT, color: "#8A8790" }} className="text-[11px] leading-5">با تغییر تنظیمات، روزهای انجام‌نشده بر اساس انتخاب جدیدت دوباره ساخته می‌شن و روزهای سبز شده می‌مونن.</div>
-            <button onClick={() => { setShowSet(false); save(cfg, done, res, blk); }} className="rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}>ذخیره و بستن</button>
+            <button onClick={() => { setShowSet(false); save(cfg, done, res, blk); }} className="rounded-xl py-2.5 text-sm font-bold" style={{ ...JR_FONT, background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}>ذخیره و بستن</button>
           </div>
         )}
       </div>
@@ -7026,7 +7030,7 @@ const BS_TOPICS = [
     ],
   },
   {
-    id: "pro-rules", icon: "🏆", color: "#E8B33D", title: "قوانین مسابقات حرفه‌ای", sub: "قوانین یکپارچه‌ی بوکس حرفه‌ای",
+    id: "pro-rules", icon: "🏆", color: "#F3EEE6", title: "قوانین مسابقات حرفه‌ای", sub: "قوانین یکپارچه‌ی بوکس حرفه‌ای",
     blocks: [
       { t: "p", x: "بوکس حرفه‌ای تحت نظر کمیسیون‌های ورزشی (مثل Nevada یا New York در آمریکا، BBBofC در بریتانیا) و سازمان‌های جهانی برگزار می‌شه. بیشتر مقررات بر اساس «قوانین یکپارچه‌ی بوکس» و رهنمودهای انجمن کمیسیون‌های بوکس (ABC) تنظیم شده." },
       { t: "h", x: "تعداد و طول راندها" },
@@ -7069,7 +7073,7 @@ const BS_TOPICS = [
     ],
   },
   {
-    id: "judging", icon: "⚖️", color: "#B08CFF", title: "قوانین داوری و قضاوت مسابقات", sub: "امتیازدهی، معیارها و نمونه‌ی برگه",
+    id: "judging", icon: "⚖️", color: "#4DA3FF", title: "قوانین داوری و قضاوت مسابقات", sub: "امتیازدهی، معیارها و نمونه‌ی برگه",
     blocks: [
       { t: "p", x: "نتیجه‌ی مسابقه‌هایی که با ناک‌اوت یا توقف تموم نمی‌شن از روی برگه‌ی امتیاز قاضی‌ها مشخص می‌شه. فهمیدن منطق امتیازدهی بهت کمک می‌کنه استراتژی‌ات رو با راند‌به‌راند بودن مسابقه تنظیم کنی." },
       { t: "h", x: "سیستم ۱۰ امتیازی اجباری" },
@@ -7121,7 +7125,7 @@ const BS_TOPICS = [
 ];
 const BS_TOPICS_2 = [
   {
-    id: "career", icon: "🚀", color: "#3DE08A", title: "مسیر پیشرفت در بوکس حرفه‌ای", sub: "از آماتور تا قهرمانی جهان",
+    id: "career", icon: "🚀", color: "#4DA3FF", title: "مسیر پیشرفت در بوکس حرفه‌ای", sub: "از آماتور تا قهرمانی جهان",
     blocks: [
       { t: "p", x: "هیچ مسیر یگانه‌ای وجود نداره، ولی ساختار رایج پیشرفت در بوکس حرفه‌ای مثل یک نردبانه: هر پله با رکورد، رتبه‌بندی و مدیریت درست حریف‌ها باز می‌شه." },
       { t: "svg", k: "ladder" },
@@ -7180,7 +7184,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "pro-types", icon: "💰", color: "#E8B33D", title: "انواع مسابقات بوکس حرفه‌ای", sub: "کارت مسابقه، عنوان و فرمت‌ها",
+    id: "pro-types", icon: "💰", color: "#F3EEE6", title: "انواع مسابقات بوکس حرفه‌ای", sub: "کارت مسابقه، عنوان و فرمت‌ها",
     blocks: [
       { t: "p", x: "هر شب مسابقه‌ی حرفه‌ای (Fight card) مجموعه‌ای از مبارزه‌هاست که از مبتدی‌ها تا مبارزه‌ی اصلی شب مرتب می‌شن." },
       { t: "kv", x: [
@@ -7213,7 +7217,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "weights", icon: "⚖️", color: "#5FD3E8", title: "رده‌های وزنی", sub: "حرفه‌ای و المپیک",
+    id: "weights", icon: "⚖️", color: "#4DA3FF", title: "رده‌های وزنی", sub: "حرفه‌ای و المپیک",
     blocks: [
       { t: "p", x: "رده‌ی وزنی تضمین می‌کنه دو بوکسور از نظر جثه برابر باشن. وزن‌کشی دقیق و رعایت سقف هر رده اجباریه." },
       { t: "h", x: "رده‌های حرفه‌ای (بر حسب پوند و کیلوگرم)" },
@@ -7270,7 +7274,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "results", icon: "📋", color: "#B08CFF", title: "پایان مسابقه و انواع نتیجه", sub: "KO، TKO، تصمیم و موارد خاص",
+    id: "results", icon: "📋", color: "#4DA3FF", title: "پایان مسابقه و انواع نتیجه", sub: "KO، TKO، تصمیم و موارد خاص",
     blocks: [
       { t: "kv", x: [
         ["KO (ناک‌اوت)", "بوکسور قبل از شمارش ۱۰ بلند نمی‌شه یا ادامه نمی‌ده."],
@@ -7293,7 +7297,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "ring", icon: "🏟️", color: "#FF7A45", title: "رینگ و تجهیزات مسابقه", sub: "ابعاد، گوشه‌ها و دستکش",
+    id: "ring", icon: "🏟️", color: "#D91E2B", title: "رینگ و تجهیزات مسابقه", sub: "ابعاد، گوشه‌ها و دستکش",
     blocks: [
       { t: "svg", k: "ring" },
       { t: "ul", x: [
@@ -7308,7 +7312,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "health", icon: "🩺", color: "#3DE08A", title: "ایمنی و سلامت", sub: "پزشکی، ضربه‌ی مغزی و ریکاوری",
+    id: "health", icon: "🩺", color: "#4DA3FF", title: "ایمنی و سلامت", sub: "پزشکی، ضربه‌ی مغزی و ریکاوری",
     blocks: [
       { t: "ul", x: [
         "قبل از هر مسابقه معاینه‌ی پزشکی انجام بده؛ بدون تأیید پزشک رینگ نمی‌شه وارد مسابقه شد.",
@@ -7323,7 +7327,7 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "glossary", icon: "📖", color: "#E8B33D", title: "فرهنگ اصطلاحات بوکس", sub: "واژه‌های ضروری",
+    id: "glossary", icon: "📖", color: "#F3EEE6", title: "فرهنگ اصطلاحات بوکس", sub: "واژه‌های ضروری",
     blocks: [
       { t: "kv", x: [
         ["Jab (جَب)", "ضربه‌ی مستقیم دست جلو."],
@@ -7366,16 +7370,16 @@ function BsRingSvg() {
       {[0, 8, 16].map((d) => (<rect key={d} x={55 + d} y={45 + d} width={210 - d * 2} height={210 - d * 2} fill="none" stroke={d === 0 ? "#D91E2B" : d === 8 ? "#DAD6CE" : "#4DA3FF"} strokeWidth="2" opacity="0.8" />))}
       <circle cx="55" cy="255" r="11" fill="#D91E2B" /><circle cx="265" cy="45" r="11" fill="#4DA3FF" />
       <circle cx="55" cy="45" r="11" fill="#DAD6CE" /><circle cx="265" cy="255" r="11" fill="#DAD6CE" />
-      <text x="55" y="283" textAnchor="middle" fontSize="11" fill="#FF8A8A" style={BSF} fontWeight="700">گوشه‌ی قرمز</text>
+      <text x="55" y="283" textAnchor="middle" fontSize="11" fill="#FF6B76" style={BSF} fontWeight="700">گوشه‌ی قرمز</text>
       <text x="265" y="30" textAnchor="middle" fontSize="11" fill="#8CC4FF" style={BSF} fontWeight="700">گوشه‌ی آبی</text>
       <text x="55" y="30" textAnchor="middle" fontSize="10" fill="#CFC9BF" style={BSF}>خنثی</text>
       <text x="265" y="283" textAnchor="middle" fontSize="10" fill="#CFC9BF" style={BSF}>خنثی</text>
-      <circle cx="140" cy="150" r="9" fill="#D91E2B" /><circle cx="180" cy="150" r="9" fill="#4DA3FF" /><circle cx="160" cy="125" r="7" fill="#E8B33D" />
-      <text x="160" y="112" textAnchor="middle" fontSize="10" fill="#E8B33D" style={BSF} fontWeight="700">داور</text>
+      <circle cx="140" cy="150" r="9" fill="#D91E2B" /><circle cx="180" cy="150" r="9" fill="#4DA3FF" /><circle cx="160" cy="125" r="7" fill="#F3EEE6" />
+      <text x="160" y="112" textAnchor="middle" fontSize="10" fill="#F3EEE6" style={BSF} fontWeight="700">داور</text>
       <text x="160" y="195" textAnchor="middle" fontSize="9" fill="#8A8790" style={BSF}>مرکز رینگ</text>
-      <rect x="146" y="6" width="28" height="14" rx="3" fill="#2a2a32" /><text x="160" y="16" textAnchor="middle" fontSize="8" fill="#B08CFF" style={BSF}>قاضی ۱</text>
-      <rect x="2" y="143" width="34" height="14" rx="3" fill="#2a2a32" /><text x="19" y="153" textAnchor="middle" fontSize="8" fill="#B08CFF" style={BSF}>قاضی ۲</text>
-      <rect x="284" y="143" width="34" height="14" rx="3" fill="#2a2a32" /><text x="301" y="153" textAnchor="middle" fontSize="8" fill="#B08CFF" style={BSF}>قاضی ۳</text>
+      <rect x="146" y="6" width="28" height="14" rx="3" fill="#2a2a32" /><text x="160" y="16" textAnchor="middle" fontSize="8" fill="#4DA3FF" style={BSF}>قاضی ۱</text>
+      <rect x="2" y="143" width="34" height="14" rx="3" fill="#2a2a32" /><text x="19" y="153" textAnchor="middle" fontSize="8" fill="#4DA3FF" style={BSF}>قاضی ۲</text>
+      <rect x="284" y="143" width="34" height="14" rx="3" fill="#2a2a32" /><text x="301" y="153" textAnchor="middle" fontSize="8" fill="#4DA3FF" style={BSF}>قاضی ۳</text>
     </svg>
   );
 }
@@ -7385,19 +7389,19 @@ function BsBodySvg() {
     <svg viewBox="0 0 320 260" width="100%" style={{ display: "block", direction: "ltr" }}>
       <rect x="0" y="0" width="320" height="260" rx="16" fill="#0F0F12" />
       <g transform="translate(40,10)">
-        <circle cx="60" cy="30" r="22" fill="#3DE08A" opacity="0.55" stroke="#3DE08A" />
+        <circle cx="60" cy="30" r="22" fill="#4DA3FF" opacity="0.55" stroke="#4DA3FF" />
         <rect x="52" y="50" width="16" height="12" fill="#3a3940" />
-        <rect x="28" y="62" width="64" height="80" rx="14" fill="#3DE08A" opacity="0.4" stroke="#3DE08A" />
+        <rect x="28" y="62" width="64" height="80" rx="14" fill="#4DA3FF" opacity="0.4" stroke="#4DA3FF" />
         <rect x="6" y="66" width="20" height="70" rx="10" fill="#2a292e" stroke="#4a4950" /><rect x="94" y="66" width="20" height="70" rx="10" fill="#2a292e" stroke="#4a4950" />
         <rect x="28" y="142" width="64" height="34" rx="8" fill="#D91E2B" opacity="0.45" stroke="#D91E2B" />
         <rect x="32" y="176" width="24" height="70" rx="8" fill="#2a292e" stroke="#4a4950" /><rect x="64" y="176" width="24" height="70" rx="8" fill="#2a292e" stroke="#4a4950" />
-        <line x1="14" y1="142" x2="106" y2="142" stroke="#E8B33D" strokeWidth="2.5" strokeDasharray="5 3" />
+        <line x1="14" y1="142" x2="106" y2="142" stroke="#F3EEE6" strokeWidth="2.5" strokeDasharray="5 3" />
       </g>
-      <text x="190" textAnchor="start" y="52" fontSize="12" fill="#3DE08A" style={BSF} fontWeight="700">✓ ناحیه‌ی مجاز</text>
+      <text x="190" textAnchor="start" y="52" fontSize="12" fill="#4DA3FF" style={BSF} fontWeight="700">✓ ناحیه‌ی مجاز</text>
       <text x="190" textAnchor="start" y="70" fontSize="10" fill="#CFC9BF" style={BSF}>جلو و کناره‌ی سر</text>
       <text x="190" textAnchor="start" y="86" fontSize="10" fill="#CFC9BF" style={BSF}>تنه‌ی بالای کمربند</text>
-      <text x="190" textAnchor="start" y="136" fontSize="11" fill="#E8B33D" style={BSF} fontWeight="700">خط کمربند</text>
-      <text x="190" textAnchor="start" y="166" fontSize="12" fill="#FF8A8A" style={BSF} fontWeight="700">✕ ممنوع</text>
+      <text x="190" textAnchor="start" y="136" fontSize="11" fill="#F3EEE6" style={BSF} fontWeight="700">خط کمربند</text>
+      <text x="190" textAnchor="start" y="166" fontSize="12" fill="#FF6B76" style={BSF} fontWeight="700">✕ ممنوع</text>
       <text x="190" textAnchor="start" y="184" fontSize="10" fill="#CFC9BF" style={BSF}>زیر کمربند</text>
       <text x="190" textAnchor="start" y="200" fontSize="10" fill="#CFC9BF" style={BSF}>پشت سر و گردن</text>
       <text x="190" textAnchor="start" y="216" fontSize="10" fill="#CFC9BF" style={BSF}>کلیه‌ها و کمر</text>
@@ -7411,8 +7415,8 @@ function BsTimelineSvg() {
     <div className="rounded-xl p-3 mb-3" style={{ background: "#0F0F12", border: "1px solid #2a292e" }}>
       <div style={{ ...BSF, color: "#8CC4FF", fontSize: 11, fontWeight: 800 }} className="mb-1.5">آماتور بزرگسالان: ۳ راند × ۳ دقیقه</div>
       <div className="flex gap-1 mb-3">{[1, 2, 3].map((i) => box("راند " + jrFa(i), "#4DA3FF"))}</div>
-      <div style={{ ...BSF, color: "#E8B33D", fontSize: 11, fontWeight: 800 }} className="mb-1.5">حرفه‌ای عنوان قهرمانی: تا ۱۲ راند × ۳ دقیقه</div>
-      <div className="flex gap-0.5">{Array.from({ length: 12 }, (_, i) => box(jrFa(i + 1), "#E8B33D"))}</div>
+      <div style={{ ...BSF, color: "#F3EEE6", fontSize: 11, fontWeight: 800 }} className="mb-1.5">حرفه‌ای عنوان قهرمانی: تا ۱۲ راند × ۳ دقیقه</div>
+      <div className="flex gap-0.5">{Array.from({ length: 12 }, (_, i) => box(jrFa(i + 1), "#F3EEE6"))}</div>
       <div style={{ ...BSF, color: "#8A8790", fontSize: 10 }} className="mt-2">بین هر راند ۱ دقیقه استراحت</div>
     </div>
   );
@@ -7428,7 +7432,7 @@ function BsWeightsSvg() {
           <div className="flex-1 rounded-sm" style={{ height: 10, background: "#1b1b22" }}>
             <div style={{ width: (kg / max) * 100 + "%", height: "100%", borderRadius: 2, background: `linear-gradient(90deg,#1c6fd1,${i > 14 ? "#D91E2B" : "#4DA3FF"})` }} />
           </div>
-          <div style={{ width: 62, fontSize: 9, color: "#E8B33D", fontFamily: "Oswald, sans-serif" }}>{i === 16 ? "200+ lb" : lb + " lb"} • {i === 16 ? "+90.7" : kg}</div>
+          <div style={{ width: 62, fontSize: 9, color: "#F3EEE6", fontFamily: "Oswald, sans-serif" }}>{i === 16 ? "200+ lb" : lb + " lb"} • {i === 16 ? "+90.7" : kg}</div>
         </div>
       ))}
       <div style={{ ...BSF, color: "#8A8790", fontSize: 10 }} className="mt-2">سقف هر رده بر اساس پوند (lb) و کیلوگرم؛ برخی سازمان‌ها رده‌های اضافه (مثل بریج‌ر ۲۲۴ پوند) هم دارن.</div>
@@ -7437,7 +7441,7 @@ function BsWeightsSvg() {
 }
 
 function BsLadder() {
-  const steps = [["قهرمان جهان / یکپارچه‌سازی", "#FFD76A"], ["مبارزه‌ی عنوان جهانی", "#E8B33D"], ["حذفی و چالشگر اجباری", "#FF7A45"], ["رتبه‌ی ۱۵ نفر برتر جهان", "#D91E2B"], ["عناوین قاره‌ای و ملی", "#B08CFF"], ["۸ تا ۱۰ راندی با رتبه‌داران", "#4DA3FF"], ["۴ و ۶ راندی ابتدایی", "#5FD3E8"], ["مجوز و مبارزه‌ی حرفه‌ای اول", "#3DE08A"], ["پایه‌ی آماتور", "#8A8790"]];
+  const steps = [["قهرمان جهان / یکپارچه‌سازی", "#FFFFFF"], ["مبارزه‌ی عنوان جهانی", "#F3EEE6"], ["حذفی و چالشگر اجباری", "#D91E2B"], ["رتبه‌ی ۱۵ نفر برتر جهان", "#D91E2B"], ["عناوین قاره‌ای و ملی", "#4DA3FF"], ["۸ تا ۱۰ راندی با رتبه‌داران", "#4DA3FF"], ["۴ و ۶ راندی ابتدایی", "#4DA3FF"], ["مجوز و مبارزه‌ی حرفه‌ای اول", "#4DA3FF"], ["پایه‌ی آماتور", "#8A8790"]];
   return (
     <div className="flex flex-col items-center gap-1.5 mb-3">
       {steps.map(([t, c], i) => (
@@ -7455,7 +7459,7 @@ function BsBlocks({ blocks, color }) {
         if (b.t === "p") return <p key={i} style={{ ...BSF, color: "#DAD6CE" }} className="text-[13px] leading-7">{b.x}</p>;
         if (b.t === "ul") return (<ul key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#DAD6CE" }}><span style={{ color }}>•</span><span>{x}</span></li>))}</ul>);
         if (b.t === "ol") return (<ol key={i} className="flex flex-col gap-1.5">{b.x.map((x, j) => (<li key={j} className="flex gap-2 text-[13px] leading-7" style={{ ...BSF, color: "#DAD6CE" }}><span style={{ color, fontWeight: 900, minWidth: 18 }}>{jrFa(j + 1)}.</span><span>{x}</span></li>))}</ol>);
-        if (b.t === "note") return (<div key={i} className="rounded-xl p-3 mt-3 text-[11px] leading-6" style={{ ...BSF, background: "rgba(232,179,61,0.08)", border: "1px solid rgba(232,179,61,0.4)", color: "#CFC9BF" }}>ℹ️ {b.x}</div>);
+        if (b.t === "note") return (<div key={i} className="rounded-xl p-3 mt-3 text-[11px] leading-6" style={{ ...BSF, background: "rgba(243,238,230,0.08)", border: "1px solid rgba(243,238,230,0.4)", color: "#CFC9BF" }}>ℹ️ {b.x}</div>);
         if (b.t === "kv") return (<div key={i} className="flex flex-col gap-2">{b.x.map(([k, v], j) => (<div key={j} className="rounded-xl p-3" style={{ background: "#17161A", border: `1px solid ${color}55` }}><div style={{ ...BSF, color }} className="text-[13px] font-black mb-0.5">{k}</div><div style={{ ...BSF, color: "#CFC9BF" }} className="text-xs leading-6">{v}</div></div>))}</div>);
         if (b.t === "table") return (
           <div key={i} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${color}55` }}>
@@ -7515,7 +7519,79 @@ function MenuBookIcon({ className, style }) {
   );
 }
 
-function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin }) {
+
+const HM_CHAPTERS = [
+  { key: "basic", img: "CHAPTER1_IMAGE_SRC", arr: "CURRICULUM_BASIC", color: "#4DA3FF" },
+  { key: "advanced", img: "CHAPTER2_IMAGE_SRC", arr: "CURRICULUM_ADVANCED", color: "#D91E2B" },
+  { key: "extra", img: "CHAPTER3_IMAGE_SRC", arr: "CURRICULUM_EXTRA", color: "#F3EEE6" },
+  { key: "fight", img: "CHAPTER4_IMAGE_SRC", arr: "CURRICULUM_FIGHT", color: "#4DA3FF", gated: true },
+  { key: "fightb", img: "CHAPTER4_IMAGE_SRC", arr: "CURRICULUM_FIGHT", color: "#D91E2B", gated: true },
+  { key: "partner", img: "CHAPTER5_IMAGE_SRC", arr: "CURRICULUM_PARTNER", color: "#D91E2B", gated: true },
+  { key: "focus", img: "CHAPTER6_IMAGE_SRC", arr: "CURRICULUM_FOCUS", color: "#F3EEE6", gated: true },
+];
+function hmChapterData(k) {
+  const m = { CHAPTER1_IMAGE_SRC, CHAPTER2_IMAGE_SRC, CHAPTER3_IMAGE_SRC, CHAPTER4_IMAGE_SRC, CHAPTER5_IMAGE_SRC, CHAPTER6_IMAGE_SRC, CURRICULUM_BASIC, CURRICULUM_ADVANCED, CURRICULUM_EXTRA, CURRICULUM_FIGHT, CURRICULUM_PARTNER, CURRICULUM_FOCUS };
+  return { img: m[k.img], arr: m[k.arr] || [] };
+}
+function HmSectionTitle({ title, sub, color }) {
+  return (
+    <div className="flex items-end justify-between mb-2.5 px-0.5">
+      <div className="flex items-center gap-2">
+        <span style={{ width: 4, height: 18, borderRadius: 3, background: `linear-gradient(180deg, ${color || "#D91E2B"}, transparent)`, boxShadow: `0 0 10px ${color || "#D91E2B"}` }} />
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{title}</span>
+      </div>
+      {sub && <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-[11px]">{sub}</span>}
+    </div>
+  );
+}
+function HmRow({ children }) {
+  return (
+    <div className="relative" style={{ margin: "0 -20px", padding: "14px 0 6px", background: "linear-gradient(180deg, rgba(243,238,230,0.34) 0%, rgba(243,238,230,0.20) 55%, rgba(243,238,230,0.28) 100%)", borderTop: "1px solid rgba(243,238,230,0.5)", borderBottom: "1px solid rgba(243,238,230,0.5)" }}>
+      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent 0 14px, rgba(255,255,255,0.045) 14px 15px)" }} />
+      <div className="relative flex gap-3 overflow-x-auto pb-3 px-5" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+function HmHero({ lesson, chapterTitle, percent, onContinue, image }) {
+  return (
+    <button onClick={onContinue} className="relative w-full rounded-3xl overflow-hidden text-right block active:scale-[0.985] transition-transform" style={{ height: 232, background: "#0B0B0D", border: "1px solid rgba(243,238,230,0.55)", boxShadow: "0 0 30px rgba(217,30,43,0.35), 0 10px 40px rgba(0,0,0,0.6)" }}>
+      <img src={image} alt="" draggable={false} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", transform: "scale(1.06)" }} />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,8,10,0.97) 0%, rgba(8,8,10,0.72) 38%, rgba(8,8,10,0.05) 75%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(120% 80% at 100% 0%, rgba(217,30,43,0.35), transparent 55%)" }} />
+      <div className="absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "rgba(217,30,43,0.85)", color: "#fff", boxShadow: "0 0 14px rgba(217,30,43,0.7)" }}>{lesson ? "ادامه تمرین" : "شروع مسیر"}</div>
+      <div className="absolute bottom-0 inset-x-0 p-4">
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-bold mb-1">{chapterTitle}</div>
+        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 12px rgba(0,0,0,0.9)" }} className="text-xl font-black leading-8 mb-2.5">{lesson ? lesson.title : "مسیر پیشرفت ۱۰۰ روزه"}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "rgba(255,255,255,0.15)" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.8)" }} /></div>
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">{percent}%</span>
+          <span className="rounded-full flex items-center justify-center" style={{ width: 38, height: 38, background: "linear-gradient(135deg,#D91E2B,#ff4b57)", color: "#fff", boxShadow: "0 0 18px rgba(217,30,43,0.8)", fontSize: 14 }}>▶</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+function HmShortcuts({ items }) {
+  return (
+    <div className="grid grid-cols-4 gap-2.5">
+      {items.map((it) => {
+        const Icon = it.icon;
+        return (
+          <button key={it.key} onClick={it.onClick} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
+            <span className="rounded-2xl flex items-center justify-center" style={{ width: 58, height: 58, background: `linear-gradient(145deg, ${it.color}30, rgba(255,255,255,0.04))`, border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)`, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
+              <Icon className="w-7 h-7" style={{ color: it.color, filter: `drop-shadow(0 0 6px ${it.color})` }} />
+            </span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#CFC9BF" }} className="text-[10px] font-bold text-center leading-4">{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin, completed, nextLesson, onContinue, onOpenProgramCat, plan }) {
   const [editingCount, setEditingCount] = useState(false);
   const [countDraft, setCountDraft] = useState(String(memberCount));
   const [inviteOpen, setInviteOpen] = useState(false); // انتخاب نوع لینک دعوت
@@ -7527,25 +7603,96 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
   }, [memberCount]);
 
   const menuItems = [
-    { color: "#E8B33D", key: "info-tips", label: tr("نکات کلیدی"), icon: MenuTipIcon },
-    { color: "#5FD3E8", key: "info-coach", label: tr("کمک مربی"), icon: MenuCoachIcon },
-    { color: "#D91E2B", key: "timer", label: tr("تایمر تمرین"), icon: MenuTimerIcon },
-    { color: "#3DE08A", key: "programs", label: tr("برنامه‌های تخصصی"), icon: MenuPlanIcon },
     { color: "#4DA3FF", key: "journey", label: tr("مسیر پیشرفت من"), icon: MenuJourneyIcon },
-    { color: "#FFB547", key: "reminder", label: tr("یادآور روزانه"), icon: MenuBellIcon },
-    { color: "#B08CFF", key: "info-faq", label: tr("سوالات متداول"), icon: MenuQuestionIcon },
-    { color: "#FF7A45", key: "info-gear", label: tr("وسایل بوکس"), icon: MenuGloveIcon },
-    { color: "#E8B33D", key: "boxsci", label: tr("علوم ضروری بوکس"), icon: MenuBookIcon },
-    // فعلاً پشتیبانی فقط برای ادمین نشون داده می‌شه (برای مدیریت گفتگوهای قبلی)، از دسترس کاربر عادی خارجه - شاید بعداً برگردوندیمش
-    ...(isAdmin ? [{ color: "#3DE08A", key: "support", label: tr("پشتیبانی"), icon: MenuSupportIcon }] : []),
+    { color: "#4DA3FF", key: "programs", label: tr("برنامه‌های تخصصی"), icon: MenuPlanIcon },
+    { color: "#F3EEE6", key: "boxsci", label: tr("علوم ضروری بوکس"), icon: MenuBookIcon },
+    { color: "#4DA3FF", key: "info-coach", label: tr("کمک مربی"), icon: MenuCoachIcon },
+    { color: "#F3EEE6", key: "info-tips", label: tr("نکات کلیدی"), icon: MenuTipIcon },
+    { color: "#D91E2B", key: "timer", label: tr("تایمر تمرین"), icon: MenuTimerIcon },
+    { color: "#F3EEE6", key: "reminder", label: tr("یادآور روزانه"), icon: MenuBellIcon },
+    { color: "#4DA3FF", key: "info-faq", label: tr("سوالات متداول"), icon: MenuQuestionIcon },
+    { color: "#D91E2B", key: "info-gear", label: tr("وسایل بوکس"), icon: MenuGloveIcon },
     { color: "#8FA3B8", key: "info-rules", label: tr("قوانین و مقررات"), icon: MenuRulesIcon },
+    { color: "#D91E2B", key: "invite", label: tr("دعوت از دوستان"), icon: MenuInviteIcon },
+    { color: "#4DA3FF", key: "language", label: tr("تغییر زبان") + " / Language", icon: MenuGlobeIcon },
+    // فعلاً پشتیبانی فقط برای ادمین نشون داده می‌شه (برای مدیریت گفتگوهای قبلی)، از دسترس کاربر عادی خارجه
+    ...(isAdmin ? [{ color: "#4DA3FF", key: "support", label: tr("پشتیبانی"), icon: MenuSupportIcon }] : []),
     { color: "#4DA3FF", key: "info-about", label: tr("درباره آکادمی Naseri"), icon: MenuAboutIcon },
-    ...(isAdmin ? [{ color: "#2EC4B6", key: "admin-users", label: tr("لیست کاربران"), icon: MenuUsersIcon }] : []),
-    ...(isAdmin ? [{ color: "#7BD34F", key: "admin-update", label: tr("بروزرسانی اپ"), icon: MenuUpdateIcon }] : []),
-    { color: "#FF5FA2", key: "invite", label: tr("دعوت از دوستان"), icon: MenuInviteIcon },
+    ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-users", label: tr("لیست کاربران"), icon: MenuUsersIcon }] : []),
+    ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-update", label: tr("بروزرسانی اپ"), icon: MenuUpdateIcon }] : []),
     { color: "#4DA3FF", key: "webapp", label: tr("نسخه وب / iOS"), icon: MenuPhoneIcon },
-    { color: "#5FD3E8", key: "language", label: tr("تغییر زبان") + " / Language", icon: MenuGlobeIcon },
   ];
+  const membersBox = (
+            <div
+              className="flex flex-wrap items-center justify-between rounded-xl px-3 py-3"
+              style={{
+                background: "rgba(77,163,255,0.08)",
+                border: "1px solid rgba(77,163,255,0.4)",
+                boxShadow: "0 0 22px rgba(77,163,255,0.35), inset 0 0 14px rgba(77,163,255,0.08)",
+              }}
+            >
+              {editingCount ? (
+                <div className="flex items-center gap-2 w-full">
+                  <input
+                    value={countDraft}
+                    onChange={(e) => setCountDraft(e.target.value.replace(/[^\d]/g, ""))}
+                    inputMode="numeric"
+                    autoFocus
+                    style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }}
+                    className="bg-transparent outline-none flex-1 text-sm"
+                  />
+                  <button
+                    disabled={savingCount}
+                    onClick={async () => {
+                      setSavingCount(true);
+                      try {
+                        await onSetMemberCount?.(Number(countDraft) || 0);
+                        setEditingCount(false);
+                      } catch {
+                        // خطای شبکه - فرم باز می‌مونه
+                      } finally {
+                        setSavingCount(false);
+                      }
+                    }}
+                    style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D", background: "#4DA3FF" }}
+                    className="rounded-lg px-2.5 py-1 text-xs font-bold shrink-0"
+                  >
+                    {savingCount ? "..." : tr("ذخیره")}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="active-dot rounded-full shrink-0"
+                      style={{ width: "8px", height: "8px", background: "#4DA3FF" }}
+                    />
+                    <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" }} className="text-xs font-bold">
+                      {tr("اعضای فعال اپ")}</span>
+                  </span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
+                        {Number(memberCount).toLocaleString("en-US")}
+                      </span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            setCountDraft(String(memberCount));
+                            setEditingCount(true);
+                          }}
+                        >
+                          <PencilIcon className="w-3.5 h-3.5" style={{ color: "#4DA3FF" }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+              {/* فقط برای ادمین: آمار تفکیکی کاربران */}
+              {isAdmin && <AdminStatsRows stats={adminStats} />}
+            </div>
+  );
 
   return (
     <div className="relative flex-1 flex flex-col overflow-hidden">
@@ -7559,14 +7706,14 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
           <div
             dir={APP_DIR}
             className="w-full rounded-2xl p-4"
-            style={{ background: "#17161A", border: "1px solid #FF5FA2", boxShadow: "0 0 22px rgba(255,95,162,0.35)", maxWidth: "320px" }}
+            style={{ background: "#17161A", border: "1px solid #D91E2B", boxShadow: "0 0 22px rgba(217,30,43,0.35)", maxWidth: "320px" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black text-center mb-3">{tr("دعوت از دوستان")}</div>
             <button
               onClick={() => { setInviteOpen(false); onInviteFriends?.("android"); }}
               className="w-full rounded-xl py-3 mb-2.5 text-sm font-bold"
-              style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1FA855,#2fd37a)", color: "#fff" }}
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: "linear-gradient(135deg,#1C6FD1,#4DA3FF)", color: "#fff" }}
             >{tr("اشتراک‌گذاری نسخه اندروید")}</button>
             <button
               onClick={() => { setInviteOpen(false); onInviteFriends?.("web"); }}
@@ -7586,7 +7733,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
           <div
             dir="ltr"
             className="w-full rounded-2xl p-4"
-            style={{ background: "#17161A", border: "1px solid #5FD3E8", boxShadow: "0 0 22px rgba(95,211,232,0.35)", maxWidth: "320px" }}
+            style={{ background: "#17161A", border: "1px solid #4DA3FF", boxShadow: "0 0 22px rgba(77,163,255,0.35)", maxWidth: "320px" }}
             onClick={(e) => e.stopPropagation()}
           >
             <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black mb-3 text-center">
@@ -7602,8 +7749,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                   style={{
                     fontFamily: "Vazirmatn, sans-serif",
                     color: l.code === APP_LANG ? "#0B0B0D" : "#F3EEE6",
-                    background: l.code === APP_LANG ? "#5FD3E8" : "#0B0B0D",
-                    border: "1px solid rgba(95,211,232,0.5)",
+                    background: l.code === APP_LANG ? "#4DA3FF" : "#0B0B0D",
+                    border: "1px solid rgba(77,163,255,0.5)",
                   }}
                 >
                   <span className="text-sm font-bold">{l.name}</span>
@@ -7640,8 +7787,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
           >
             <span
               style={{
-                color: "#E8B33D",
-                background: "linear-gradient(90deg, #E8B33D, #D91E2B)",
+                color: "#F3EEE6",
+                background: "linear-gradient(90deg, #F3EEE6, #D91E2B)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -7663,75 +7810,125 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             onClick={onGuestLogin}
             data-testid="guest-banner"
             className="w-full rounded-xl px-3 py-2.5 mt-3 flex items-center justify-between gap-2"
-            style={{ background: "rgba(232,179,61,0.1)", border: "1px solid rgba(232,179,61,0.5)" }}
+            style={{ background: "rgba(243,238,230,0.1)", border: "1px solid rgba(243,238,230,0.5)" }}
           >
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", lineHeight: 1.7 }} className="text-xs font-bold text-right">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.7 }} className="text-xs font-bold text-right">
               {tr("برای ذخیره‌ی پیشرفت و خرید اشتراک وارد شوید")}
             </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", background: "#E8B33D", color: "#0B0B0D" }} className="rounded-lg px-3 py-1 text-xs font-black shrink-0">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" }} className="rounded-lg px-3 py-1 text-xs font-black shrink-0">
               {tr("ورود / ثبت‌نام")}
             </span>
           </button>
         )}
 
-        <div className="flex flex-col gap-6 mt-4">
-          <TrainingWindow
-            title={chapterTitles?.basic || DEFAULT_CHAPTER_TITLES.basic}
-            image={CHAPTER1_IMAGE_SRC}
-            onClick={() => onNavigate("curriculum-basic")}
-          />
-          <TrainingWindow
-            title={chapterTitles?.advanced || DEFAULT_CHAPTER_TITLES.advanced}
-            image={CHAPTER2_IMAGE_SRC}
-            onClick={() => onNavigate("curriculum-advanced")}
-          />
-          <TrainingWindow
-            title={chapterTitles?.extra || DEFAULT_CHAPTER_TITLES.extra}
-            image={CHAPTER3_IMAGE_SRC}
-            onClick={() => onNavigate("curriculum-extra")}
-          />
-          <div className="relative">
-            <TrainingWindow
-              title={chapterTitles?.fight || DEFAULT_CHAPTER_TITLES.fight}
-              onClick={() => onNavigate("curriculum-fight")}
-              comingSoon={!isAdmin && !chapterVisibility?.fight}
-              image={CHAPTER4_IMAGE_SRC}
-            />
-            {isAdmin && (
-              <ChapterVisibilityToggle
-                visible={Boolean(chapterVisibility?.fight)}
-                onToggle={(v) => onToggleChapterVisibility?.("fight", v)}
-              />
-            )}
-          </div>
-          <div className="relative">
-            <TrainingWindow
-              title={chapterTitles?.partner || DEFAULT_CHAPTER_TITLES.partner}
-              onClick={() => onNavigate("curriculum-partner")}
-              comingSoon={!isAdmin && !chapterVisibility?.partner}
-              image={CHAPTER5_IMAGE_SRC}
-            />
-            {isAdmin && (
-              <ChapterVisibilityToggle
-                visible={Boolean(chapterVisibility?.partner)}
-                onToggle={(v) => onToggleChapterVisibility?.("partner", v)}
-              />
-            )}
-          </div>
-          <div className="relative">
-            <TrainingWindow
-              title={chapterTitles?.focus || DEFAULT_CHAPTER_TITLES.focus}
-              onClick={() => onNavigate("curriculum-focus")}
-              comingSoon={!isAdmin && !chapterVisibility?.focus}
-              image={CHAPTER6_IMAGE_SRC}
-            />
-            {isAdmin && (
-              <ChapterVisibilityToggle
-                visible={Boolean(chapterVisibility?.focus)}
-                onToggle={(v) => onToggleChapterVisibility?.("focus", v)}
-              />
-            )}
-          </div>
+        <div className="mt-4">
+          {(() => {
+            const done = completed || {};
+            let tot = 0, dn = 0;
+            HM_CHAPTERS.forEach((c) => { const arr = hmChapterData(c).arr; arr.forEach((it) => { if (it.t && it.t !== PLACEHOLDER_LESSON_TITLE) { tot++; if (done[`${c.key}-${it.n}`]) dn++; } }); });
+            const pct = tot ? Math.round((dn / tot) * 100) : 0;
+            const heroCh = HM_CHAPTERS.find((c) => c.key === nextLesson?.curriculumKey) || HM_CHAPTERS[0];
+            const titles = (k) => chapterTitles?.[k] || DEFAULT_CHAPTER_TITLES[k];
+            return (
+              <>
+                <HmHero lesson={nextLesson} chapterTitle={nextLesson ? titles(nextLesson.curriculumKey) : ""} percent={pct} onContinue={onContinue} image={hmChapterData(heroCh).img} />
+
+                <div className="mt-5">
+                  <HmShortcuts items={[
+                    { key: "journey", label: tr("مسیر پیشرفت من"), color: "#4DA3FF", icon: MenuJourneyIcon, onClick: () => onNavigate("journey") },
+                    { key: "programs", label: tr("برنامه‌های تخصصی"), color: "#4DA3FF", icon: MenuPlanIcon, onClick: () => onNavigate("programs") },
+                    { key: "timer", label: tr("تایمر تمرین"), color: "#D91E2B", icon: MenuTimerIcon, onClick: () => onNavigate("timer") },
+                    { key: "boxsci", label: tr("علوم ضروری بوکس"), color: "#F3EEE6", icon: MenuBookIcon, onClick: () => onNavigate("boxsci") },
+                  ]} />
+                </div>
+
+                <div className="mt-6">
+                  <HmSectionTitle title="دوره A" sub="سه فصل اول" color="#4DA3FF" />
+                  <HmRow tone="blue">
+                    {HM_CHAPTERS.filter((c) => !c.gated).map((c) => {
+                      const { img, arr } = hmChapterData(c);
+                      const real = arr.filter((it) => it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
+                      const d = real.filter((it) => done[`${c.key}-${it.n}`]).length;
+                      const cp = real.length ? Math.round((d / real.length) * 100) : 0;
+                      const soon = c.gated && !isAdmin && !chapterVisibility?.[c.key];
+                      return (
+                        <div key={c.key} className="relative shrink-0" style={{ width: "calc(100vw - 40px)", maxWidth: 420, scrollSnapAlign: "start" }}>
+                          <div className="flex items-center justify-between mb-2 px-0.5">
+                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
+                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#8A8790" : c.color }} className="text-[11px] font-bold">{soon ? "به‌زودی" : `${d} از ${real.length} جلسه`}</span>
+                          </div>
+                          <button onClick={soon ? undefined : () => onNavigate("curriculum-" + c.key)} className="relative block w-full rounded-2xl overflow-hidden border active:scale-95 transition-transform" style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: `${c.color}99`, cursor: soon ? "default" : "pointer" }}>
+                            <img src={img} alt={titles(c.key)} draggable={false} className="absolute inset-0 w-full h-full object-contain" />
+                            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(11,11,13,0.7) 0%, rgba(11,11,13,0.05) 45%, transparent 100%)" }} />
+                            {soon && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)" }} />}
+                            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg" style={{ borderColor: "#D91E2B" }} />
+                            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
+                            <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
+                            {soon && <div className="absolute top-2.5 right-12" style={{ fontSize: 16 }}>🔒</div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "rgba(255,255,255,0.18)" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                          </button>
+                          {isAdmin && c.gated && (
+                            <ChapterVisibilityToggle visible={Boolean(chapterVisibility?.[c.key])} onToggle={(v) => onToggleChapterVisibility?.(c.key, v)} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </HmRow>
+                </div>
+
+                <div className="mt-6">
+                  <HmSectionTitle title="تمرینات تخصصی بوکس" sub="تاباتا رایگانه" color="#D91E2B" />
+                  <HmRow tone="red">
+                    {PG_DATA.map((c) => {
+                      const open = isAdmin || PG_FREE.includes(c.id) || plan === "silver";
+                      return (
+                        <button key={c.id} onClick={() => onOpenProgramCat?.(c.id)} className="relative shrink-0 rounded-2xl text-center flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform" style={{ width: 118, height: 158, scrollSnapAlign: "start", background: `linear-gradient(160deg, ${c.color}30, #141317 70%)`, border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}44, inset 0 0 14px ${c.color}14`, opacity: open ? 1 : 0.85 }}>
+                          {c.img ? <img src={c.img} alt="" draggable={false} style={{ height: 84, width: "auto", maxWidth: "88%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}77)` }} /> : <span style={{ fontSize: 44, height: 84, display: "flex", alignItems: "center" }}>{c.icon}</span>}
+                          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-black leading-4 px-1">{c.title}</span>
+                          {!open && <span className="absolute top-2 left-2 text-sm">🔒</span>}
+                          {PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && <span className="absolute top-2 left-2 rounded-full px-1.5 py-0.5 text-[8px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#4DA3FF", color: "#0B0B0D" }}>رایگان</span>}
+                        </button>
+                      );
+                    })}
+                  </HmRow>
+                </div>
+                <div className="mt-6">
+                  <HmSectionTitle title="دوره A+" sub="فصل‌های ۴ تا ۷" color="#D91E2B" />
+                  <HmRow tone="blue">
+                    {HM_CHAPTERS.filter((c) => c.gated).map((c) => {
+                      const { img, arr } = hmChapterData(c);
+                      const real = arr.filter((it) => it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
+                      const d = real.filter((it) => done[`${c.key}-${it.n}`]).length;
+                      const cp = real.length ? Math.round((d / real.length) * 100) : 0;
+                      const soon = c.gated && !isAdmin && !chapterVisibility?.[c.key];
+                      return (
+                        <div key={c.key} className="relative shrink-0" style={{ width: "calc(100vw - 40px)", maxWidth: 420, scrollSnapAlign: "start" }}>
+                          <div className="flex items-center justify-between mb-2 px-0.5">
+                            <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
+                            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: soon ? "#8A8790" : c.color }} className="text-[11px] font-bold">{soon ? "به‌زودی" : `${d} از ${real.length} جلسه`}</span>
+                          </div>
+                          <button onClick={soon ? undefined : () => onNavigate("curriculum-" + c.key)} className="relative block w-full rounded-2xl overflow-hidden border active:scale-95 transition-transform" style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: `${c.color}99`, cursor: soon ? "default" : "pointer" }}>
+                            <img src={img} alt={titles(c.key)} draggable={false} className="absolute inset-0 w-full h-full object-contain" />
+                            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(11,11,13,0.7) 0%, rgba(11,11,13,0.05) 45%, transparent 100%)" }} />
+                            {soon && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)" }} />}
+                            <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg" style={{ borderColor: "#D91E2B" }} />
+                            <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
+                            <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
+                            {soon && <div className="absolute top-2.5 right-12" style={{ fontSize: 16 }}>🔒</div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "rgba(255,255,255,0.18)" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                          </button>
+                          {isAdmin && c.gated && (
+                            <ChapterVisibilityToggle visible={Boolean(chapterVisibility?.[c.key])} onToggle={(v) => onToggleChapterVisibility?.(c.key, v)} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </HmRow>
+                </div>
+
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -7748,7 +7945,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             dir={APP_DIR}
           >
             <div className="flex items-center justify-between mb-6">
-              <span style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D", letterSpacing: "0.1em" }} className="text-xs font-semibold">
+              <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", letterSpacing: "0.1em" }} className="text-xs font-semibold">
                 {tr("منو")}</span>
               <button onClick={() => setMenuOpen(false)}>
                 <CloseIcon className="w-5 h-5" style={{ color: "#8A8790" }} />
@@ -7763,105 +7960,38 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
               style={{
                 background: "linear-gradient(135deg, #FFFFFF 0%, #E3F6FD 52%, #BFE6F5 100%)",
                 border: "1px solid #FFFFFF",
-                boxShadow: "0 0 26px rgba(230,248,255,0.6), 0 0 52px rgba(95,211,232,0.4), inset 0 0 18px rgba(255,255,255,0.9)",
+                boxShadow: "0 0 26px rgba(230,248,255,0.6), 0 0 52px rgba(77,163,255,0.4), inset 0 0 18px rgba(255,255,255,0.9)",
               }}
             >
               <div
                 className="rounded-full flex items-center justify-center shrink-0"
-                style={{ width: "54px", height: "54px", background: "rgba(95,211,232,0.25)", border: "1.5px solid #5FD3E8", boxShadow: "0 0 12px rgba(95,211,232,0.5)" }}
+                style={{ width: "54px", height: "54px", background: "rgba(77,163,255,0.25)", border: "1.5px solid #4DA3FF", boxShadow: "0 0 12px rgba(77,163,255,0.5)" }}
               >
-                <UserIcon className="w-7 h-7" style={{ color: "#0E7490" }} />
+                <UserIcon className="w-7 h-7" style={{ color: "#1C4FB0" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3C6A7E", fontSize: "12px", fontWeight: 700 }}>{tr("حساب کاربری")}</div>
-                <div data-testid="menu-account-name" style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B2A3A" }} className="text-base font-black truncate">
+                <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3C5A8A", fontSize: "12px", fontWeight: 700 }}>{tr("حساب کاربری")}</div>
+                <div data-testid="menu-account-name" style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B1F45" }} className="text-base font-black truncate">
                   {accountName || tr("نام کاربر")}
                 </div>
-                <div data-testid="menu-account-contact" dir="ltr" style={{ fontFamily: "Oswald, sans-serif", color: "#1D5870", letterSpacing: "0.05em", textAlign: "right" }} className="text-sm truncate">
+                <div data-testid="menu-account-contact" dir="ltr" style={{ fontFamily: "Oswald, sans-serif", color: "#1D3F7A", letterSpacing: "0.05em", textAlign: "right" }} className="text-sm truncate">
                   {accountContact || ""}
                 </div>
               </div>
-              <span style={{ color: "#0E7490", fontSize: "24px", lineHeight: 1 }}>‹</span>
+              <span style={{ color: "#1C4FB0", fontSize: "24px", lineHeight: 1 }}>‹</span>
             </button>
 
-            <div
-              className="flex flex-wrap items-center justify-between rounded-xl px-3 py-3 mb-4"
-              style={{
-                background: "rgba(95,211,232,0.08)",
-                border: "1px solid rgba(95,211,232,0.4)",
-                boxShadow: "0 0 22px rgba(95,211,232,0.35), inset 0 0 14px rgba(95,211,232,0.08)",
-              }}
-            >
-              {editingCount ? (
-                <div className="flex items-center gap-2 w-full">
-                  <input
-                    value={countDraft}
-                    onChange={(e) => setCountDraft(e.target.value.replace(/[^\d]/g, ""))}
-                    inputMode="numeric"
-                    autoFocus
-                    style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }}
-                    className="bg-transparent outline-none flex-1 text-sm"
-                  />
-                  <button
-                    disabled={savingCount}
-                    onClick={async () => {
-                      setSavingCount(true);
-                      try {
-                        await onSetMemberCount?.(Number(countDraft) || 0);
-                        setEditingCount(false);
-                      } catch {
-                        // خطای شبکه - فرم باز می‌مونه
-                      } finally {
-                        setSavingCount(false);
-                      }
-                    }}
-                    style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D", background: "#5FD3E8" }}
-                    className="rounded-lg px-2.5 py-1 text-xs font-bold shrink-0"
-                  >
-                    {savingCount ? "..." : tr("ذخیره")}
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="active-dot rounded-full shrink-0"
-                      style={{ width: "8px", height: "8px", background: "#22c55e" }}
-                    />
-                    <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#5FD3E8" }} className="text-xs font-bold">
-                      {tr("اعضای فعال اپ")}</span>
-                  </span>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold">
-                        {Number(memberCount).toLocaleString("en-US")}
-                      </span>
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            setCountDraft(String(memberCount));
-                            setEditingCount(true);
-                          }}
-                        >
-                          <PencilIcon className="w-3.5 h-3.5" style={{ color: "#5FD3E8" }} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-              {/* فقط برای ادمین: آمار تفکیکی کاربران */}
-              {isAdmin && <AdminStatsRows stats={adminStats} />}
-            </div>
+
+            <div className="mb-4">{membersBox}</div>
 
             <div className="flex flex-col gap-2">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 const dotColor =
                   item.key === "support" && supportStatus === "pending"
-                    ? "#E8B33D"
+                    ? "#F3EEE6"
                     : item.key === "support" && supportStatus === "answered"
-                    ? "#1FA855"
+                    ? "#1C6FD1"
                     : null;
                 return (
                   <button
@@ -7883,8 +8013,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                     className="flex items-center gap-3 rounded-xl px-3 py-3 relative"
                     style={{
                       background: "#17161A",
-                      border: "1px solid #5FD3E8",
-                      boxShadow: "0 0 12px rgba(95,211,232,0.45)",
+                      border: "1px solid #4DA3FF",
+                      boxShadow: "0 0 12px rgba(77,163,255,0.45)",
                     }}
                   >
                     <span className="shrink-0 flex items-center justify-center" style={{ color: item.color || "#D91E2B", filter: `drop-shadow(0 0 5px ${(item.color || "#D91E2B")}99)` }}>
@@ -8113,6 +8243,7 @@ const DEFAULT_CHAPTER_TITLES = {
   advanced: tr("آموزش ضربات"),
   extra: tr("آموزش جابجایی"),
   fight: tr("تکنیک‌های تخصصی بوکس"),
+  fightb: tr("تکنیک‌های تخصصی بوکس ۲"),
   partner: tr("اسپارینگ / تمرین مبارزه"),
   focus: tr("قالب استایل / مبارزه"),
 };
@@ -8852,7 +8983,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
 
       {/* گوشه‌های طناب رینگ، مثل بقیه‌ی اپ */}
       <div style={{ position: "absolute", top: 8, right: 8, width: 14, height: 14, borderTop: "2px solid #D91E2B", borderRight: "2px solid #D91E2B", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: 8, left: 8, width: 14, height: 14, borderBottom: "2px solid #E8B33D", borderLeft: "2px solid #E8B33D", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 8, left: 8, width: 14, height: 14, borderBottom: "2px solid #F3EEE6", borderLeft: "2px solid #F3EEE6", pointerEvents: "none" }} />
 
       {/* بازخورد دوتپ: ۱۰ ثانیه جلو/عقب */}
       {flash && (
@@ -8890,12 +9021,12 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             transform: "translateX(-50%)",
             pointerEvents: "none",
             background: "rgba(11,11,13,0.8)",
-            border: "1px solid rgba(95,211,232,0.5)",
+            border: "1px solid rgba(77,163,255,0.5)",
             borderRadius: 9999,
             padding: "4px 12px",
             fontFamily: "Vazirmatn, sans-serif",
             fontSize: 11,
-            color: "#5FD3E8",
+            color: "#4DA3FF",
             whiteSpace: "nowrap",
           }}
         >
@@ -8913,12 +9044,12 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             transform: "translateX(-50%)",
             pointerEvents: "none",
             background: "rgba(11,11,13,0.8)",
-            border: "1px solid rgba(232,179,61,0.5)",
+            border: "1px solid rgba(243,238,230,0.5)",
             borderRadius: 9999,
             padding: "4px 12px",
             fontFamily: "Vazirmatn, sans-serif",
             fontSize: 11,
-            color: "#E8B33D",
+            color: "#F3EEE6",
             whiteSpace: "nowrap",
           }}
         >
@@ -8953,7 +9084,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                   : tr("پخش ویدیو با مشکل مواجه شد. دوباره امتحان کن.")}
           </span>
           {netState !== "blocked" && (
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D", fontSize: 11 }}>{NETWORK_VPN_HINT}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", fontSize: 11 }}>{NETWORK_VPN_HINT}</span>
           )}
           {netState !== "ok" && (
             <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790", fontSize: 11 }}>
@@ -8976,7 +9107,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
               height: 38,
               borderRadius: "50%",
               border: "3px solid rgba(243,238,230,0.25)",
-              borderTopColor: "#E8B33D",
+              borderTopColor: "#F3EEE6",
               animation: "vpSpin 0.8s linear infinite",
             }}
           />
@@ -8987,7 +9118,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                 fontSize: 12,
                 color: "#F3EEE6",
                 background: "rgba(11,11,13,0.78)",
-                border: `1px solid ${netState === "offline" ? "#D91E2B" : "#E8B33D"}`,
+                border: `1px solid ${netState === "offline" ? "#D91E2B" : "#F3EEE6"}`,
                 borderRadius: 9999,
                 padding: "3px 12px",
               }}
@@ -9095,9 +9226,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                   fontFamily: "Vazirmatn, sans-serif",
                   fontSize: 12,
                   padding: "6px 16px",
-                  color: selected ? "#E8B33D" : "#DAD6CE",
+                  color: selected ? "#F3EEE6" : "#DAD6CE",
                   fontWeight: selected ? 700 : 400,
-                  background: selected ? "rgba(232,179,61,0.12)" : "transparent",
+                  background: selected ? "rgba(243,238,230,0.12)" : "transparent",
                   textAlign: "center",
                 }}
               >
@@ -9137,9 +9268,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                 fontFamily: "Oswald, sans-serif",
                 fontSize: 12,
                 padding: "5px 18px",
-                color: s === speed ? "#E8B33D" : "#DAD6CE",
+                color: s === speed ? "#F3EEE6" : "#DAD6CE",
                 fontWeight: s === speed ? 700 : 400,
-                background: s === speed ? "rgba(232,179,61,0.12)" : "transparent",
+                background: s === speed ? "rgba(243,238,230,0.12)" : "transparent",
                 textAlign: "center",
               }}
             >
@@ -9182,7 +9313,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             }}
           >
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${bufferedPct}%`, borderRadius: 9999, background: "rgba(255,255,255,0.35)" }} />
-            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progressPct}%`, borderRadius: 9999, background: "linear-gradient(90deg,#D91E2B,#E8B33D)" }} />
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progressPct}%`, borderRadius: 9999, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }} />
             <div
               style={{
                 position: "absolute",
@@ -9191,8 +9322,8 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                 width: dragRatio !== null ? 16 : 12,
                 height: dragRatio !== null ? 16 : 12,
                 borderRadius: "50%",
-                background: "#E8B33D",
-                boxShadow: "0 0 8px rgba(232,179,61,0.7)",
+                background: "#F3EEE6",
+                boxShadow: "0 0 8px rgba(243,238,230,0.7)",
                 transform: "translate(-50%,-50%)",
                 transition: "width 120ms, height 120ms",
               }}
@@ -9205,7 +9336,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                   left: `${Math.min(92, Math.max(8, progressPct))}%`,
                   transform: "translateX(-50%)",
                   background: "rgba(11,11,13,0.92)",
-                  border: "1px solid #E8B33D",
+                  border: "1px solid #F3EEE6",
                   borderRadius: 6,
                   padding: "2px 7px",
                   fontFamily: "Oswald, sans-serif",
@@ -9238,9 +9369,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                   revealControls();
                 }}
                 aria-label={tr("زیرنویس")}
-                style={{ padding: 4, color: activeSubLang ? "#E8B33D" : "#F3EEE6" }}
+                style={{ padding: 4, color: activeSubLang ? "#F3EEE6" : "#F3EEE6" }}
               >
-                <CcIcon className="w-5 h-5" style={{ color: activeSubLang ? "#E8B33D" : "#F3EEE6" }} />
+                <CcIcon className="w-5 h-5" style={{ color: activeSubLang ? "#F3EEE6" : "#F3EEE6" }} />
               </button>
             )}
             <button
@@ -9254,8 +9385,8 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
                 fontFamily: "Oswald, sans-serif",
                 fontSize: 12,
                 fontWeight: 700,
-                color: speed === 1 ? "#F3EEE6" : "#E8B33D",
-                border: `1px solid ${speed === 1 ? "rgba(243,238,230,0.35)" : "#E8B33D"}`,
+                color: speed === 1 ? "#F3EEE6" : "#F3EEE6",
+                border: `1px solid ${speed === 1 ? "rgba(243,238,230,0.35)" : "#F3EEE6"}`,
                 borderRadius: 6,
                 padding: "2px 8px",
               }}
@@ -9303,7 +9434,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
   const [extraLangChoice, setExtraLangChoice] = useState(""); // کد زبانِ انتخاب‌شده برای افزودن | "__custom"
   const [customLangCode, setCustomLangCode] = useState("");
   const [registryLangs, setRegistryLangs] = useState([]); // زبان‌های اضافه‌ی سراسری (برای همه‌ی جلسه‌ها)
-  const lessonSubKey = `${curriculumKey}-${item.n}`;
+  const lessonSubKey = `${curriculumKey === "fightb" ? "fight" : curriculumKey}-${item.n}`;
 
   useEffect(() => {
     if (!isAdmin) return undefined;
@@ -9413,8 +9544,8 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           style={{
             width: "28px",
             height: "28px",
-            background: isHi ? "#E8B33D" : "#17161A",
-            border: `1.5px solid ${isHi ? "#E8B33D" : "#D91E2B"}`,
+            background: isHi ? "#F3EEE6" : "#17161A",
+            border: `1.5px solid ${isHi ? "#F3EEE6" : "#D91E2B"}`,
           }}
         >
           <span
@@ -9440,7 +9571,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
             className="shrink-0 rounded-full p-1.5"
             style={{ background: "#17161A", border: "1px solid #2a292e" }}
           >
-            <PencilIcon className="w-3.5 h-3.5" style={{ color: "#E8B33D" }} />
+            <PencilIcon className="w-3.5 h-3.5" style={{ color: "#F3EEE6" }} />
           </button>
         )}
       </div>
@@ -9491,13 +9622,13 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           className="relative w-full rounded-xl flex flex-col items-center justify-center gap-3 border"
           style={{ aspectRatio: "16 / 9", background: "#141317", borderColor: "#2a292e" }}
         >
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#E8B33D" }} className="text-lg font-bold">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-lg font-bold">
             {progress}%
           </span>
           <div className="w-2/3 rounded-full overflow-hidden" style={{ height: "5px", background: "#2a292e" }}>
             <div
               className="h-full rounded-full"
-              style={{ width: `${progress}%`, background: "linear-gradient(90deg,#D91E2B,#E8B33D)" }}
+              style={{ width: `${progress}%`, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }}
             />
           </div>
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#8A8790" }} className="text-xs">
@@ -9513,7 +9644,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
             {connectivityState === "blocked" ? NETWORK_BLOCKED_MESSAGE : connectivityState === "weak" ? tr("اینترنت ضعیف است") : NETWORK_OFFLINE_MESSAGE}
           </span>
           {connectivityState !== "blocked" && (
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs">
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
               {NETWORK_VPN_HINT}
             </span>
           )}
@@ -9536,7 +9667,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
         >
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm">
             {tr("لیست ویدیوها دریافت نشد")}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs leading-6">
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs leading-6">
             {tr("اینترنت دستگاه را چک کنید و {hint}", { hint: NETWORK_VPN_HINT })}
           </span>
           <button
@@ -9583,7 +9714,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
 
       {isAdmin && videoSrc && (
         <div className="mt-3 rounded-xl border px-3 py-3" style={{ background: "#141317", borderColor: "#2a292e" }}>
-          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-xs font-bold mb-2">
+          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold mb-2">
             {tr("زیرنویس‌های این جلسه")}
           </p>
           {[...SUB_LANG_CODES, ...[...new Set([...registryLangs, ...adminSubLangs])].filter((c) => !SUB_LANG_CODES.includes(c)).sort()].map((code) => {
@@ -9724,7 +9855,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
 const FREE_LESSONS_COUNT = 5;
 
 function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLockedSelect, isCompleted, curriculumKey, isAdmin, onRename }) {
-  const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
+  const isGoldChapter = ["fight", "fightb", "partner", "focus"].includes(curriculumKey);
   // اشتراک نقره‌ای فقط سه فصل اول (basic/advanced/extra) رو باز می‌کنه؛
   // اشتراک طلایی فقط سه فصل دوم (fight/partner/focus) رو باز می‌کنه - این دو تا از هم جدان
   // ادمین خودش همیشه به همه‌ی فصل‌ها دسترسی داره، نیازی به خرید اشتراک نداره
@@ -9751,7 +9882,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
           style={{
             fontFamily: "Vazirmatn, sans-serif",
             color: "#F3EEE6",
-            textShadow: "0 0 12px rgba(95,211,232,0.85), 0 0 24px rgba(95,211,232,0.5)",
+            textShadow: "0 0 12px rgba(77,163,255,0.85), 0 0 24px rgba(77,163,255,0.5)",
           }}
           className="text-base font-black text-center leading-6"
         >
@@ -9766,7 +9897,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
             className="shrink-0 rounded-full p-1.5"
             style={{ background: "#17161A", border: "1px solid #2a292e" }}
           >
-            <PencilIcon className="w-3.5 h-3.5" style={{ color: "#E8B33D" }} />
+            <PencilIcon className="w-3.5 h-3.5" style={{ color: "#F3EEE6" }} />
           </button>
         )}
       </div>
@@ -9817,7 +9948,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
           const hasVid = hasVideo?.(it.n);
           const locked = it.n > FREE_LESSONS_COUNT && !hasAccess;
           const done = isCompleted?.(it.n);
-          const squareColor = done ? "#1FA855" : isGoldChapter ? "#E8B33D" : "#D91E2B";
+          const squareColor = done ? "#1C6FD1" : isGoldChapter ? "#F3EEE6" : "#D91E2B";
           return (
             <button
               key={it.n}
@@ -9855,7 +9986,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div
                           className="rounded-full flex items-center justify-center"
-                          style={{ width: "22px", height: "22px", background: isGoldChapter ? "rgba(232,179,61,0.9)" : "rgba(217,30,43,0.85)" }}
+                          style={{ width: "22px", height: "22px", background: isGoldChapter ? "rgba(243,238,230,0.9)" : "rgba(217,30,43,0.85)" }}
                         >
                           <div
                             style={{
@@ -9874,7 +10005,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
                   <span
                     style={{
                       fontFamily: "Oswald, sans-serif",
-                      color: isHi ? "#E8B33D" : "#F3EEE6",
+                      color: isHi ? "#F3EEE6" : "#F3EEE6",
                       fontSize: "12px",
                       textShadow: "0 1px 3px rgba(0,0,0,0.9)",
                       top: "3px",
@@ -10260,10 +10391,10 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
   // اسم فصل‌ها همون اسمیه که ادمین توی صفحه‌ی اصلی گذاشته (با تغییرش، این‌جا هم خودکار عوض می‌شه)
   const chapterName = (key) => chapterTitles?.[key] || DEFAULT_CHAPTER_TITLES[key];
   const silverChapterNames = ["basic", "advanced", "extra"].map(chapterName).join(tr("، "));
-  const goldChapterNames = ["fight", "partner", "focus"].map(chapterName).join(tr("، "));
+  const goldChapterNames = ["fight", "fightb", "partner", "focus"].map(chapterName).join(tr("، "));
   // به‌محض اینکه ادمین حتی یکی از فصل‌های طلایی (مبارزه/اسپارینگ/استایل) رو برای کاربرا باز کنه،
   // خرید اشتراک طلایی هم همون لحظه فعال می‌شه
-  const goldUnlocked = Boolean(chapterVisibility?.fight || chapterVisibility?.partner || chapterVisibility?.focus);
+  const goldUnlocked = Boolean(chapterVisibility?.fight || chapterVisibility?.fightb || chapterVisibility?.partner || chapterVisibility?.focus);
   const [loadingPlan, setLoadingPlan] = useState(null); // "silver" | null
   const [error, setError] = useState("");
 
@@ -10533,9 +10664,9 @@ function ComingSoonScreen({ title, onBack }) {
     <div className="flex-1 flex flex-col items-center justify-center px-8 text-center" dir={APP_DIR}>
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
-        style={{ background: "rgba(232,179,61,0.12)", border: "1px solid rgba(232,179,61,0.4)" }}
+        style={{ background: "rgba(243,238,230,0.12)", border: "1px solid rgba(243,238,230,0.4)" }}
       >
-        <BeltIcon className="w-7 h-7" style={{ color: "#E8B33D" }} />
+        <BeltIcon className="w-7 h-7" style={{ color: "#F3EEE6" }} />
       </div>
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-2">
         {title}
@@ -10642,9 +10773,9 @@ function BottomTabs({ active, onNavigate }) {
           style={{
             width: "46px",
             height: "46px",
-            background: active === "subscription" ? "linear-gradient(145deg, #FFE28A, #E0A020)" : "linear-gradient(145deg, #2E2410, #1A140A)",
-            border: `1.5px solid ${active === "subscription" ? "#FFF3C4" : "rgba(232,179,61,0.55)"}`,
-            boxShadow: active === "subscription" ? "0 0 18px rgba(255,200,80,0.85), inset 0 0 8px rgba(255,255,255,0.45)" : "0 0 10px rgba(232,179,61,0.3), inset 0 0 6px rgba(232,179,61,0.15)",
+            background: active === "subscription" ? "linear-gradient(145deg, #FFFFFF, #E0A020)" : "linear-gradient(145deg, #2E2410, #1A140A)",
+            border: `1.5px solid ${active === "subscription" ? "#FFFFFF" : "rgba(243,238,230,0.55)"}`,
+            boxShadow: active === "subscription" ? "0 0 18px rgba(243,238,230,0.85), inset 0 0 8px rgba(255,255,255,0.45)" : "0 0 10px rgba(243,238,230,0.3), inset 0 0 6px rgba(243,238,230,0.15)",
             transition: "all .2s",
           }}
         >
@@ -10654,7 +10785,7 @@ function BottomTabs({ active, onNavigate }) {
               fontSize: "12px",
               fontWeight: "700",
               letterSpacing: "0.05em",
-              color: active === "subscription" ? "#4A2E00" : "#F0C24D",
+              color: active === "subscription" ? "#3A1418" : "#F3EEE6",
             }}
           >
             VIP
@@ -10663,7 +10794,7 @@ function BottomTabs({ active, onNavigate }) {
         <span
           style={{
             fontFamily: "Vazirmatn, sans-serif",
-            color: active === "subscription" ? "#FFE9A8" : "#F0C24D",
+            color: active === "subscription" ? "#FFFFFF" : "#F3EEE6",
             fontSize: "9px",
             fontWeight: 700,
           }}
@@ -10675,7 +10806,7 @@ function BottomTabs({ active, onNavigate }) {
 }
 
 // ---------- یادآور تمرین: اسم جلسه‌ی بعدی ----------
-const CHAPTER_ORDER = ["basic", "advanced", "extra", "fight", "partner", "focus"];
+const CHAPTER_ORDER = ["basic", "advanced", "extra", "fight", "fightb", "partner", "focus"];
 const PLACEHOLDER_LESSON_TITLE = tr("در انتظار محتوا");
 const REMINDER_NOTIFICATION_ID = 1001;
 
@@ -10802,6 +10933,7 @@ const CHAPTER_ITEMS = {
   advanced: CURRICULUM_ADVANCED,
   extra: CURRICULUM_EXTRA,
   fight: CURRICULUM_FIGHT,
+  fightb: CURRICULUM_FIGHT,
   partner: CURRICULUM_PARTNER,
   focus: CURRICULUM_FOCUS,
 };
@@ -10852,6 +10984,7 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
     case "curriculum-advanced":
     case "curriculum-extra":
     case "curriculum-fight":
+    case "curriculum-fightb":
     case "curriculum-partner":
     case "curriculum-focus":
     case "profile":
@@ -10911,6 +11044,8 @@ function App() {
   const [profileImage, setProfileImage] = useState(null);
   const [practiceSeconds, setPracticeSeconds] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [programsCat, setProgramsCat] = useState(null);
+  useEffect(() => { if (step !== "programs") setProgramsCat(null); }, [step]);
   const [deviceId, setDeviceId] = useState(null);
   const [lessonTitlesRaw, setLessonTitles] = useState({}); // key: `${curriculumKey}-${n}` -> عنوان ویرایش‌شده
   const [memberCount, setMemberCount] = useState(0);
@@ -10927,7 +11062,7 @@ function App() {
   const [appBuild, setAppBuild] = useState(0);
   useEffect(() => { loadAppBuild().then(setAppBuild); }, []);
   const [promoTextRaw, setPromoText] = useState(""); // متن تبلیغاتی صفحه‌ی اشتراک (خالی = پیش‌فرض)
-  const [chapterVisibility, setChapterVisibility] = useState({ fight: false, partner: false, focus: false });
+  const [chapterVisibility, setChapterVisibility] = useState({ fight: false, fightb: false, partner: false, focus: false });
   const [chapterTitlesRaw, setChapterTitles] = useState({});
   const [contentOverridesRaw, setContentOverrides] = useState({});
   // ترجمه‌ی خودکار متن‌های ویرایش‌شده‌ی ادمین (برای ادمین، متن اصلی نشون داده می‌شه)
@@ -11068,7 +11203,9 @@ function App() {
   const loadVideoList = () => {
     apiFetchVideos().then((list) => {
       if (list) {
-        setVideos(list);
+        const withAlias = { ...list };
+        Object.keys(list).forEach((k) => { if (k.startsWith("fight-")) { const a = "fightb-" + k.slice(6); if (!withAlias[a]) withAlias[a] = list[k]; } });
+        setVideos(withAlias);
         setVideosStatus("ok");
       } else {
         // اگه قبلاً یه‌بار موفق گرفته بودیم، همون لیست قبلی می‌مونه
@@ -11376,6 +11513,10 @@ function App() {
     ...it,
     t: lessonTitles[`fight-${it.n}`] || it.t,
   }));
+  const curriculumFightbMerged = CURRICULUM_FIGHT.map((it) => ({
+    ...it,
+    t: lessonTitles[`fightb-${it.n}`] || lessonTitles[`fight-${it.n}`] || it.t,
+  }));
   const curriculumPartnerMerged = CURRICULUM_PARTNER.map((it) => ({
     ...it,
     t: lessonTitles[`partner-${it.n}`] || it.t,
@@ -11567,6 +11708,7 @@ function App() {
       advanced: curriculumAdvancedMerged,
       extra: curriculumExtraMerged,
       fight: curriculumFightMerged,
+      fightb: curriculumFightbMerged,
       partner: curriculumPartnerMerged,
       focus: curriculumFocusMerged,
     },
@@ -11625,7 +11767,7 @@ function App() {
   };
 
   const openLesson = (curriculumKey, item) => {
-    const isGoldChapter = ["fight", "partner", "focus"].includes(curriculumKey);
+    const isGoldChapter = ["fight", "fightb", "partner", "focus"].includes(curriculumKey);
     // ادمین خودش همیشه به همه‌ی فصل‌ها دسترسی داره، نیازی به خرید اشتراک نداره
     const hasAccess =
       authUser?.isAdmin || (isGoldChapter ? authUser?.plan === "gold" : authUser?.plan === "silver");
@@ -11773,9 +11915,9 @@ function App() {
             animation: screenPunchIn 200ms ease-out both;
           }
           @keyframes activeDotPulse {
-            0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
-            70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
-            100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+            0% { box-shadow: 0 0 0 0 rgba(77,163,255,0.55); }
+            70% { box-shadow: 0 0 0 6px rgba(77,163,255,0); }
+            100% { box-shadow: 0 0 0 0 rgba(77,163,255,0); }
           }
           .active-dot {
             animation: activeDotPulse 1.8s ease-out infinite;
@@ -11846,6 +11988,15 @@ function App() {
               chapterTitles={chapterTitles}
               supportStatus={supportStatus}
               onInviteFriends={handleInviteFriends}
+              completed={effectiveCompleted}
+              nextLesson={nextLesson}
+              plan={authUser?.plan || "none"}
+              onOpenProgramCat={(id) => { setProgramsCat(id); setStep("programs"); }}
+              onContinue={() => {
+                const byKey = { basic: curriculumBasicMerged, advanced: curriculumAdvancedMerged, extra: curriculumExtraMerged, fight: curriculumFightMerged, fightb: curriculumFightbMerged, partner: curriculumPartnerMerged, focus: curriculumFocusMerged };
+                const item = nextLesson ? (byKey[nextLesson.curriculumKey] || []).find((i) => i.n === nextLesson.n) : null;
+                if (item) openLesson(nextLesson.curriculumKey, item); else setStep("journey");
+              }}
             />
           )}
           {step === "home" && appUpdate.enabled && appBuild > 0 && Number(appUpdate.latest) > appBuild && (appUpdate.force || (!updateDismissed && updateSeenDay !== todayKey)) && (
@@ -11873,7 +12024,7 @@ function App() {
           {step === "boxsci" && <BoxingScienceScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />}
           {step === "journey" && <JourneyScreen isAdmin={Boolean(authUser?.isAdmin)} isGuest={Boolean(authUser?.isGuest)} plan={authUser?.plan || "none"} authToken={authToken} accountId={authUser?.identifier} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />}
           {step === "programs" && (
-            <ProgramsScreen isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} plan={authUser?.plan || "none"} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />
+            <ProgramsScreen initialCat={programsCat} isAdmin={Boolean(authUser?.isAdmin)} authToken={authToken} plan={authUser?.plan || "none"} onSubscribe={() => setStep("subscription")} onBack={() => { setStep("home"); setMenuOpen(true); }} />
           )}
           {step === "timer" && (
             <TimerScreen onBack={() => { setStep("home"); setMenuOpen(true); }} />
@@ -12074,6 +12225,21 @@ function App() {
               onLockedSelect={() => setStep("subscription")}
               isAdmin={Boolean(authUser?.isAdmin)}
               onRename={(newTitle) => handleRenameChapter("fight", newTitle)}
+            />
+          )}
+          {step === "curriculum-fightb" && (
+            <CurriculumScreen
+              title={chapterTitles?.fightb || DEFAULT_CHAPTER_TITLES.fightb}
+              items={curriculumFightbMerged}
+              curriculumKey="fightb"
+              onBack={() => setStep("home")}
+              onSelect={(item) => openLesson("fightb", item)}
+              hasVideo={(n) => Boolean(videos[`fightb-${n}`])}
+              isCompleted={(n) => Boolean(effectiveCompleted[`fightb-${n}`])}
+              plan={authUser?.plan || "none"}
+              onLockedSelect={() => setStep("subscription")}
+              isAdmin={Boolean(authUser?.isAdmin)}
+              onRename={(newTitle) => handleRenameChapter("fightb", newTitle)}
             />
           )}
           {step === "curriculum-partner" && (
