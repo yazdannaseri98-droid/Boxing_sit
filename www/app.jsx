@@ -1615,15 +1615,13 @@ function PhoneMock({ children, bgImage }) {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `url(${bgImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: 0.34,
-            filter: "grayscale(1) contrast(1.1) brightness(0.9)",
+            background: "radial-gradient(120% 70% at 50% 0%, #3A3B40 0%, #2A2B2F 55%, #202125 100%)",
             zIndex: 0,
             pointerEvents: "none",
           }}
-        />
+        >
+          <div className="absolute inset-0" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent 0 22px, rgba(255,255,255,0.035) 22px 23px)" }} />
+        </div>
       )}
       <div className="relative flex-1 flex flex-col min-h-0" style={{ zIndex: 1 }}>
         {children}
