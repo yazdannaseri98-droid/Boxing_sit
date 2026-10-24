@@ -1488,7 +1488,7 @@ function SplashScreen({ onStart, loading }) {
         className: "text-3xl font-black mb-3"
       },
       tr("\u0622\u0645\u0648\u0632\u0634 \u0628\u0648\u06A9\u0633 \u062D\u0631\u0641\u0647\u200C\u0627\u06CC NASERI")
-    )),
+    ), /* @__PURE__ */ React.createElement("p", { dir: "ltr", style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", opacity: 0.7, fontSize: "11px", letterSpacing: "0.08em" } }, "1405/07/01")),
     /* @__PURE__ */ React.createElement("div", { className: "relative px-6 pb-8" }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
       "div",
       {
@@ -3202,6 +3202,122 @@ function UpdateModal({ update, onLater }) {
       )
     )
   );
+}
+async function apiFetchAnnouncements() {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/announcements`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
+    return Array.isArray(data.announcements) ? data.announcements : [];
+  } catch {
+    return null;
+  }
+}
+async function syncAnnouncements() {
+  if (DEMO_MODE) return;
+  const LN = window.Capacitor?.Plugins?.LocalNotifications;
+  if (!LN) return;
+  const list = await apiFetchAnnouncements();
+  if (!list || !list.length) return;
+  let done = [];
+  try {
+    done = JSON.parse(await AppStorage.get("ann-done") || "[]");
+  } catch {
+  }
+  if (!Array.isArray(done)) done = [];
+  const fresh = list.filter((a) => !done.includes(a.id));
+  if (!fresh.length) return;
+  try {
+    let perm = await LN.checkPermissions();
+    if (perm.display !== "granted") perm = await LN.requestPermissions();
+    if (perm.display !== "granted") return;
+    const now = Date.now();
+    const notifications = fresh.map((a, i) => {
+      let h = 7;
+      for (const ch of a.id) h = (h * 31 + ch.charCodeAt(0)) % 1e5;
+      return {
+        id: 3e3 + h % 9e4,
+        title: a.title,
+        body: a.body,
+        schedule: { at: new Date(Math.max(a.at, now + 3e3 + i * 1500)), allowWhileIdle: true },
+        smallIcon: "ic_stat_glove"
+      };
+    });
+    await LN.schedule({ notifications });
+    await AppStorage.set("ann-done", JSON.stringify([...done, ...fresh.map((a) => a.id)].slice(-100)));
+  } catch {
+  }
+}
+async function apiAdminAnnouncements(token, method, path, payload) {
+  const res = await apiFetch(`${API_BASE_URL}/announcements${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    ...payload ? { body: JSON.stringify(payload) } : {}
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("\u0630\u062E\u06CC\u0631\u0647 \u0627\u0646\u062C\u0627\u0645 \u0646\u0634\u062F"));
+  return data.announcements || [];
+}
+const ANN_TEMPLATES = [
+  { label: "\u0622\u067E\u062F\u06CC\u062A \u062C\u062F\u06CC\u062F", title: "\u0622\u067E\u062F\u06CC\u062A \u062C\u062F\u06CC\u062F \u0622\u06A9\u0627\u062F\u0645\u06CC \u0646\u0627\u0635\u0631\u06CC \u{1F94A}", body: "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u06F1\u06F0\u06F0 \u0631\u0648\u0632\u0647\u060C \u0639\u0644\u0648\u0645 \u0636\u0631\u0648\u0631\u06CC \u0628\u0648\u06A9\u0633 \u0648 \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0627\u0648\u0645\u062F. \u0647\u0645\u06CC\u0646 \u062D\u0627\u0644\u0627 \u0627\u067E \u0631\u0648 \u0622\u067E\u062F\u06CC\u062A \u06A9\u0646 \u{1F4AA}" },
+  { label: "\u06CC\u0627\u062F\u0622\u0648\u0631\u06CC \u062A\u0645\u0631\u06CC\u0646", title: "\u0627\u0645\u0631\u0648\u0632 \u062A\u0645\u0631\u06CC\u0646 \u06A9\u0631\u062F\u06CC\u061F \u{1F514}", body: "\u0641\u0642\u0637 \u06CC\u0647 \u062C\u0644\u0633\u0647 \u06A9\u0627\u0641\u06CC\u0647 \u062A\u0627 \u0632\u0646\u062C\u06CC\u0631\u0647\u200C\u06CC \u067E\u06CC\u0634\u0631\u0641\u062A\u062A \u0646\u0634\u06A9\u0646\u0647. \u062C\u0644\u0633\u0647\u200C\u06CC \u0628\u0639\u062F\u06CC \u0645\u0646\u062A\u0638\u0631\u062A\u0647 \u{1F94A}" },
+  { label: "\u062A\u0634\u0648\u06CC\u0642 \u0628\u0647 \u0627\u0634\u062A\u0631\u0627\u06A9", title: "\u0647\u0645\u0647\u200C\u06CC \u0641\u0635\u0644\u200C\u0647\u0627 \u0645\u0646\u062A\u0638\u0631\u062A\u0646 \u{1F3C6}", body: "\u0628\u0627 \u0627\u0634\u062A\u0631\u0627\u06A9 \u0622\u06A9\u0627\u062F\u0645\u06CC \u0646\u0627\u0635\u0631\u06CC \u0647\u0645\u0647\u200C\u06CC \u0641\u0635\u0644\u200C\u0647\u0627 \u0648 \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC \u0631\u0648 \u0628\u0627\u0632 \u06A9\u0646 \u{1F947}" }
+];
+function annTimeOptions() {
+  const at = (dayOffset, h) => {
+    const d = /* @__PURE__ */ new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(h, 0, 0, 0);
+    return d.getTime();
+  };
+  const now = Date.now();
+  const opts = [{ k: "now", l: "\u0647\u0645\u06CC\u0646 \u0627\u0644\u0627\u0646", at: now }];
+  [[0, 20, "\u0627\u0645\u0634\u0628 \u06F2\u06F0:\u06F0\u06F0"], [1, 10, "\u0641\u0631\u062F\u0627 \u06F1\u06F0:\u06F0\u06F0"], [1, 18, "\u0641\u0631\u062F\u0627 \u06F1\u06F8:\u06F0\u06F0"]].forEach(([d, h, l]) => {
+    const t = at(d, h);
+    if (t > now) opts.push({ k: l, l, at: t });
+  });
+  return opts;
+}
+function AdminAnnounceScreen({ authToken, onBack }) {
+  const [list, setList] = useState([]);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [timeKey, setTimeKey] = useState("now");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const field = { background: "#17161A", border: "1px solid #3a3840", color: "#F3EEE6", borderRadius: 12, fontFamily: "Vazirmatn, sans-serif", padding: "10px 12px", width: "100%" };
+  const lab = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
+  useEffect(() => {
+    apiAdminAnnouncements(authToken, "GET", "/all").then(setList).catch((e) => setMsg(e.message));
+  }, [authToken]);
+  const opts = annTimeOptions();
+  const send = async () => {
+    if (!title.trim() || !body.trim() || busy) return;
+    const o = opts.find((x) => x.k === timeKey) || opts[0];
+    setBusy(true);
+    setMsg("");
+    try {
+      setList(await apiAdminAnnouncements(authToken, "POST", "", { title: title.trim(), body: body.trim(), at: o.at }));
+      setTitle("");
+      setBody("");
+      setMsg(tr("\u062B\u0628\u062A \u0634\u062F \u2713 \u0647\u0631 \u06A9\u0627\u0631\u0628\u0631\u06CC \u06A9\u0647 \u0627\u067E \u0631\u0648 \u0628\u0627\u0632 \u06A9\u0646\u0647\u060C \u067E\u06CC\u0627\u0645 \u0631\u0648 \u062F\u0631 \u0632\u0645\u0627\u0646 \u062A\u0639\u06CC\u06CC\u0646\u200C\u0634\u062F\u0647 \u0628\u0647\u200C\u0635\u0648\u0631\u062A \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0647."));
+    } catch (e) {
+      setMsg(e.message || tr("\u0630\u062E\u06CC\u0631\u0647 \u0627\u0646\u062C\u0627\u0645 \u0646\u0634\u062F"));
+    }
+    setBusy(false);
+  };
+  const del = async (id) => {
+    try {
+      setList(await apiAdminAnnouncements(authToken, "DELETE", "/" + id));
+    } catch (e) {
+      setMsg(e.message);
+    }
+  };
+  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }, className: "text-sm mb-4 rounded-lg px-3 py-1.5 font-bold inline-block" }, tr("\u203A \u0628\u0627\u0632\u06AF\u0634\u062A")), /* @__PURE__ */ React.createElement("h1", { style: lab, className: "text-lg font-black mb-1" }, tr("\u0627\u0631\u0633\u0627\u0644 \u0627\u0639\u0644\u0627\u0646 \u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646")), /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-xs mb-3" }, tr("\u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u0628\u0639\u062F \u0627\u0632 \u0628\u0627\u0632 \u0634\u062F\u0646 \u0627\u067E \u062A\u0648\u0633\u0637 \u0647\u0631 \u06A9\u0627\u0631\u0628\u0631\u060C \u062F\u0631 \u0632\u0645\u0627\u0646 \u0627\u0646\u062A\u062E\u0627\u0628\u06CC \u0628\u0647\u200C\u0635\u0648\u0631\u062A \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC\u200C\u0627\u0634 \u0646\u0645\u0627\u06CC\u0634 \u062F\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0647.")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 flex-wrap mb-3" }, ANN_TEMPLATES.map((t) => /* @__PURE__ */ React.createElement("button", { key: t.label, onClick: () => {
+    setTitle(t.title);
+    setBody(t.body);
+  }, className: "rounded-lg px-3 py-1.5 text-xs font-black", style: { background: "#2B2C30", border: "1px solid #5C5D62", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" } }, t.label))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-xs font-bold mb-1" }, tr("\u0639\u0646\u0648\u0627\u0646")), /* @__PURE__ */ React.createElement("input", { value: title, maxLength: 80, onChange: (e) => setTitle(e.target.value), style: field })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-xs font-bold mb-1" }, tr("\u0645\u062A\u0646 \u067E\u06CC\u0627\u0645")), /* @__PURE__ */ React.createElement("textarea", { rows: 4, value: body, maxLength: 300, onChange: (e) => setBody(e.target.value), style: { ...field, resize: "none", lineHeight: 1.9 } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-xs font-bold mb-1" }, tr("\u0632\u0645\u0627\u0646 \u0646\u0645\u0627\u06CC\u0634")), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 flex-wrap" }, opts.map((o) => /* @__PURE__ */ React.createElement("button", { key: o.k, onClick: () => setTimeKey(o.k), className: "rounded-xl px-3 py-2 text-xs font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: timeKey === o.k ? "#F3EEE6" : "#2B2C30", color: timeKey === o.k ? "#0B0B0D" : "#F3EEE6", border: "1px solid #5C5D62" } }, o.l)))), /* @__PURE__ */ React.createElement("button", { disabled: busy || !title.trim() || !body.trim(), onClick: send, className: "rounded-xl py-3 text-sm font-black", style: { background: "#D91E2B", color: "#fff", fontFamily: "Vazirmatn, sans-serif", opacity: busy || !title.trim() || !body.trim() ? 0.5 : 1 } }, busy ? "..." : tr("\u062B\u0628\u062A \u0627\u0639\u0644\u0627\u0646")), msg && /* @__PURE__ */ React.createElement("p", { style: { ...lab, color: msg.includes("\u2713") ? "#3DE08A" : "#FF6B76", lineHeight: 1.9 }, className: "text-xs font-bold text-center" }, msg)), list.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mt-5" }, /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-sm font-black mb-2" }, tr("\u0627\u0639\u0644\u0627\u0646\u200C\u0647\u0627\u06CC \u062B\u0628\u062A\u200C\u0634\u062F\u0647")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-2" }, list.slice().reverse().map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "rounded-xl p-3 flex items-start gap-2", style: { background: "#2B2C30", border: "1px solid #5C5D62" } }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 min-w-0" }, /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-xs font-black" }, a.title), /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-[11px] mt-1 leading-5" }, a.body), /* @__PURE__ */ React.createElement("p", { style: lab, className: "text-[10px] mt-1 opacity-70", dir: "ltr" }, new Date(a.at).toLocaleString("fa-IR"))), /* @__PURE__ */ React.createElement("button", { onClick: () => del(a.id), className: "rounded-lg px-2.5 py-1 text-[11px] font-black shrink-0", style: { background: "#D91E2B", color: "#fff", fontFamily: "Vazirmatn, sans-serif" } }, tr("\u062D\u0630\u0641")))))));
 }
 function AdminUpdateScreen({ update, build, authToken, onSave, onCheck, onBack }) {
   const [d, setD] = useState({ ...update, latest: "" });
@@ -6620,6 +6736,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     ...isAdmin ? [{ color: "#4DA3FF", key: "support", label: tr("\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC"), icon: MenuSupportIcon }] : [],
     { color: "#4DA3FF", key: "info-about", label: tr("\u062F\u0631\u0628\u0627\u0631\u0647 \u0622\u06A9\u0627\u062F\u0645\u06CC Naseri"), icon: MenuAboutIcon },
     ...isAdmin ? [{ color: "#4DA3FF", key: "admin-users", label: tr("\u0644\u06CC\u0633\u062A \u06A9\u0627\u0631\u0628\u0631\u0627\u0646"), icon: MenuUsersIcon }] : [],
+    ...isAdmin ? [{ color: "#4DA3FF", key: "admin-announce", label: tr("\u0627\u0631\u0633\u0627\u0644 \u0627\u0639\u0644\u0627\u0646 \u0628\u0647 \u06A9\u0627\u0631\u0628\u0631\u0627\u0646"), icon: MenuUpdateIcon }] : [],
     ...isAdmin ? [{ color: "#4DA3FF", key: "admin-update", label: tr("\u0628\u0631\u0648\u0632\u0631\u0633\u0627\u0646\u06CC \u0627\u067E"), icon: MenuUpdateIcon }] : [],
     { color: "#4DA3FF", key: "webapp", label: tr("\u0646\u0633\u062E\u0647 \u0648\u0628 / iOS"), icon: MenuPhoneIcon }
   ];
@@ -8538,6 +8655,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
         className: "relative w-full rounded-xl overflow-hidden flex items-center gap-3 px-4 active:scale-[0.98] transition-transform",
         style: { height: "70px", background: "#2B2C30", border: `1.5px solid ${squareColor}` }
       },
+      /* @__PURE__ */ React.createElement("img", { src: SPLASH_LOGO_SRC, alt: "", draggable: false, className: "absolute pointer-events-none", style: { left: "50%", top: "50%", height: "92%", width: "auto", transform: "translate(-50%, -50%)", opacity: 0.13, objectFit: "contain" } }),
       /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 pointer-events-none overflow-hidden" }, /* @__PURE__ */ React.createElement("div", { style: { position: "absolute", top: 0, bottom: 0, width: "38%", background: "linear-gradient(90deg, transparent, rgba(220,235,245,0.22), transparent)", animation: `lessonShine 3.6s ease-in-out ${it.n % 6 * 0.45}s infinite`, willChange: "transform" } })),
       /* @__PURE__ */ React.createElement("div", { className: "relative shrink-0 rounded-lg flex items-center justify-center", style: { width: "40px", height: "40px", background: "#1E1F22", border: `1px solid ${squareColor}` } }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", fontSize: "20px" }, className: "font-bold" }, it.n)),
       /* @__PURE__ */ React.createElement(
@@ -9290,6 +9408,7 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
     case "info-rules":
     case "admin-users":
     case "admin-update":
+    case "admin-announce":
     case "support-inbox":
       return { type: "stepAndMenu", step: "home" };
     case "support-chat":
@@ -9957,6 +10076,14 @@ function App() {
     return nextLesson;
   })();
   useEffect(() => {
+    syncAnnouncements();
+    const onVis = () => {
+      if (document.visibilityState === "visible") syncAnnouncements();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+  useEffect(() => {
     if (!remindersLoaded || !reminder.enabled) return;
     armReminder(reminder.time, nextLesson, false);
   }, [remindersLoaded, reminder.enabled, reminder.time, nextLesson?.curriculumKey, nextLesson?.n, nextLesson?.title]);
@@ -10209,7 +10336,10 @@ function App() {
           else setStep("journey");
         }
       }
-    ), step === "home" && appUpdate.enabled && appBuild > 0 && Number(appUpdate.latest) > appBuild && (appUpdate.force || !updateDismissed && updateSeenDay !== todayKey) && /* @__PURE__ */ React.createElement(UpdateModal, { update: appUpdate, onLater: () => setUpdateDismissed(true) }), step === "admin-update" && /* @__PURE__ */ React.createElement(
+    ), step === "home" && appUpdate.enabled && appBuild > 0 && Number(appUpdate.latest) > appBuild && (appUpdate.force || !updateDismissed && updateSeenDay !== todayKey) && /* @__PURE__ */ React.createElement(UpdateModal, { update: appUpdate, onLater: () => setUpdateDismissed(true) }), step === "admin-announce" && /* @__PURE__ */ React.createElement(AdminAnnounceScreen, { authToken, onBack: () => {
+      setStep("home");
+      setMenuOpen(true);
+    } }), step === "admin-update" && /* @__PURE__ */ React.createElement(
       AdminUpdateScreen,
       {
         update: appUpdate,

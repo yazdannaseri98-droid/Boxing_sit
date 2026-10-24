@@ -1746,6 +1746,7 @@ function SplashScreen({ onStart, loading }) {
           className="text-3xl font-black mb-3"
         >
           {tr("آموزش بوکس حرفه‌ای NASERI")}</h1>
+        <p dir="ltr" style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", opacity: 0.7, fontSize: "11px", letterSpacing: "0.08em" }}>1405/07/01</p>
       </div>
 
       <div className="relative px-6 pb-8">
@@ -4005,6 +4006,149 @@ function UpdateModal({ update, onLater }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- اعلان‌های ادمین (نوتیفیکیشن محلی زمان‌بندی‌شده) ----------
+// ادمین پیام + زمان رو ثبت می‌کنه؛ اپ موقع باز شدن اعلان‌های جدید رو می‌گیره و روی خود گوشی زمان‌بندی می‌کنه
+async function apiFetchAnnouncements() {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/announcements`);
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.ok) return null;
+    return Array.isArray(data.announcements) ? data.announcements : [];
+  } catch {
+    return null;
+  }
+}
+async function syncAnnouncements() {
+  if (DEMO_MODE) return;
+  const LN = window.Capacitor?.Plugins?.LocalNotifications;
+  if (!LN) return;
+  const list = await apiFetchAnnouncements();
+  if (!list || !list.length) return;
+  let done = [];
+  try { done = JSON.parse((await AppStorage.get("ann-done")) || "[]"); } catch {}
+  if (!Array.isArray(done)) done = [];
+  const fresh = list.filter((a) => !done.includes(a.id));
+  if (!fresh.length) return;
+  try {
+    let perm = await LN.checkPermissions();
+    if (perm.display !== "granted") perm = await LN.requestPermissions();
+    if (perm.display !== "granted") return;
+    const now = Date.now();
+    const notifications = fresh.map((a, i) => {
+      let h = 7; for (const ch of a.id) h = (h * 31 + ch.charCodeAt(0)) % 100000;
+      return {
+        id: 3000 + (h % 90000),
+        title: a.title,
+        body: a.body,
+        schedule: { at: new Date(Math.max(a.at, now + 3000 + i * 1500)), allowWhileIdle: true },
+        smallIcon: "ic_stat_glove",
+      };
+    });
+    await LN.schedule({ notifications });
+    await AppStorage.set("ann-done", JSON.stringify([...done, ...fresh.map((a) => a.id)].slice(-100)));
+  } catch {}
+}
+async function apiAdminAnnouncements(token, method, path, payload) {
+  const res = await apiFetch(`${API_BASE_URL}/announcements${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+  if (res.status === 401) triggerAuthFailure();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) throw new Error(data.error || tr("ذخیره انجام نشد"));
+  return data.announcements || [];
+}
+
+const ANN_TEMPLATES = [
+  { label: "آپدیت جدید", title: "آپدیت جدید آکادمی ناصری 🥊", body: "مسیر پیشرفت ۱۰۰ روزه، علوم ضروری بوکس و برنامه‌های تخصصی اومد. همین حالا اپ رو آپدیت کن 💪" },
+  { label: "یادآوری تمرین", title: "امروز تمرین کردی؟ 🔔", body: "فقط یه جلسه کافیه تا زنجیره‌ی پیشرفتت نشکنه. جلسه‌ی بعدی منتظرته 🥊" },
+  { label: "تشویق به اشتراک", title: "همه‌ی فصل‌ها منتظرتن 🏆", body: "با اشتراک آکادمی ناصری همه‌ی فصل‌ها و برنامه‌های تخصصی رو باز کن 🥇" },
+];
+
+function annTimeOptions() {
+  const at = (dayOffset, h) => { const d = new Date(); d.setDate(d.getDate() + dayOffset); d.setHours(h, 0, 0, 0); return d.getTime(); };
+  const now = Date.now();
+  const opts = [{ k: "now", l: "همین الان", at: now }];
+  [[0, 20, "امشب ۲۰:۰۰"], [1, 10, "فردا ۱۰:۰۰"], [1, 18, "فردا ۱۸:۰۰"]].forEach(([d, h, l]) => { const t = at(d, h); if (t > now) opts.push({ k: l, l, at: t }); });
+  return opts;
+}
+
+function AdminAnnounceScreen({ authToken, onBack }) {
+  const [list, setList] = useState([]);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [timeKey, setTimeKey] = useState("now");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const field = { background: "#17161A", border: "1px solid #3a3840", color: "#F3EEE6", borderRadius: 12, fontFamily: "Vazirmatn, sans-serif", padding: "10px 12px", width: "100%" };
+  const lab = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
+  useEffect(() => { apiAdminAnnouncements(authToken, "GET", "/all").then(setList).catch((e) => setMsg(e.message)); }, [authToken]);
+  const opts = annTimeOptions();
+  const send = async () => {
+    if (!title.trim() || !body.trim() || busy) return;
+    const o = opts.find((x) => x.k === timeKey) || opts[0];
+    setBusy(true); setMsg("");
+    try {
+      setList(await apiAdminAnnouncements(authToken, "POST", "", { title: title.trim(), body: body.trim(), at: o.at }));
+      setTitle(""); setBody(""); setMsg(tr("ثبت شد ✓ هر کاربری که اپ رو باز کنه، پیام رو در زمان تعیین‌شده به‌صورت نوتیفیکیشن می‌گیره."));
+    } catch (e) { setMsg(e.message || tr("ذخیره انجام نشد")); }
+    setBusy(false);
+  };
+  const del = async (id) => {
+    try { setList(await apiAdminAnnouncements(authToken, "DELETE", "/" + id)); } catch (e) { setMsg(e.message); }
+  };
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+      <button onClick={onBack} style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }} className="text-sm mb-4 rounded-lg px-3 py-1.5 font-bold inline-block">{tr("› بازگشت")}</button>
+      <h1 style={lab} className="text-lg font-black mb-1">{tr("ارسال اعلان به کاربران")}</h1>
+      <p style={lab} className="text-xs mb-3" >{tr("پیام شما بعد از باز شدن اپ توسط هر کاربر، در زمان انتخابی به‌صورت نوتیفیکیشن روی گوشی‌اش نمایش داده می‌شه.")}</p>
+      <div className="flex gap-2 flex-wrap mb-3">
+        {ANN_TEMPLATES.map((t) => (
+          <button key={t.label} onClick={() => { setTitle(t.title); setBody(t.body); }} className="rounded-lg px-3 py-1.5 text-xs font-black" style={{ background: "#2B2C30", border: "1px solid #5C5D62", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" }}>{t.label}</button>
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        <div>
+          <p style={lab} className="text-xs font-bold mb-1">{tr("عنوان")}</p>
+          <input value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} style={field} />
+        </div>
+        <div>
+          <p style={lab} className="text-xs font-bold mb-1">{tr("متن پیام")}</p>
+          <textarea rows={4} value={body} maxLength={300} onChange={(e) => setBody(e.target.value)} style={{ ...field, resize: "none", lineHeight: 1.9 }} />
+        </div>
+        <div>
+          <p style={lab} className="text-xs font-bold mb-1">{tr("زمان نمایش")}</p>
+          <div className="flex gap-2 flex-wrap">
+            {opts.map((o) => (
+              <button key={o.k} onClick={() => setTimeKey(o.k)} className="rounded-xl px-3 py-2 text-xs font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: timeKey === o.k ? "#F3EEE6" : "#2B2C30", color: timeKey === o.k ? "#0B0B0D" : "#F3EEE6", border: "1px solid #5C5D62" }}>{o.l}</button>
+            ))}
+          </div>
+        </div>
+        <button disabled={busy || !title.trim() || !body.trim()} onClick={send} className="rounded-xl py-3 text-sm font-black" style={{ background: "#D91E2B", color: "#fff", fontFamily: "Vazirmatn, sans-serif", opacity: busy || !title.trim() || !body.trim() ? 0.5 : 1 }}>{busy ? "..." : tr("ثبت اعلان")}</button>
+        {msg && <p style={{ ...lab, color: msg.includes("✓") ? "#3DE08A" : "#FF6B76", lineHeight: 1.9 }} className="text-xs font-bold text-center">{msg}</p>}
+      </div>
+      {list.length > 0 && (
+        <div className="mt-5">
+          <p style={lab} className="text-sm font-black mb-2">{tr("اعلان‌های ثبت‌شده")}</p>
+          <div className="flex flex-col gap-2">
+            {list.slice().reverse().map((a) => (
+              <div key={a.id} className="rounded-xl p-3 flex items-start gap-2" style={{ background: "#2B2C30", border: "1px solid #5C5D62" }}>
+                <div className="flex-1 min-w-0">
+                  <p style={lab} className="text-xs font-black">{a.title}</p>
+                  <p style={lab} className="text-[11px] mt-1 leading-5">{a.body}</p>
+                  <p style={lab} className="text-[10px] mt-1 opacity-70" dir="ltr">{new Date(a.at).toLocaleString("fa-IR")}</p>
+                </div>
+                <button onClick={() => del(a.id)} className="rounded-lg px-2.5 py-1 text-[11px] font-black shrink-0" style={{ background: "#D91E2B", color: "#fff", fontFamily: "Vazirmatn, sans-serif" }}>{tr("حذف")}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -7842,6 +7986,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     ...(isAdmin ? [{ color: "#4DA3FF", key: "support", label: tr("پشتیبانی"), icon: MenuSupportIcon }] : []),
     { color: "#4DA3FF", key: "info-about", label: tr("درباره آکادمی Naseri"), icon: MenuAboutIcon },
     ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-users", label: tr("لیست کاربران"), icon: MenuUsersIcon }] : []),
+    ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-announce", label: tr("ارسال اعلان به کاربران"), icon: MenuUpdateIcon }] : []),
     ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-update", label: tr("بروزرسانی اپ"), icon: MenuUpdateIcon }] : []),
     { color: "#4DA3FF", key: "webapp", label: tr("نسخه وب / iOS"), icon: MenuPhoneIcon },
   ];
@@ -10184,6 +10329,7 @@ function CurriculumScreen({ title, items, onBack, onSelect, hasVideo, plan, onLo
               className="relative w-full rounded-xl overflow-hidden flex items-center gap-3 px-4 active:scale-[0.98] transition-transform"
               style={{ height: "70px", background: "#2B2C30", border: `1.5px solid ${squareColor}` }}
             >
+              <img src={SPLASH_LOGO_SRC} alt="" draggable={false} className="absolute pointer-events-none" style={{ left: "50%", top: "50%", height: "92%", width: "auto", transform: "translate(-50%, -50%)", opacity: 0.13, objectFit: "contain" }} />
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div style={{ position: "absolute", top: 0, bottom: 0, width: "38%", background: "linear-gradient(90deg, transparent, rgba(220,235,245,0.22), transparent)", animation: `lessonShine 3.6s ease-in-out ${(it.n % 6) * 0.45}s infinite`, willChange: "transform" }} />
               </div>
@@ -11181,6 +11327,7 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
     case "info-rules":
     case "admin-users":
     case "admin-update":
+    case "admin-announce":
     case "support-inbox":
       return { type: "stepAndMenu", step: "home" };
     case "support-chat":
@@ -11904,6 +12051,14 @@ function App() {
   })();
 
   // هر بار که کاربر جلسه‌ی دیگه‌ای باز کنه (یا اسم جلسه عوض شه یا اپ دوباره باز شه)، متن نوتیف با جلسه‌ی بعدیِ تازه دوباره تنظیم می‌شه
+  // اعلان‌های ادمین: موقع باز شدن اپ (و برگشت به اپ) اعلان‌های جدید رو می‌گیره و زمان‌بندی می‌کنه
+  useEffect(() => {
+    syncAnnouncements();
+    const onVis = () => { if (document.visibilityState === "visible") syncAnnouncements(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   useEffect(() => {
     if (!remindersLoaded || !reminder.enabled) return;
     armReminder(reminder.time, nextLesson, false);
@@ -12192,6 +12347,7 @@ function App() {
           {step === "home" && appUpdate.enabled && appBuild > 0 && Number(appUpdate.latest) > appBuild && (appUpdate.force || (!updateDismissed && updateSeenDay !== todayKey)) && (
             <UpdateModal update={appUpdate} onLater={() => setUpdateDismissed(true)} />
           )}
+          {step === "admin-announce" && <AdminAnnounceScreen authToken={authToken} onBack={() => { setStep("home"); setMenuOpen(true); }} />}
           {step === "admin-update" && (
             <AdminUpdateScreen
               update={appUpdate}
