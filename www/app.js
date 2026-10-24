@@ -6400,7 +6400,7 @@ async function apiDeleteBanner(id, token, group = "top") {
   if (!res.ok || !data.ok) throw new Error(data.error || tr("\u0630\u062E\u06CC\u0631\u0647 \u0627\u0646\u062C\u0627\u0645 \u0646\u0634\u062F"));
   return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
 }
-function HmBanners({ isAdmin, authToken, group = "top" }) {
+function HmBanners({ isAdmin, authToken, group = "top", auto = true }) {
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -6412,7 +6412,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
   const n = (list || []).length;
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || n < 2) return void 0;
+    if (!auto || !el || n < 2) return void 0;
     const pause = () => {
       pausedRef.current = Date.now() + 6e3;
     };
@@ -6454,7 +6454,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("wheel", pause);
     };
-  }, [n]);
+  }, [n, auto]);
   useEffect(() => {
     let alive = true;
     apiFetchBanners(group).then((l) => alive && l && setList(l));
@@ -6491,51 +6491,59 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
   const items = list || [];
   if (!items.length && !isAdmin) return null;
   const card = { flex: "0 0 100%", width: "100%", aspectRatio: "21 / 8", scrollSnapAlign: "start" };
-  return /* @__PURE__ */ React.createElement("div", { className: "mb-4", style: { margin: "0 -20px 16px", padding: "12px 20px 12px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" } }, /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex gap-3 overflow-x-auto", style: { scrollSnapType: isAdmin ? "x mandatory" : "none", overflowX: isAdmin ? "auto" : "hidden", touchAction: isAdmin ? "pan-x pan-y" : "pan-y", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } }, items.map((b) => /* @__PURE__ */ React.createElement("div", { key: b.id, className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: b.url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" }), isAdmin && /* @__PURE__ */ React.createElement("div", { className: "absolute top-2 left-2 flex gap-1.5" }, /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => {
+  return /* @__PURE__ */ React.createElement("div", { className: "mb-4", style: { margin: "0 -20px 16px", padding: "12px 20px 12px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" } }, /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex gap-3 overflow-x-auto", style: { scrollSnapType: isAdmin || !auto ? "x mandatory" : "none", overflowX: isAdmin || !auto ? "auto" : "hidden", touchAction: isAdmin || !auto ? "pan-x pan-y" : "pan-y", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } }, items.map((b) => /* @__PURE__ */ React.createElement("div", { key: b.id, className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: b.url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" }), isAdmin && /* @__PURE__ */ React.createElement("div", { className: "absolute top-2 left-2 flex gap-1.5" }, /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => {
     repId.current = b.id;
     repRef.current?.click();
-  }, className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" } }, busy === b.id ? "..." : tr("\u062A\u0639\u0648\u06CC\u0636 \u0639\u06A9\u0633")), /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => del(b.id), className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, tr("\u062D\u0630\u0641"))))), items.length > 1 && /* @__PURE__ */ React.createElement("div", { key: "loop-clone", "aria-hidden": "true", className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: items[0].url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" })), isAdmin && /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => addRef.current?.click(), className: "shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1", style: { ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 30, lineHeight: 1 } }, busy === "new" ? "..." : "+"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-black" }, tr("\u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u0646\u0631 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC")), /* @__PURE__ */ React.createElement("span", { className: "text-[10px]" }, tr("\u0646\u0633\u0628\u062A \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u06CC \u06F2\u06F1 \u0628\u0647 \u06F8")))), isAdmin && err && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[11px] text-center", style: { fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" } }, err), isAdmin && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("input", { ref: addRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, "") }), /* @__PURE__ */ React.createElement("input", { ref: repRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, repId.current) })));
+  }, className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" } }, busy === b.id ? "..." : tr("\u062A\u0639\u0648\u06CC\u0636 \u0639\u06A9\u0633")), /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => del(b.id), className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, tr("\u062D\u0630\u0641"))))), auto && items.length > 1 && /* @__PURE__ */ React.createElement("div", { key: "loop-clone", "aria-hidden": "true", className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: items[0].url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" })), isAdmin && /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => addRef.current?.click(), className: "shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1", style: { ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 30, lineHeight: 1 } }, busy === "new" ? "..." : "+"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-black" }, tr("\u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u0646\u0631 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC")), /* @__PURE__ */ React.createElement("span", { className: "text-[10px]" }, tr("\u0646\u0633\u0628\u062A \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u06CC \u06F2\u06F1 \u0628\u0647 \u06F8")))), isAdmin && err && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[11px] text-center", style: { fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" } }, err), isAdmin && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("input", { ref: addRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, "") }), /* @__PURE__ */ React.createElement("input", { ref: repRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, repId.current) })));
 }
 function HmRow({ children, auto }) {
   const ref = useRef(null);
+  const kidsArr = React.Children.toArray(children);
+  const n = kidsArr.length;
   useEffect(() => {
-    if (!auto) return void 0;
+    if (!auto || n < 2) return void 0;
     const el = ref.current;
     if (!el) return void 0;
-    let pausedUntil = 0, idx = 0;
+    let pausedUntil = 0;
     const pause = () => {
       pausedUntil = Date.now() + 6e3;
     };
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("wheel", pause, { passive: true });
+    const deltaTo = (k) => {
+      const er = el.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right + 20 : kr.left - er.left - 20;
+    };
     const timer = setInterval(() => {
       if (Date.now() < pausedUntil) return;
       const kids = Array.from(el.children);
-      if (kids.length < 2) return;
+      if (kids.length < n + 1) return;
       const er = el.getBoundingClientRect();
       let cur = 0, best = 1e9;
       kids.forEach((k, i) => {
-        const d = Math.abs(k.getBoundingClientRect().left - er.left - 20);
-        const dr = Math.abs(k.getBoundingClientRect().right - er.right + 20);
-        const m = Math.min(d, dr);
+        const kr = k.getBoundingClientRect();
+        const m = Math.min(Math.abs(kr.left - er.left - 20), Math.abs(kr.right - er.right + 20));
         if (m < best) {
           best = m;
           cur = i;
         }
       });
-      idx = (cur + 1) % kids.length;
-      const kr = kids[idx].getBoundingClientRect();
-      const rtl = getComputedStyle(el).direction === "rtl";
-      const delta = rtl ? kr.right - er.right + 20 : kr.left - er.left - 20;
-      el.scrollBy({ left: delta, behavior: "smooth" });
+      if (cur >= n) {
+        el.scrollBy({ left: deltaTo(kids[0]), behavior: "auto" });
+        cur = 0;
+      }
+      el.scrollBy({ left: deltaTo(kids[cur + 1]), behavior: "smooth" });
+      if (cur + 1 === n) setTimeout(() => {
+        if (Date.now() >= pausedUntil && el.children[0]) el.scrollBy({ left: deltaTo(el.children[0]), behavior: "auto" });
+      }, 900);
     }, 3800);
     return () => {
       clearInterval(timer);
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("wheel", pause);
     };
-  }, [auto]);
-  return /* @__PURE__ */ React.createElement("div", { className: "relative", style: { margin: "0 -20px", padding: "14px 0 6px", background: "transparent" } }, /* @__PURE__ */ React.createElement("div", { ref, className: "relative flex gap-3 overflow-x-auto pb-3 px-5", style: { scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } }, children));
+  }, [auto, n]);
+  return /* @__PURE__ */ React.createElement("div", { className: "relative", style: { margin: "0 -20px", padding: "14px 0 6px", background: "transparent" } }, /* @__PURE__ */ React.createElement("div", { ref, className: "relative flex gap-3 overflow-x-auto pb-3 px-5", style: { scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } }, kidsArr, auto && n > 1 && React.cloneElement(kidsArr[0], { key: "loop-clone" })));
 }
 function HmHero({ lesson, chapterTitle, percent, onContinue }) {
   return /* @__PURE__ */ React.createElement("button", { onClick: onContinue, className: "relative w-full rounded-2xl overflow-hidden text-right block active:scale-[0.985] transition-transform", style: { background: "linear-gradient(180deg, #3A3B40 0%, #2A2B2F 100%)", border: "1px solid rgba(243,238,230,0.35)", padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-[11px] font-bold" }, chapterTitle), /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2.5 py-0.5 text-[10px] font-black shrink-0", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, lesson ? "\u0627\u062F\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646" : "\u0634\u0631\u0648\u0639 \u0645\u0633\u06CC\u0631")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-7 mb-2" }, lesson ? lesson.title : "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u06F1\u06F0\u06F0 \u0631\u0648\u0632\u0647"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 rounded-full overflow-hidden", style: { height: 5, background: "#5A5B60" } }, /* @__PURE__ */ React.createElement("div", { style: { width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-xs" }, percent, "%"), /* @__PURE__ */ React.createElement("span", { className: "rounded-full flex items-center justify-center", style: { width: 32, height: 32, background: "#D91E2B", color: "#fff", fontSize: 12 } }, "\u25B6")));
@@ -6782,7 +6790,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
       const cp = real.length ? Math.round(d / real.length * 100) : 0;
       const soon = c.gated && !isAdmin && !chapterVisibility?.[c.key];
       return /* @__PURE__ */ React.createElement("div", { key: c.key, className: "relative shrink-0", style: { width: "calc(100vw - 40px)", maxWidth: 420, scrollSnapAlign: "start" } }, /* @__PURE__ */ React.createElement("button", { onClick: soon ? void 0 : () => onNavigate("curriculum-" + c.key), className: "relative block w-full rounded-2xl overflow-hidden border active:scale-95 transition-transform", style: { aspectRatio: "16 / 9", background: "#141317", borderColor: `${c.color}99`, cursor: soon ? "default" : "pointer" } }, /* @__PURE__ */ React.createElement("img", { src: img, alt: titles(c.key), draggable: false, className: "absolute inset-0 w-full h-full object-contain" }), /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "linear-gradient(to top, rgba(11,11,13,0.7) 0%, rgba(11,11,13,0.05) 45%, transparent 100%)" } }), soon && /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "rgba(0,0,0,0.55)" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 rounded-tr-lg", style: { borderColor: "#D91E2B" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg", style: { borderColor: "#F3EEE6" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black", style: { fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" } }, String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")), soon && /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 flex flex-col items-center justify-center gap-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 28 } }, "\u{1F512}"), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 8px #000" }, className: "text-xl font-black" }, "\u0628\u0647\u200C\u0632\u0648\u062F\u06CC")), !soon && /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-0 inset-x-0", style: { height: 4, background: "#505154" } }, /* @__PURE__ */ React.createElement("div", { style: { width: cp + "%", height: "100%", background: c.color } }))), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center mt-2 gap-0.5 text-center" }, /* @__PURE__ */ React.createElement("h3", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black" }, titles(c.key)), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: soon ? "#D0CCC4" : "#8CC4FF" }, className: "text-[11px] font-black" }, soon ? "" : `${d} \u0627\u0632 ${real.length} \u062C\u0644\u0633\u0647`)), isAdmin && c.gated && /* @__PURE__ */ React.createElement(ChapterVisibilityToggle, { visible: Boolean(chapterVisibility?.[c.key]), onToggle: (v) => onToggleChapterVisibility?.(c.key, v) }));
-    }))), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmBanners, { isAdmin, authToken, group: "mid" })), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmSectionTitle, { title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633", sub: "\u062A\u0627\u0628\u0627\u062A\u0627 \u0631\u0627\u06CC\u06AF\u0627\u0646\u0647", color: "#F2CF5E", gold: true }), /* @__PURE__ */ React.createElement(HmRow, { tone: "red", auto: true }, PG_DATA.map((c) => {
+    }))), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmBanners, { isAdmin, authToken, group: "mid", auto: false })), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmSectionTitle, { title: "\u062A\u0645\u0631\u06CC\u0646\u0627\u062A \u062A\u062E\u0635\u0635\u06CC \u0628\u0648\u06A9\u0633", sub: "\u062A\u0627\u0628\u0627\u062A\u0627 \u0631\u0627\u06CC\u06AF\u0627\u0646\u0647", color: "#F2CF5E", gold: true }), /* @__PURE__ */ React.createElement(HmRow, { tone: "red", auto: true }, PG_DATA.map((c) => {
       const open = isAdmin || PG_FREE.includes(c.id) || plan === "silver";
       return /* @__PURE__ */ React.createElement("div", { key: c.id, className: "shrink-0 flex flex-col items-center gap-2", style: { width: 232, scrollSnapAlign: "start" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => onOpenProgramCat?.(c.id), className: "relative w-full rounded-2xl flex items-center justify-center active:scale-95 transition-transform", style: { height: 276, background: "#2B2C30", border: `1px solid ${c.color}`, boxShadow: `0 0 16px ${c.color}44` } }, c.img ? /* @__PURE__ */ React.createElement("img", { src: c.img, alt: "", draggable: false, style: { height: 256, width: "92%", objectFit: "contain", filter: `drop-shadow(0 4px 10px ${c.color}77)` } }) : /* @__PURE__ */ React.createElement("span", { style: { fontSize: 140, height: 256, display: "flex", alignItems: "center" } }, c.icon), !open && /* @__PURE__ */ React.createElement("span", { className: "absolute top-2 left-2 text-sm" }, "\u{1F512}"), PG_FREE.includes(c.id) && !isAdmin && plan !== "silver" && /* @__PURE__ */ React.createElement("span", { className: "absolute top-2 left-2 rounded-full px-1.5 py-0.5 text-[8px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#4DA3FF", color: "#0B0B0D" } }, "\u0631\u0627\u06CC\u06AF\u0627\u0646")), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-6 text-center" }, c.title));
     }))), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmSectionTitle, { title: "\u062F\u0648\u0631\u0647 A+", sub: "\u0641\u0635\u0644\u200C\u0647\u0627\u06CC \u06F4 \u062A\u0627 \u06F7", color: "#F2CF5E", gold: true }), /* @__PURE__ */ React.createElement(HmRow, { tone: "blue", auto: true }, HM_CHAPTERS.filter((c) => c.gated).map((c) => {

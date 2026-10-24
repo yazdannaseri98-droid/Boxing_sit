@@ -7602,7 +7602,7 @@ async function apiDeleteBanner(id, token, group = "top") {
   return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
 }
 // بنرهای تبلیغاتی بالای صفحه‌ی هوم؛ ادمین می‌تونه عکس جدید اضافه کنه، عوض کنه یا حذف کنه
-function HmBanners({ isAdmin, authToken, group = "top" }) {
+function HmBanners({ isAdmin, authToken, group = "top", auto = true }) {
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -7615,7 +7615,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
   // حرکت خودکار بی‌نهایت: بعد از آخرین بنر، کپی بنر اول میاد و بعد بی‌صدا به بنر اول واقعی می‌پره
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || n < 2) return undefined;
+    if (!auto || !el || n < 2) return undefined;
     const pause = () => { pausedRef.current = Date.now() + 6000; };
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("wheel", pause, { passive: true });
@@ -7639,7 +7639,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
       if (cur + 1 === n) setTimeout(() => { if (Date.now() >= pausedRef.current && el.children[0]) el.scrollBy({ left: deltaTo(el.children[0]), behavior: "auto" }); }, 900);
     }, 3800);
     return () => { clearInterval(timer); el.removeEventListener("touchstart", pause); el.removeEventListener("wheel", pause); };
-  }, [n]);
+  }, [n, auto]);
   useEffect(() => { let alive = true; apiFetchBanners(group).then((l) => alive && l && setList(l)); return () => { alive = false; }; }, []);
   const pick = async (e, replaceId) => {
     const f = e.target.files?.[0];
@@ -7662,7 +7662,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
   const card = { flex: "0 0 100%", width: "100%", aspectRatio: "21 / 8", scrollSnapAlign: "start" };
   return (
     <div className="mb-4" style={{ margin: "0 -20px 16px", padding: "12px 20px 12px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: isAdmin ? "x mandatory" : "none", overflowX: isAdmin ? "auto" : "hidden", touchAction: isAdmin ? "pan-x pan-y" : "pan-y", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: isAdmin || !auto ? "x mandatory" : "none", overflowX: isAdmin || !auto ? "auto" : "hidden", touchAction: isAdmin || !auto ? "pan-x pan-y" : "pan-y", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {items.map((b) => (
           <div key={b.id} className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
             <img src={b.url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
@@ -7674,7 +7674,7 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
             )}
           </div>
         ))}
-        {items.length > 1 && (
+        {auto && items.length > 1 && (
           <div key="loop-clone" aria-hidden="true" className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
             <img src={items[0].url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
           </div>
@@ -7699,38 +7699,43 @@ function HmBanners({ isAdmin, authToken, group = "top" }) {
 }
 function HmRow({ children, auto }) {
   const ref = useRef(null);
+  const kidsArr = React.Children.toArray(children);
+  const n = kidsArr.length;
   useEffect(() => {
-    if (!auto) return undefined;
+    if (!auto || n < 2) return undefined;
     const el = ref.current;
     if (!el) return undefined;
-    let pausedUntil = 0, idx = 0;
+    let pausedUntil = 0;
     const pause = () => { pausedUntil = Date.now() + 6000; };
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("wheel", pause, { passive: true });
-    // هر چند ثانیه یک کارت جلو می‌ره (کارت به کارت)؛ بعد از آخرین کارت برمی‌گرده اول
+    const deltaTo = (k) => {
+      const er = el.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right + 20 : kr.left - er.left - 20;
+    };
+    // بی‌نهایت: بعد از آخرین کارت، کپی کارت اول میاد و بعد بی‌صدا به کارت اول واقعی می‌پره
     const timer = setInterval(() => {
       if (Date.now() < pausedUntil) return;
       const kids = Array.from(el.children);
-      if (kids.length < 2) return;
+      if (kids.length < n + 1) return;
       const er = el.getBoundingClientRect();
       let cur = 0, best = 1e9;
-      kids.forEach((k, i) => { const d = Math.abs(k.getBoundingClientRect().left - er.left - 20); const dr = Math.abs(k.getBoundingClientRect().right - er.right + 20); const m = Math.min(d, dr); if (m < best) { best = m; cur = i; } });
-      idx = (cur + 1) % kids.length;
-      const kr = kids[idx].getBoundingClientRect();
-      const rtl = getComputedStyle(el).direction === "rtl";
-      const delta = rtl ? kr.right - er.right + 20 : kr.left - er.left - 20;
-      el.scrollBy({ left: delta, behavior: "smooth" });
+      kids.forEach((k, i) => { const kr = k.getBoundingClientRect(); const m = Math.min(Math.abs(kr.left - er.left - 20), Math.abs(kr.right - er.right + 20)); if (m < best) { best = m; cur = i; } });
+      if (cur >= n) { el.scrollBy({ left: deltaTo(kids[0]), behavior: "auto" }); cur = 0; }
+      el.scrollBy({ left: deltaTo(kids[cur + 1]), behavior: "smooth" });
+      if (cur + 1 === n) setTimeout(() => { if (Date.now() >= pausedUntil && el.children[0]) el.scrollBy({ left: deltaTo(el.children[0]), behavior: "auto" }); }, 900);
     }, 3800);
     return () => {
       clearInterval(timer);
       el.removeEventListener("touchstart", pause);
       el.removeEventListener("wheel", pause);
     };
-  }, [auto]);
+  }, [auto, n]);
   return (
     <div className="relative" style={{ margin: "0 -20px", padding: "14px 0 6px", background: "transparent" }}>
       <div ref={ref} className="relative flex gap-3 overflow-x-auto pb-3 px-5" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-        {children}
+        {kidsArr}
+        {auto && n > 1 && React.cloneElement(kidsArr[0], { key: "loop-clone" })}
       </div>
     </div>
   );
@@ -8055,7 +8060,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                   </HmRow>
                 </div>
 
-                <div className="mt-6"><HmBanners isAdmin={isAdmin} authToken={authToken} group="mid" /></div>
+                <div className="mt-6"><HmBanners isAdmin={isAdmin} authToken={authToken} group="mid" auto={false} /></div>
                 <div className="mt-6">
                   <HmSectionTitle title="تمرینات تخصصی بوکس" sub="تاباتا رایگانه" color="#F2CF5E" gold />
                   <HmRow tone="red" auto>
