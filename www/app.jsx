@@ -477,7 +477,7 @@ async function makeAvatarDataUrl(file) {
 // ---------- اطلاعات جدا برای هر حساب ----------
 // پیشرفت، تایم تمرین، پروفایل، آخرین جلسه و یادآور هر کاربر فقط برای همون حساب ذخیره و نشون داده می‌شه
 // (قبلاً همه‌ی حساب‌هایی که روی یه گوشی وارد می‌شدن یه اطلاعات مشترک می‌دیدن).
-const ACCOUNT_DATA_KEYS = ["last-lesson", "reminder", "completed-lessons", "practice-seconds", "profile-info", "sync-pending"];
+const ACCOUNT_DATA_KEYS = ["last-lesson", "reminder", "completed-lessons", "practice-seconds", "profile-info", "sync-pending", "last-basic"];
 
 function accountKey(identifier, base) {
   return `acct:${identifier}:${base}`;
@@ -1758,7 +1758,7 @@ function SplashScreen({ onStart, loading }) {
               <div
                 style={{
                   height: "100%",
-                  background: "linear-gradient(90deg, #2E9FE8, #4DA3FF)",
+                  background: "linear-gradient(90deg,#1FA855,#3DE08A)",
                   animation: "splashLoadFill 5000ms ease-out forwards",
                 }}
               />
@@ -2922,7 +2922,7 @@ function ProfileScreen({ sessionsCount, badgeUnlocked, progressPercent, practice
         <div className="h-3 rounded-full overflow-hidden" style={{ background: "#0B0B0D", border: "1px solid #2a292e" }}>
           <div
             className="h-full rounded-full"
-            style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.7)" }}
+            style={{ width: `${progressPercent}%`, background: "linear-gradient(90deg,#1FA855,#3DE08A)", boxShadow: "0 0 10px rgba(243,238,230,0.7)" }}
           />
         </div>
       </div>
@@ -4400,8 +4400,20 @@ function buildAboutText(t) {
 function buildFaqItems(t) {
   return [
   {
-    q: tr("آموزش‌ها چرا توی سه فصل هستن؟"),
-    a: tr("چون یادگیری بوکس مرحله‌به‌مرحله‌ست: فصل اول پایه‌ها رو می‌سازه، فصل دوم تکنیک‌ها رو حرفه‌ای‌تر می‌کنه، و فصل سوم روی نکات ویژه و آماده‌سازی برای مبارزه تمرکز داره. رعایت این ترتیب مهم‌ترین نکته‌ی آموزشیه."),
+    q: tr("آموزش‌ها چرا توی چند فصل و دو دوره هستن؟"),
+    a: tr(`یادگیری بوکس مرحله‌به‌مرحله‌ست. «دوره A» شامل سه فصل اوله ({basic}، {advanced} و {extra}) که پایه‌ها و تکنیک‌ها رو می‌سازه. «دوره A+» شامل فصل‌های ۴ تا ۷ ({fight}، {fightb}، {partner} و {focus}) که تکنیک‌های تخصصی‌تر، کار با پارتنر و آماده‌سازی برای رینگ رو پوشش می‌ده. رعایت ترتیب فصل‌ها بهترین نتیجه رو می‌ده.`, t),
+  },
+  {
+    q: tr("چه چیزهایی رایگانه و چه چیزهایی نیاز به اشتراک داره؟"),
+    a: tr("پنج جلسه‌ی اول هر فصل رایگانه. تمرین «تاباتا» از بخش تمرینات تخصصی بوکس هم رایگانه و سه روز اول «مسیر پیشرفت من» هم بدون اشتراک بازه. بقیه‌ی جلسه‌ها و برنامه‌ها با اشتراک باز می‌شن: اشتراک دوره اول، فصل‌های دوره A و تمرینات تخصصی رو باز می‌کنه و اشتراک دوره دوم، فصل‌های دوره A+ رو. این دو اشتراک مستقل از همن."),
+  },
+  {
+    q: tr("باکس «ادامه تمرین» توی صفحه‌ی اصلی چی نشون می‌ده؟"),
+    a: tr("فقط به پیشرفت فصل اول وصله و جلسه‌ی بعدیِ آخرین جلسه‌ی دیده‌شده‌ی فصل اول رو نشون می‌ده. مثلاً اگه تا جلسه‌ی ۸ فصل اول رسیده باشی، حتی اگه جلسه‌ی ۵ فصل دوم رو هم ببینی، باکس همچنان جلسه‌ی ۹ فصل اول رو نشون می‌ده. با لمس باکس مستقیم به همون جلسه می‌ری."),
+  },
+  {
+    q: tr("«مسیر پیشرفت من» چیه و چطور کار می‌کنه؟"),
+    a: tr("یه برنامه‌ی ۱۰۰ روزه‌ست که هر روزش چند مرحله‌ی تمرینی داره. وقتی یه مرحله رو داخل اپ (ویدیو، برنامه‌ی تخصصی یا تمرین لیستی) کامل می‌کنی، خودکار تیک می‌خوره و وقتی همه‌ی مرحله‌های یه روز تموم بشه، همون روز سبز می‌شه. هر هفته مدال می‌گیری و آخر روز صد جام قهرمانی منتظرته. نمودار پیشرفتت هم توی صفحه‌ی خود مسیر و داخل پروفایل دیده می‌شه. سه روز اول رایگانه و ادامه‌ش با اشتراک بازه."),
   },
   {
     q: tr("چرا باید روزانه یک تمرین انجام بدم؟"),
@@ -4412,32 +4424,60 @@ function buildFaqItems(t) {
     a: tr("اگه منظم و طبق ترتیب جلسات پیش بری، معمولاً بین ۳ تا ۴ ماه تغییر محسوسی توی تکنیک، فرم بدنی و اعتمادبه‌نفست می‌بینی. سرعت پیشرفت به تداوم تمرینت بستگی داره."),
   },
   {
+    q: tr("بخش «برنامه‌های تخصصی» (تمرینات تخصصی بوکس) چیه؟"),
+    a: tr("مجموعه‌ای از برنامه‌های تمرینی کمکی مثل تاباتا، بدنسازی (با وزنه)، کراس‌فیت و آمادگی جسمانی بوکس که کنار آموزش‌ها انجام می‌دی. هر برنامه چند تمرین آماده داره که با تایمر و راهنمای حرکت اجرا می‌شه و با کامل کردنش مرحله‌ی مربوط توی «مسیر پیشرفت من» هم تیک می‌خوره. تاباتا رایگانه و بقیه با اشتراک باز می‌شن."),
+  },
+  {
+    q: tr("«علوم ضروری بوکس» شامل چی می‌شه؟"),
+    a: tr("یه مرجع کامل و مصور برای شناخت دنیای بوکس: قوانین مسابقات آماتور و حرفه‌ای، قوانین داوری و قضاوت، انواع مسابقات، مسیر پیشرفت در بوکس حرفه‌ای و موضوع‌های مهم دیگه. از میانبر صفحه‌ی اصلی یا از منو بازش کن."),
+  },
+  {
+    q: tr("«تایمر تمرین» به چه دردی می‌خوره؟"),
+    a: tr("یه تایمر راند و استراحت مخصوص بوکسه با حالت‌های آماده (حرفه‌ای، آماتور، کیسه، سایه‌زنی و تاباتا). می‌تونی تعداد راند، زمان راند و استراحت رو خودت هم تنظیم کنی و حین تمرین آزاد (مثل کیسه یا سایه‌زنی) ازش استفاده کنی؛ هشدار پایان راند با صدا و لرزش هم داره."),
+  },
+  {
+    q: tr("چطور یادآور روزانه تنظیم کنم؟"),
+    a: tr("از منو وارد «یادآور روزانه» بشو، ساعت دلخواهت رو انتخاب کن و فعالش کن. هر روز همون ساعت یه اعلان می‌گیری که جلسه‌ی بعدیت رو بهت یادآوری می‌کنه. اگه اجازه‌ی اعلان رو ندادی، از تنظیمات گوشی فعالش کن."),
+  },
+  {
+    q: tr("توی پروفایل چه چیزهایی می‌بینم؟"),
+    a: tr("اسم و عکس پروفایلت (قابل ویرایش)، تعداد جلسه‌های تمرین، تایم تمرین، سطح بوکسور، نوار پیشرفت کلی، مدال‌های فصل‌ها (مثل گارد طلایی و دستکش طلایی)، وضعیت اشتراک و روزهای باقی‌مونده، و باکس مسیر پیشرفت روزانه با نمودارش."),
+  },
+  {
+    q: tr("«وسایل بوکس» و «کمک مربی» چیه؟"),
+    a: tr("«وسایل بوکس» معرفی تجهیزات بوکس مثل دستکش، باندپیچ، کاسک، محافظ دهان، کیسه، طناب و کفشه. «کمک مربی» جواب‌های آماده برای مشکلات رایج تمرینه؛ اگه موقع تمرین به مشکلی خوردی اول اونجا رو ببین."),
+  },
+  {
+    q: tr("اگه مشکل تو تمرین یا اپ داشتم چیکار کنم؟"),
+    a: tr("برای مشکل تمرین، «کمک مربی» رو ببین. برای مشکل فنی، پرداخت یا اشتراک از گزینه‌ی «پشتیبانی» توی منو پیام بده (متن یا پیام صوتی)؛ جواب همون‌جا برات میاد."),
+  },
+  {
+    q: tr("چطور زبان اپ رو عوض کنم؟"),
+    a: tr("از منو گزینه‌ی «تغییر زبان» رو بزن و زبان دلخواهت رو انتخاب کن. زیرنویس ویدیوها هم بسته به زبان انتخابی نمایش داده می‌شه (اگه برای اون ویدیو موجود باشه)."),
+  },
+  {
+    q: tr("آیا می‌تونم دوستام رو دعوت کنم؟"),
+    a: tr("بله، از منو «دعوت از دوستان» رو بزن و لینک اپ یا نسخه‌ی وب رو برای دوستانت بفرست."),
+  },
+  {
+    q: tr("نسخه‌ی وب و بروزرسانی اپ چطور کار می‌کنن؟"),
+    a: tr("از منو می‌تونی نسخه‌ی وب آکادمی رو از مرورگر باز کنی؛ با همون حسابت وارد می‌شی و پیشرفتت همه‌جا یکیه. گزینه‌ی «بروز رسانی» هم آخرین نسخه‌ی اپ رو بهت نشون می‌ده."),
+  },
+  {
+    q: tr("آیا می‌تونم با یه حساب روی چند گوشی وارد بشم و بدون ثبت‌نام استفاده کنم؟"),
+    a: tr("هر حساب فقط روی یه گوشی فعاله و ورود روی گوشی جدید، گوشی قبلی رو از حساب خارج می‌کنه. ورود به‌عنوان مهمان هم ممکنه، ولی پیشرفت و خرید اشتراک فقط با ثبت‌نام ذخیره می‌شه. برای حفظ حقوق آموزش‌ها، اسکرین‌شات و ضبط صفحه توی صفحه‌ی ویدیوها مسدوده."),
+  },
+  {
     q: tr("بعد از یادگیری چیکار کنم؟"),
-    a: tr("بعد از تکمیل هر سه فصل، حتماً توی یه باشگاه بوکس ثبت‌نام کن، زیر نظر یه مربی حرفه‌ای تمرین اسپارینگ (مبارزه‌ی کنترل‌شده) رو شروع کن و در صورت علاقه، برای مسابقات آماتور اقدام کن."),
+    a: tr("بعد از تکمیل فصل‌ها، حتماً توی یه باشگاه بوکس ثبت‌نام کن، زیر نظر یه مربی حرفه‌ای تمرین اسپارینگ (مبارزه‌ی کنترل‌شده) رو شروع کن و در صورت علاقه، برای مسابقات آماتور اقدام کن."),
   },
   {
     q: tr("همراه آموزش‌ها چه ورزش‌هایی می‌تونم انجام بدم؟"),
-    a: tr("تمرینات هوازی و کراسفیت رو هفته‌ای دو بار همراه آموزش‌ها انجام بده. این ترکیب استقامت، سرعت و قدرت لازم برای تبدیل شدن به یه بوکسور حرفه‌ای رو بهت می‌ده."),
-  },
-  {
-    q: tr("آیا فصل‌های دیگه‌ای اضافه می‌شه؟"),
-    a: tr(`بله، فصل‌های {fight}، {partner} و {focus} به‌تدریج به اپ اضافه می‌شن تا مسیر یادگیریت از پایه تا آماده‌سازی کامل برای رینگ، بدون وقفه ادامه پیدا کنه.`, t),
-  },
-  {
-    q: tr("با این تمرینا تا چه حد پیش می‌رم؟"),
-    a: tr("اگه فصل‌ها رو به‌ترتیب و منظم دنبال کنی، از یه مبتدی کامل به یه بوکسور با تکنیک، فرم بدنی و آمادگی ذهنی در حد ورود به تمرین اسپارینگ و مسابقات آماتور می‌رسی."),
-  },
-  {
-    q: tr("اگه مشکل تو تمرین داشتم چیکار کنم؟"),
-    a: tr("جوابتو توی کمک‌های آماده‌ی گزینه‌ی «مربی کمکی» پیدا می‌کنی."),
+    a: tr("تمرینات هوازی و کراس‌فیت رو هفته‌ای دو بار همراه آموزش‌ها انجام بده؛ برنامه‌های تخصصی اپ هم برای همین طراحی شدن. این ترکیب استقامت، سرعت و قدرت لازم برای تبدیل شدن به یه بوکسور حرفه‌ای رو بهت می‌ده."),
   },
   {
     q: tr("چطور کاری کنم تمرینای قبلی یادم نره؟"),
-    a: tr("طبق نکات کلیدی، هر هفته حتماً تمرینات هفته‌ی قبل رو مرور کن. مرور منظم باعث می‌شه حرکات توی حافظه‌ی عضلانی‌ت ثابت بمونه و فراموش نشه."),
-  },
-  {
-    q: tr("آیا این تمرینا رو فراموش نمی‌کنم؟"),
-    a: tr("خیر، چون آموزش پلکانی و مرتبطه؛ یعنی هر تمرین بعدی به تمرین قبلی وصله و بارها توی جلسات بعدی تکرار می‌شه، پس فراموش کردنش سخت‌تر می‌شه."),
+    a: tr("طبق نکات کلیدی، هر هفته حتماً تمرینات هفته‌ی قبل رو مرور کن. آموزش پلکانیه و هر تمرین بعدی به قبلی وصله و تکرارش می‌کنه، برای همین فراموش کردنش سخت‌تره."),
   },
 ];
 }
@@ -7749,7 +7789,7 @@ function HmHero({ lesson, chapterTitle, percent, onContinue }) {
       </div>
       <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black leading-7 mb-2">{lesson ? lesson.title : "مسیر پیشرفت ۱۰۰ روزه"}</div>
       <div className="flex items-center gap-3">
-        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "#5A5B60" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }} /></div>
+        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "#5A5B60" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>
         <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">{percent}%</span>
         <span className="rounded-full flex items-center justify-center" style={{ width: 32, height: 32, background: "#D91E2B", color: "#fff", fontSize: 12 }}>▶</span>
       </div>
@@ -7758,7 +7798,7 @@ function HmHero({ lesson, chapterTitle, percent, onContinue }) {
 }
 function HmShortcuts({ items }) {
   return (
-    <div className="grid grid-cols-4 gap-2.5">
+    <div className="grid grid-cols-4 gap-2.5" style={{ margin: "0 -20px", padding: "14px 20px 10px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
       {items.map((it) => {
         const Icon = it.icon;
         return (
@@ -7766,7 +7806,7 @@ function HmShortcuts({ items }) {
             <span className="rounded-2xl flex items-center justify-center" style={{ width: 58, height: 58, background: "#2B2C30", border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)` }}>
               <Icon className="w-7 h-7" style={{ color: it.color, filter: `drop-shadow(0 0 6px ${it.color})` }} />
             </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E6E1D8" }} className="text-[12.5px] font-black text-center leading-5">{it.label}</span>
+            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#17181A" }} className="text-[12.5px] font-black text-center leading-5">{it.label}</span>
           </button>
         );
       })}
@@ -8045,7 +8085,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                             <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
                             <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
                             {soon && <div className="absolute inset-0 flex flex-col items-center justify-center gap-1"><span style={{ fontSize: 28 }}>🔒</span><span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 8px #000" }} className="text-xl font-black">به‌زودی</span></div>}
-                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>}
                           </button>
                           <div className="flex flex-col items-center mt-2 gap-0.5 text-center">
                             <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
@@ -8098,7 +8138,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                             <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 rounded-bl-lg" style={{ borderColor: "#F3EEE6" }} />
                             <div className="absolute top-2.5 left-2.5 rounded-full px-2 py-0.5 text-[10px] font-black" style={{ fontFamily: "Oswald, sans-serif", background: c.color, color: "#0B0B0D" }}>{String(HM_CHAPTERS.indexOf(c) + 1).padStart(2, "0")}</div>
                             {soon && <div className="absolute inset-0 flex flex-col items-center justify-center gap-1"><span style={{ fontSize: 28 }}>🔒</span><span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 8px #000" }} className="text-xl font-black">به‌زودی</span></div>}
-                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: c.color }} /></div>}
+                            {!soon && <div className="absolute bottom-0 inset-x-0" style={{ height: 4, background: "#505154" }}><div style={{ width: cp + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} /></div>}
                           </button>
                           <div className="flex flex-col items-center mt-2 gap-0.5 text-center">
                             <h3 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black">{titles(c.key)}</h3>
@@ -9500,7 +9540,7 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
             }}
           >
             <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${bufferedPct}%`, borderRadius: 9999, background: "rgba(255,255,255,0.35)" }} />
-            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progressPct}%`, borderRadius: 9999, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }} />
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progressPct}%`, borderRadius: 9999, background: "linear-gradient(90deg,#1FA855,#3DE08A)" }} />
             <div
               style={{
                 position: "absolute",
@@ -9816,7 +9856,7 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
           <div className="w-2/3 rounded-full overflow-hidden" style={{ height: "5px", background: "#2a292e" }}>
             <div
               className="h-full rounded-full"
-              style={{ width: `${progress}%`, background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }}
+              style={{ width: `${progress}%`, background: "linear-gradient(90deg,#1FA855,#3DE08A)" }}
             />
           </div>
           <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs">
@@ -11230,6 +11270,7 @@ function App() {
   const [exitHint, setExitHint] = useState(false);
   const lastPersistedPracticeRef = useRef(0);
   const lastBackPressRef = useRef(0);
+  const [lastBasic, setLastBasic] = useState(null); // آخرین جلسه‌ی فصل ۱ که دیده شده (برای باکس «ادامه تمرین» هوم)
   const [lastLesson, setLastLesson] = useState(null); // آخرین جلسه‌ای که کاربر بازش کرده: { curriculumKey, n }
   useEffect(() => {
     if (step !== "info-coach") setCoachChapter(null);
@@ -11781,6 +11822,7 @@ function App() {
     setProfileName("");
     setProfileImage(null);
     setLastLesson(null);
+    setLastBasic(null);
     setReminder({ enabled: false, time: "18:00" });
     if (!accountId) {
       cancelReminder();
@@ -11790,7 +11832,7 @@ function App() {
     let cancelled = false;
     (async () => {
       await purgeLegacyAccountData();
-      const [lastRaw, reminderRaw, completedRaw, practiceRaw, profileRaw, pendingRaw] = await Promise.all(
+      const [lastRaw, reminderRaw, completedRaw, practiceRaw, profileRaw, pendingRaw, lastBasicRaw] = await Promise.all(
         ACCOUNT_DATA_KEYS.map((key) => AppStorage.get(accountKey(accountId, key)))
       );
       if (cancelled) return;
@@ -11803,6 +11845,8 @@ function App() {
       };
       const last = parse(lastRaw);
       if (last?.curriculumKey && last?.n) setLastLesson(last);
+      const lb = parse(lastBasicRaw);
+      if (lb?.n) setLastBasic(lb); else if (last?.curriculumKey === "basic" && last?.n) setLastBasic({ n: last.n });
       const savedReminder = parse(reminderRaw);
       if (savedReminder?.time) setReminder({ enabled: Boolean(savedReminder.enabled), time: savedReminder.time });
       const completed = parse(completedRaw);
@@ -11850,6 +11894,14 @@ function App() {
     },
     availableChapterKeys
   );
+  // باکس «ادامه تمرین» هوم فقط به پیشرفت فصل ۱ وصله: بعد از آخرین جلسه‌ی دیده‌شده‌ی فصل ۱؛ دیدن جلسه‌های فصل‌های دیگه روش اثر نداره
+  const heroLesson = (() => {
+    const items = curriculumBasicMerged || [];
+    const isReal = (it) => Boolean(it && it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
+    const pick = lastBasic?.n ? items.find((it) => it.n === lastBasic.n + 1) : items[0];
+    if (isReal(pick)) return { curriculumKey: "basic", n: pick.n, title: pick.t };
+    return nextLesson;
+  })();
 
   // هر بار که کاربر جلسه‌ی دیگه‌ای باز کنه (یا اسم جلسه عوض شه یا اپ دوباره باز شه)، متن نوتیف با جلسه‌ی بعدیِ تازه دوباره تنظیم می‌شه
   useEffect(() => {
@@ -11913,6 +11965,7 @@ function App() {
     }
     const record = { curriculumKey, n: item.n };
     setLastLesson(record);
+    if (curriculumKey === "basic") { setLastBasic({ n: item.n }); saveAccountData("last-basic", JSON.stringify({ n: item.n })); }
     saveAccountData("last-lesson", JSON.stringify(record));
     queueSync({ lastLesson: record });
     setActiveLesson({ curriculumKey, item });
@@ -12125,14 +12178,14 @@ function App() {
               supportStatus={supportStatus}
               onInviteFriends={handleInviteFriends}
               completed={effectiveCompleted}
-              nextLesson={nextLesson}
+              nextLesson={heroLesson}
               plan={authUser?.plan || "none"}
               authToken={authToken}
               onOpenProgramCat={(id) => { setProgramsCat(id); setStep("programs"); }}
               onContinue={() => {
                 const byKey = { basic: curriculumBasicMerged, advanced: curriculumAdvancedMerged, extra: curriculumExtraMerged, fight: curriculumFightMerged, fightb: curriculumFightbMerged, partner: curriculumPartnerMerged, focus: curriculumFocusMerged };
-                const item = nextLesson ? (byKey[nextLesson.curriculumKey] || []).find((i) => i.n === nextLesson.n) : null;
-                if (item) openLesson(nextLesson.curriculumKey, item); else setStep("journey");
+                const item = heroLesson ? (byKey[heroLesson.curriculumKey] || []).find((i) => i.n === heroLesson.n) : null;
+                if (item) openLesson(heroLesson.curriculumKey, item); else setStep("journey");
               }}
             />
           )}
