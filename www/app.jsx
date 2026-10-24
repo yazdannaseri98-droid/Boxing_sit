@@ -7555,10 +7555,10 @@ function HmSectionTitle({ title, sub, color, gold }) {
     </div>
   );
 }
-async function apiFetchBanners() {
+async function apiFetchBanners(group = "top") {
   if (DEMO_MODE) return [];
   try {
-    const res = await apiFetch(`${API_BASE_URL}/banners`);
+    const res = await apiFetch(`${API_BASE_URL}/banners?group=${group}`);
     const data = await res.json().catch(() => null);
     if (!res.ok || !data || !data.ok) return null;
     return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
@@ -7585,24 +7585,24 @@ function shrinkImageFile(file, maxW = 1400) {
     } catch { resolve(file); }
   });
 }
-async function apiUploadBanner(file, token, replaceId) {
+async function apiUploadBanner(file, token, replaceId, group = "top") {
   const form = new FormData();
   form.append("image", file);
-  const res = await apiFetch(`${API_BASE_URL}/banners${replaceId ? `?replace=${replaceId}` : ""}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+  const res = await apiFetch(`${API_BASE_URL}/banners?group=${group}${replaceId ? `&replace=${replaceId}` : ""}`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
   if (res.status === 401) triggerAuthFailure();
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || tr("آپلود عکس با خطا مواجه شد"));
   return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
 }
-async function apiDeleteBanner(id, token) {
-  const res = await apiFetch(`${API_BASE_URL}/banners/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+async function apiDeleteBanner(id, token, group = "top") {
+  const res = await apiFetch(`${API_BASE_URL}/banners/${id}?group=${group}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 401) triggerAuthFailure();
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || tr("ذخیره انجام نشد"));
   return (data.banners || []).map((b) => ({ id: b.id, url: toAbsoluteVideoUrl(b.url) }));
 }
 // بنرهای تبلیغاتی بالای صفحه‌ی هوم؛ ادمین می‌تونه عکس جدید اضافه کنه، عوض کنه یا حذف کنه
-function HmBanners({ isAdmin, authToken }) {
+function HmBanners({ isAdmin, authToken, group = "top" }) {
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -7621,12 +7621,12 @@ function HmBanners({ isAdmin, authToken }) {
     el.addEventListener("wheel", pause, { passive: true });
     const deltaTo = (k) => {
       const er = el.getBoundingClientRect(), kr = k.getBoundingClientRect();
-      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right + 20 : kr.left - er.left - 20;
+      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right : kr.left - er.left;
     };
     const current = (kids) => {
       const er = el.getBoundingClientRect();
       let cur = 0, best = 1e9;
-      kids.forEach((k, i) => { const kr = k.getBoundingClientRect(); const m = Math.min(Math.abs(kr.left - er.left - 20), Math.abs(kr.right - er.right + 20)); if (m < best) { best = m; cur = i; } });
+      kids.forEach((k, i) => { const kr = k.getBoundingClientRect(); const m = Math.min(Math.abs(kr.left - er.left), Math.abs(kr.right - er.right)); if (m < best) { best = m; cur = i; } });
       return cur;
     };
     const timer = setInterval(() => {
@@ -7640,29 +7640,29 @@ function HmBanners({ isAdmin, authToken }) {
     }, 3800);
     return () => { clearInterval(timer); el.removeEventListener("touchstart", pause); el.removeEventListener("wheel", pause); };
   }, [n]);
-  useEffect(() => { let alive = true; apiFetchBanners().then((l) => alive && l && setList(l)); return () => { alive = false; }; }, []);
+  useEffect(() => { let alive = true; apiFetchBanners(group).then((l) => alive && l && setList(l)); return () => { alive = false; }; }, []);
   const pick = async (e, replaceId) => {
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
     setErr(""); setBusy(replaceId || "new");
-    try { setList(await apiUploadBanner(await shrinkImageFile(f), authToken, replaceId)); }
+    try { setList(await apiUploadBanner(await shrinkImageFile(f), authToken, replaceId, group)); }
     catch (x) { setErr(x.message || "خطا"); }
     finally { setBusy(""); }
   };
   const del = async (id) => {
     if (!window.confirm(tr("این بنر حذف بشه؟"))) return;
     setErr(""); setBusy(id);
-    try { setList(await apiDeleteBanner(id, authToken)); }
+    try { setList(await apiDeleteBanner(id, authToken, group)); }
     catch (x) { setErr(x.message || "خطا"); }
     finally { setBusy(""); }
   };
   const items = list || [];
   if (!items.length && !isAdmin) return null;
-  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "21 / 8", scrollSnapAlign: "start" };
+  const card = { flex: "0 0 100%", width: "100%", aspectRatio: "21 / 8", scrollSnapAlign: "start" };
   return (
-    <div className="mb-4" style={{ margin: "0 -20px 16px", padding: "10px 0 8px", background: "linear-gradient(180deg, #46474C 0%, #36373B 100%)", borderTop: "1px solid #5C5D62", borderBottom: "1px solid #5C5D62" }}>
-      <div ref={scrollRef} className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", padding: "0 20px" }}>
+    <div className="mb-4" style={{ margin: "0 -20px 16px", padding: "12px 20px 12px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: isAdmin ? "x mandatory" : "none", overflowX: isAdmin ? "auto" : "hidden", touchAction: isAdmin ? "pan-x pan-y" : "pan-y", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {items.map((b) => (
           <div key={b.id} className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
             <img src={b.url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
@@ -8055,6 +8055,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
                   </HmRow>
                 </div>
 
+                <div className="mt-6"><HmBanners isAdmin={isAdmin} authToken={authToken} group="mid" /></div>
                 <div className="mt-6">
                   <HmSectionTitle title="تمرینات تخصصی بوکس" sub="تاباتا رایگانه" color="#F2CF5E" gold />
                   <HmRow tone="red" auto>
