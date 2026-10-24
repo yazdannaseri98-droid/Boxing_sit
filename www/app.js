@@ -6407,6 +6407,54 @@ function HmBanners({ isAdmin, authToken }) {
   const addRef = useRef(null);
   const repRef = useRef(null);
   const repId = useRef("");
+  const scrollRef = useRef(null);
+  const pausedRef = useRef(0);
+  const n = (list || []).length;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || n < 2) return void 0;
+    const pause = () => {
+      pausedRef.current = Date.now() + 6e3;
+    };
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("wheel", pause, { passive: true });
+    const deltaTo = (k) => {
+      const er = el.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right + 20 : kr.left - er.left - 20;
+    };
+    const current = (kids) => {
+      const er = el.getBoundingClientRect();
+      let cur = 0, best = 1e9;
+      kids.forEach((k, i) => {
+        const kr = k.getBoundingClientRect();
+        const m = Math.min(Math.abs(kr.left - er.left - 20), Math.abs(kr.right - er.right + 20));
+        if (m < best) {
+          best = m;
+          cur = i;
+        }
+      });
+      return cur;
+    };
+    const timer = setInterval(() => {
+      if (Date.now() < pausedRef.current) return;
+      const kids = Array.from(el.children);
+      if (kids.length < n + 1) return;
+      let cur = current(kids);
+      if (cur >= n) {
+        el.scrollBy({ left: deltaTo(kids[0]), behavior: "auto" });
+        cur = 0;
+      }
+      el.scrollBy({ left: deltaTo(kids[cur + 1]), behavior: "smooth" });
+      if (cur + 1 === n) setTimeout(() => {
+        if (Date.now() >= pausedRef.current && el.children[0]) el.scrollBy({ left: deltaTo(el.children[0]), behavior: "auto" });
+      }, 900);
+    }, 3800);
+    return () => {
+      clearInterval(timer);
+      el.removeEventListener("touchstart", pause);
+      el.removeEventListener("wheel", pause);
+    };
+  }, [n]);
   useEffect(() => {
     let alive = true;
     apiFetchBanners().then((l) => alive && l && setList(l));
@@ -6442,11 +6490,11 @@ function HmBanners({ isAdmin, authToken }) {
   };
   const items = list || [];
   if (!items.length && !isAdmin) return null;
-  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "16 / 9", scrollSnapAlign: "start" };
-  return /* @__PURE__ */ React.createElement("div", { className: "mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-3 overflow-x-auto", style: { scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", margin: "0 -20px", padding: "0 20px" } }, items.map((b) => /* @__PURE__ */ React.createElement("div", { key: b.id, className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: b.url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" }), isAdmin && /* @__PURE__ */ React.createElement("div", { className: "absolute top-2 left-2 flex gap-1.5" }, /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => {
+  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "21 / 8", scrollSnapAlign: "start" };
+  return /* @__PURE__ */ React.createElement("div", { className: "mb-4", style: { margin: "0 -20px 16px", padding: "10px 0 8px", background: "linear-gradient(180deg, #46474C 0%, #36373B 100%)", borderTop: "1px solid #5C5D62", borderBottom: "1px solid #5C5D62" } }, /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex gap-3 overflow-x-auto", style: { scrollSnapType: "x mandatory", scrollPaddingInline: "20px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", padding: "0 20px" } }, items.map((b) => /* @__PURE__ */ React.createElement("div", { key: b.id, className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: b.url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" }), isAdmin && /* @__PURE__ */ React.createElement("div", { className: "absolute top-2 left-2 flex gap-1.5" }, /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => {
     repId.current = b.id;
     repRef.current?.click();
-  }, className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" } }, busy === b.id ? "..." : tr("\u062A\u0639\u0648\u06CC\u0636 \u0639\u06A9\u0633")), /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => del(b.id), className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, tr("\u062D\u0630\u0641"))))), isAdmin && /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => addRef.current?.click(), className: "shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1", style: { ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 30, lineHeight: 1 } }, busy === "new" ? "..." : "+"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-black" }, tr("\u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u0646\u0631 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC")), /* @__PURE__ */ React.createElement("span", { className: "text-[10px]" }, tr("\u0646\u0633\u0628\u062A \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u06CC \u06F1\u06F6 \u0628\u0647 \u06F9")))), isAdmin && err && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[11px] text-center", style: { fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" } }, err), isAdmin && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("input", { ref: addRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, "") }), /* @__PURE__ */ React.createElement("input", { ref: repRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, repId.current) })));
+  }, className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#F3EEE6", color: "#0B0B0D" } }, busy === b.id ? "..." : tr("\u062A\u0639\u0648\u06CC\u0636 \u0639\u06A9\u0633")), /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => del(b.id), className: "rounded-lg px-2.5 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, tr("\u062D\u0630\u0641"))))), items.length > 1 && /* @__PURE__ */ React.createElement("div", { key: "loop-clone", "aria-hidden": "true", className: "relative shrink-0 rounded-2xl overflow-hidden", style: { ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" } }, /* @__PURE__ */ React.createElement("img", { src: items[0].url, alt: "", draggable: false, className: "absolute inset-0 w-full h-full object-cover" })), isAdmin && /* @__PURE__ */ React.createElement("button", { disabled: !!busy, onClick: () => addRef.current?.click(), className: "shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1", style: { ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: 30, lineHeight: 1 } }, busy === "new" ? "..." : "+"), /* @__PURE__ */ React.createElement("span", { className: "text-xs font-black" }, tr("\u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u0646\u0631 \u062A\u0628\u0644\u06CC\u063A\u0627\u062A\u06CC")), /* @__PURE__ */ React.createElement("span", { className: "text-[10px]" }, tr("\u0646\u0633\u0628\u062A \u067E\u06CC\u0634\u0646\u0647\u0627\u062F\u06CC \u06F2\u06F1 \u0628\u0647 \u06F8")))), isAdmin && err && /* @__PURE__ */ React.createElement("div", { className: "mt-1.5 text-[11px] text-center", style: { fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" } }, err), isAdmin && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("input", { ref: addRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, "") }), /* @__PURE__ */ React.createElement("input", { ref: repRef, type: "file", accept: "image/jpeg,image/png,image/webp", className: "hidden", onChange: (e) => pick(e, repId.current) })));
 }
 function HmRow({ children, auto }) {
   const ref = useRef(null);
@@ -6489,8 +6537,8 @@ function HmRow({ children, auto }) {
   }, [auto]);
   return /* @__PURE__ */ React.createElement("div", { className: "relative", style: { margin: "0 -20px", padding: "14px 0 6px", background: "transparent" } }, /* @__PURE__ */ React.createElement("div", { ref, className: "relative flex gap-3 overflow-x-auto pb-3 px-5", style: { scrollSnapType: "x mandatory", scrollPaddingInline: "20px", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" } }, children));
 }
-function HmHero({ lesson, chapterTitle, percent, onContinue, image }) {
-  return /* @__PURE__ */ React.createElement("button", { onClick: onContinue, className: "relative w-full rounded-3xl overflow-hidden text-right block active:scale-[0.985] transition-transform", style: { height: 232, background: "#0B0B0D", border: "1px solid rgba(243,238,230,0.55)", boxShadow: "0 0 30px rgba(217,30,43,0.35), 0 10px 40px rgba(0,0,0,0.6)" } }, /* @__PURE__ */ React.createElement("img", { src: image, alt: "", draggable: false, className: "absolute inset-0 w-full h-full", style: { objectFit: "cover", transform: "scale(1.06)" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "linear-gradient(to top, rgba(8,8,10,0.97) 0%, rgba(8,8,10,0.72) 38%, rgba(8,8,10,0.05) 75%)" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "radial-gradient(120% 80% at 100% 0%, rgba(217,30,43,0.35), transparent 55%)" } }), /* @__PURE__ */ React.createElement("div", { className: "absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-black", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff", boxShadow: "0 0 14px rgba(217,30,43,0.7)" } }, lesson ? "\u0627\u062F\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646" : "\u0634\u0631\u0648\u0639 \u0645\u0633\u06CC\u0631"), /* @__PURE__ */ React.createElement("div", { className: "absolute bottom-0 inset-x-0 p-4" }, /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-[11px] font-bold mb-1" }, chapterTitle), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 12px rgba(0,0,0,0.9)" }, className: "text-xl font-black leading-8 mb-2.5" }, lesson ? lesson.title : "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u06F1\u06F0\u06F0 \u0631\u0648\u0632\u0647"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 rounded-full overflow-hidden", style: { height: 6, background: "#4A4B4E" } }, /* @__PURE__ */ React.createElement("div", { style: { width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.8)" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-xs" }, percent, "%"), /* @__PURE__ */ React.createElement("span", { className: "rounded-full flex items-center justify-center", style: { width: 38, height: 38, background: "linear-gradient(135deg,#D91E2B,#ff4b57)", color: "#fff", boxShadow: "0 0 18px rgba(217,30,43,0.8)", fontSize: 14 } }, "\u25B6"))));
+function HmHero({ lesson, chapterTitle, percent, onContinue }) {
+  return /* @__PURE__ */ React.createElement("button", { onClick: onContinue, className: "relative w-full rounded-2xl overflow-hidden text-right block active:scale-[0.985] transition-transform", style: { background: "linear-gradient(180deg, #3A3B40 0%, #2A2B2F 100%)", border: "1px solid rgba(243,238,230,0.35)", padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-[11px] font-bold" }, chapterTitle), /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2.5 py-0.5 text-[10px] font-black shrink-0", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, lesson ? "\u0627\u062F\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646" : "\u0634\u0631\u0648\u0639 \u0645\u0633\u06CC\u0631")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-7 mb-2" }, lesson ? lesson.title : "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u06F1\u06F0\u06F0 \u0631\u0648\u0632\u0647"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 rounded-full overflow-hidden", style: { height: 5, background: "#5A5B60" } }, /* @__PURE__ */ React.createElement("div", { style: { width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-xs" }, percent, "%"), /* @__PURE__ */ React.createElement("span", { className: "rounded-full flex items-center justify-center", style: { width: 32, height: 32, background: "#D91E2B", color: "#fff", fontSize: 12 } }, "\u25B6")));
 }
 function HmShortcuts({ items }) {
   return /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-4 gap-2.5" }, items.map((it) => {
@@ -6722,7 +6770,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     const pct = tot ? Math.round(dn / tot * 100) : 0;
     const heroCh = HM_CHAPTERS.find((c) => c.key === nextLesson?.curriculumKey) || HM_CHAPTERS[0];
     const titles = (k) => chapterTitles?.[k] || DEFAULT_CHAPTER_TITLES[k];
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HmBanners, { isAdmin, authToken }), /* @__PURE__ */ React.createElement(HmHero, { lesson: nextLesson, chapterTitle: nextLesson ? titles(nextLesson.curriculumKey) : "", percent: pct, onContinue, image: hmChapterData(heroCh).img }), /* @__PURE__ */ React.createElement("div", { className: "mt-5" }, /* @__PURE__ */ React.createElement(HmShortcuts, { items: [
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HmBanners, { isAdmin, authToken }), /* @__PURE__ */ React.createElement(HmHero, { lesson: nextLesson, chapterTitle: nextLesson ? titles(nextLesson.curriculumKey) : "", percent: pct, onContinue }), /* @__PURE__ */ React.createElement("div", { className: "mt-5" }, /* @__PURE__ */ React.createElement(HmShortcuts, { items: [
       { key: "journey", label: tr("\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u0645\u0646"), color: "#4DA3FF", icon: MenuJourneyIcon, onClick: () => onNavigate("journey") },
       { key: "programs", label: tr("\u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC"), color: "#4DA3FF", icon: MenuPlanIcon, onClick: () => onNavigate("programs") },
       { key: "timer", label: tr("\u062A\u0627\u06CC\u0645\u0631 \u062A\u0645\u0631\u06CC\u0646"), color: "#D91E2B", icon: MenuTimerIcon, onClick: () => onNavigate("timer") },

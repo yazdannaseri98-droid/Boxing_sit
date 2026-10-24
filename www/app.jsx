@@ -7609,6 +7609,37 @@ function HmBanners({ isAdmin, authToken }) {
   const addRef = useRef(null);
   const repRef = useRef(null);
   const repId = useRef("");
+  const scrollRef = useRef(null);
+  const pausedRef = useRef(0);
+  const n = (list || []).length;
+  // حرکت خودکار بی‌نهایت: بعد از آخرین بنر، کپی بنر اول میاد و بعد بی‌صدا به بنر اول واقعی می‌پره
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || n < 2) return undefined;
+    const pause = () => { pausedRef.current = Date.now() + 6000; };
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("wheel", pause, { passive: true });
+    const deltaTo = (k) => {
+      const er = el.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      return getComputedStyle(el).direction === "rtl" ? kr.right - er.right + 20 : kr.left - er.left - 20;
+    };
+    const current = (kids) => {
+      const er = el.getBoundingClientRect();
+      let cur = 0, best = 1e9;
+      kids.forEach((k, i) => { const kr = k.getBoundingClientRect(); const m = Math.min(Math.abs(kr.left - er.left - 20), Math.abs(kr.right - er.right + 20)); if (m < best) { best = m; cur = i; } });
+      return cur;
+    };
+    const timer = setInterval(() => {
+      if (Date.now() < pausedRef.current) return;
+      const kids = Array.from(el.children);
+      if (kids.length < n + 1) return;
+      let cur = current(kids);
+      if (cur >= n) { el.scrollBy({ left: deltaTo(kids[0]), behavior: "auto" }); cur = 0; }
+      el.scrollBy({ left: deltaTo(kids[cur + 1]), behavior: "smooth" });
+      if (cur + 1 === n) setTimeout(() => { if (Date.now() >= pausedRef.current && el.children[0]) el.scrollBy({ left: deltaTo(el.children[0]), behavior: "auto" }); }, 900);
+    }, 3800);
+    return () => { clearInterval(timer); el.removeEventListener("touchstart", pause); el.removeEventListener("wheel", pause); };
+  }, [n]);
   useEffect(() => { let alive = true; apiFetchBanners().then((l) => alive && l && setList(l)); return () => { alive = false; }; }, []);
   const pick = async (e, replaceId) => {
     const f = e.target.files?.[0];
@@ -7628,10 +7659,10 @@ function HmBanners({ isAdmin, authToken }) {
   };
   const items = list || [];
   if (!items.length && !isAdmin) return null;
-  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "16 / 9", scrollSnapAlign: "start" };
+  const card = { width: "calc(100vw - 40px)", maxWidth: 420, aspectRatio: "21 / 8", scrollSnapAlign: "start" };
   return (
-    <div className="mb-4">
-      <div className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: "x mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", margin: "0 -20px", padding: "0 20px" }}>
+    <div className="mb-4" style={{ margin: "0 -20px 16px", padding: "10px 0 8px", background: "linear-gradient(180deg, #46474C 0%, #36373B 100%)", borderTop: "1px solid #5C5D62", borderBottom: "1px solid #5C5D62" }}>
+      <div ref={scrollRef} className="flex gap-3 overflow-x-auto" style={{ scrollSnapType: "x mandatory", scrollPaddingInline: "20px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", padding: "0 20px" }}>
         {items.map((b) => (
           <div key={b.id} className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
             <img src={b.url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
@@ -7643,11 +7674,16 @@ function HmBanners({ isAdmin, authToken }) {
             )}
           </div>
         ))}
+        {items.length > 1 && (
+          <div key="loop-clone" aria-hidden="true" className="relative shrink-0 rounded-2xl overflow-hidden" style={{ ...card, background: "#2B2C30", border: "1px solid rgba(243,238,230,0.4)" }}>
+            <img src={items[0].url} alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover" />
+          </div>
+        )}
         {isAdmin && (
           <button disabled={!!busy} onClick={() => addRef.current?.click()} className="shrink-0 rounded-2xl flex flex-col items-center justify-center gap-1" style={{ ...card, background: "#2B2C30", border: "1.5px dashed rgba(243,238,230,0.6)", color: "#F3EEE6", fontFamily: "Vazirmatn, sans-serif" }}>
             <span style={{ fontSize: 30, lineHeight: 1 }}>{busy === "new" ? "..." : "+"}</span>
             <span className="text-xs font-black">{tr("افزودن بنر تبلیغاتی")}</span>
-            <span className="text-[10px]">{tr("نسبت پیشنهادی ۱۶ به ۹")}</span>
+            <span className="text-[10px]">{tr("نسبت پیشنهادی ۲۱ به ۸")}</span>
           </button>
         )}
       </div>
@@ -7699,21 +7735,18 @@ function HmRow({ children, auto }) {
     </div>
   );
 }
-function HmHero({ lesson, chapterTitle, percent, onContinue, image }) {
+function HmHero({ lesson, chapterTitle, percent, onContinue }) {
   return (
-    <button onClick={onContinue} className="relative w-full rounded-3xl overflow-hidden text-right block active:scale-[0.985] transition-transform" style={{ height: 232, background: "#0B0B0D", border: "1px solid rgba(243,238,230,0.55)", boxShadow: "0 0 30px rgba(217,30,43,0.35), 0 10px 40px rgba(0,0,0,0.6)" }}>
-      <img src={image} alt="" draggable={false} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", transform: "scale(1.06)" }} />
-      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,8,10,0.97) 0%, rgba(8,8,10,0.72) 38%, rgba(8,8,10,0.05) 75%)" }} />
-      <div className="absolute inset-0" style={{ background: "radial-gradient(120% 80% at 100% 0%, rgba(217,30,43,0.35), transparent 55%)" }} />
-      <div className="absolute top-3 right-3 rounded-full px-3 py-1 text-[11px] font-black" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff", boxShadow: "0 0 14px rgba(217,30,43,0.7)" }}>{lesson ? "ادامه تمرین" : "شروع مسیر"}</div>
-      <div className="absolute bottom-0 inset-x-0 p-4">
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-bold mb-1">{chapterTitle}</div>
-        <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", textShadow: "0 2px 12px rgba(0,0,0,0.9)" }} className="text-xl font-black leading-8 mb-2.5">{lesson ? lesson.title : "مسیر پیشرفت ۱۰۰ روزه"}</div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 6, background: "#4A4B4E" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)", boxShadow: "0 0 10px rgba(243,238,230,0.8)" }} /></div>
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">{percent}%</span>
-          <span className="rounded-full flex items-center justify-center" style={{ width: 38, height: 38, background: "linear-gradient(135deg,#D91E2B,#ff4b57)", color: "#fff", boxShadow: "0 0 18px rgba(217,30,43,0.8)", fontSize: 14 }}>▶</span>
-        </div>
+    <button onClick={onContinue} className="relative w-full rounded-2xl overflow-hidden text-right block active:scale-[0.985] transition-transform" style={{ background: "linear-gradient(180deg, #3A3B40 0%, #2A2B2F 100%)", border: "1px solid rgba(243,238,230,0.35)", padding: "12px 14px" }}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-[11px] font-bold">{chapterTitle}</span>
+        <span className="rounded-full px-2.5 py-0.5 text-[10px] font-black shrink-0" style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" }}>{lesson ? "ادامه تمرین" : "شروع مسیر"}</span>
+      </div>
+      <div style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-base font-black leading-7 mb-2">{lesson ? lesson.title : "مسیر پیشرفت ۱۰۰ روزه"}</div>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 rounded-full overflow-hidden" style={{ height: 5, background: "#5A5B60" }}><div style={{ width: percent + "%", height: "100%", background: "linear-gradient(90deg,#D91E2B,#F3EEE6)" }} /></div>
+        <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }} className="text-xs">{percent}%</span>
+        <span className="rounded-full flex items-center justify-center" style={{ width: 32, height: 32, background: "#D91E2B", color: "#fff", fontSize: 12 }}>▶</span>
       </div>
     </button>
   );
@@ -7977,7 +8010,7 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             return (
               <>
                 <HmBanners isAdmin={isAdmin} authToken={authToken} />
-                <HmHero lesson={nextLesson} chapterTitle={nextLesson ? titles(nextLesson.curriculumKey) : ""} percent={pct} onContinue={onContinue} image={hmChapterData(heroCh).img} />
+                <HmHero lesson={nextLesson} chapterTitle={nextLesson ? titles(nextLesson.curriculumKey) : ""} percent={pct} onContinue={onContinue} />
 
                 <div className="mt-5">
                   <HmShortcuts items={[
