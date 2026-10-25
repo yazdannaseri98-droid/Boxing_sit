@@ -1394,7 +1394,7 @@ function NetworkBanner() {
   );
 }
 function PhoneMock({ children, bgImage, pencil }) {
-  return /* @__PURE__ */ React.createElement("div", { className: "relative w-full h-full overflow-hidden flex flex-col", style: { background: pencil ? "#0F1011" : "#0B0B0D" } }, bgImage && !pencil && /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement("div", { className: "relative w-full h-full overflow-hidden flex flex-col", style: { background: pencil ? "#050506" : "#0B0B0D" } }, bgImage && !pencil && /* @__PURE__ */ React.createElement(
     "div",
     {
       className: "absolute inset-0",
@@ -1412,12 +1412,12 @@ function PhoneMock({ children, bgImage, pencil }) {
     {
       className: "absolute inset-0",
       style: {
-        background: "radial-gradient(130% 60% at 50% 0%, #1E1F22 0%, #141517 50%, #0C0D0E 100%)",
+        background: "radial-gradient(120% 55% at 50% -5%, #17171A 0%, #0C0C0E 45%, #060607 75%, #030303 100%)",
         zIndex: 0,
         pointerEvents: "none"
       }
     },
-    /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,0.45) 100%)" } })
+    /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0", style: { background: "radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0,0,0,0.6) 100%)" } })
   ), /* @__PURE__ */ React.createElement("div", { className: "relative flex-1 flex flex-col min-h-0", style: { zIndex: 1 } }, children));
 }
 function TopNotch() {
