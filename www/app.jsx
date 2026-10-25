@@ -8137,31 +8137,9 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
             </button>
           </div>
           {/* عنوان وسط صفحه‌ی هوم؛ اگه صفحه خیلی باریک بود خودش به دو خط می‌شکنه (Naseri / Boxing Academy) */}
-          <h1
-            dir="ltr"
-            className="flex-1 min-w-0 text-center"
-            style={{
-              fontFamily: '"Bebas Neue", Oswald, Impact, "sans-serif-condensed", "Arial Narrow", sans-serif',
-              fontSize: "clamp(15px, 5vw, 21px)",
-              letterSpacing: "0.1em",
-              lineHeight: 1.15,
-              fontWeight: 400,
-              textShadow: "0 0 14px rgba(217,30,43,0.35)",
-            }}
-          >
-            <span
-              style={{
-                color: "#F3EEE6",
-                background: "linear-gradient(90deg, #F3EEE6, #D91E2B)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Naseri
-            </span>{" "}
-            <span style={{ color: "#F3EEE6" }}>Boxing Academy</span>
-          </h1>
+          <div className="flex-1 min-w-0 flex items-center justify-center">
+            <img src="assets/naseri-title.webp" alt="Naseri Boxing Academy" draggable={false} style={{ height: 46, width: "auto", maxWidth: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(255,170,40,0.25))" }} />
+          </div>
           <div className="w-12 flex items-center justify-end shrink-0">
             <img src={SPLASH_LOGO_SRC} alt="NASERI" className="w-12 h-12 object-contain" />
           </div>
