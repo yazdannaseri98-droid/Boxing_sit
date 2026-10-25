@@ -10426,6 +10426,42 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
   );
 }
 
+const GRAD_WHITE = { background: "linear-gradient(180deg, #FFFFFF 0%, #ECEFF5 45%, #A9B0BD 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" };
+const PLAN_FRAME_CSS = `
+  .pf-mask { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; overflow: hidden; }
+  .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 4.8s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(255,236,170,0.55), rgba(255,255,255,0.9), rgba(255,236,170,0.55), transparent); }
+  .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(255,200,70,0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(255,170,40,0.4), transparent 55%); mix-blend-mode: screen; }
+  .pf-spark { position: absolute; pointer-events: none; color: #FFE9A0; font-size: 13px; opacity: 0; animation: pfSpark 3s ease-in-out infinite; text-shadow: 0 0 8px #FFC83C; }
+  .pf-neon { animation: pfNeon 2.2s ease-in-out infinite; }
+  @keyframes pfSweep { 0% { transform: translateX(-160%) skewX(-18deg); } 55%, 100% { transform: translateX(420%) skewX(-18deg); } }
+  @keyframes pfPulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.85; } }
+  @keyframes pfSpark { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.2); } }
+  @keyframes pfNeon { 0%, 100% { text-shadow: 0 0 6px #39FF14, 0 0 14px rgba(57,255,20,0.7); } 50% { text-shadow: 0 0 10px #39FF14, 0 0 26px rgba(57,255,20,1); } }
+  @media (prefers-reduced-motion: reduce) { .pf-sweep, .pf-pulse, .pf-spark, .pf-neon { animation: none !important; } .pf-pulse { opacity: 0.4; } }
+`;
+
+// قاب طلایی اشتراک: عکس قاب، متن‌ها داخل بخش مشکی، و نور زنده‌ای که دقیقاً به شکل قاب بریده می‌شه (mask)
+function PlanFrame({ img, delay = 0, className = "", edit, children }) {
+  const maskStyle = { WebkitMaskImage: `url(${img})`, maskImage: `url(${img})` };
+  const sparks = [{ top: "3%", left: "47%", d: 0 }, { top: "22%", right: "9%", d: 1.1 }, { top: "24%", left: "8%", d: 2 }, { bottom: "6%", right: "14%", d: 0.6 }];
+  return (
+    <div className={`relative ${className}`} style={{ filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))" }}>
+      <img src={img} alt="" draggable={false} style={{ display: "block", width: "100%", height: "auto" }} />
+      <div className="pf-mask" style={maskStyle}>
+        <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
+        <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
+      </div>
+      {sparks.map((sp, i) => (
+        <span key={i} className="pf-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s` }}>✦</span>
+      ))}
+      {edit}
+      <div className="absolute flex flex-col items-center justify-center text-center" style={{ top: "38%", bottom: "8%", left: "12%", right: "12%" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const DEFAULT_PROMO_TEXT = tr("🔥 تخفیف ویژه‌ی آغازین!\nهمین حالا اشتراکت رو بگیر و مسیر قهرمانی رو شروع کن");
 const PROMO_TEXT_MAX = 100;
 
@@ -10755,6 +10791,60 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
   const badgeSrc = plan === "gold" ? MEDAL_GOLD_SRC : plan === "silver" ? MEDAL_SILVER_SRC : MEDAL_BRONZE_SRC;
   const badgeLabel = plan === "gold" ? tr("اشتراک دوره دوم") : plan === "silver" ? tr("اشتراک دوره اول") : tr("اشتراک برنزی");
 
+  const renderPlanBody = (k, names) => {
+    const p = pl[k];
+    const active = k === "silver" ? (plan === "silver" || plan === "gold") : plan === "gold";
+    const loading = loadingPlan === k;
+    const canBuy = k === "silver" ? true : goldUnlocked;
+    const ff = { fontFamily: "Vazirmatn, sans-serif" };
+    return (
+      <>
+        <p style={{ ...ff, ...GRAD_WHITE }} className="text-base font-black leading-tight mb-1">
+          {tr("({n} ماهه)", { n: p.months.toLocaleString(NUM_LOCALE) })}</p>
+        {p.originalPrice > p.price && (
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#FF3B47", textDecoration: "line-through", textDecorationThickness: "1.5px", textShadow: "0 0 8px rgba(255,59,71,0.4)" }} className="text-lg font-bold leading-tight">
+            {formatPrice(p.originalPrice)}</span>
+        )}
+        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0">
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#3DE08A", textShadow: "0 0 12px rgba(61,224,138,0.45)" }} className="text-[32px] leading-tight font-black">
+            {formatPrice(p.price)}</span>
+          <span style={{ ...ff, color: "#FFFFFF" }} className="text-sm font-black">{tr("تومان")}</span>
+        </div>
+        {p.badge !== "-" && (
+          <span style={{ ...ff, color: "#39FF14" }} className="pf-neon text-sm font-black mt-0.5">
+            {p.badge || tr("تخفیف آغازین")}</span>
+        )}
+        <p style={{ ...ff, ...GRAD_WHITE, fontWeight: 800 }} className="text-xs leading-5 mt-1 mb-2">
+          {p.description || tr("دسترسی به ۳ فصل ({names})", { names })}
+        </p>
+        <div className="w-full">
+          {active ? (
+            <div className="rounded-xl py-2 text-center" style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,200,70,0.6)" }}>
+              <span style={{ ...ff, color: "#FFFFFF" }} className="text-sm font-black">
+                {k === "silver" ? tr("اشتراک دوره اول تو فعاله ✓") : tr("اشتراک دوره دوم تو فعاله ✓")}</span>
+              {planExpiresAt && (
+                <p style={{ ...ff, color: "#E9ECF2" }} className="text-xs font-bold mt-0.5">
+                  {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}</p>
+              )}
+            </div>
+          ) : canBuy ? (
+            <button
+              onClick={() => handleBuy(k)}
+              disabled={loading}
+              style={{ ...ff, background: loading ? "#1f3a28" : k === "silver" ? "linear-gradient(135deg, #1FA855, #2fd37a)" : "linear-gradient(135deg, #6B7280, #9CA3AF)", color: loading ? "#5a7a63" : "#FFFFFF", boxShadow: loading ? "none" : k === "silver" ? "0 0 16px rgba(47,211,122,0.5)" : "0 0 14px rgba(120,128,140,0.5)" }}
+              className={`w-full rounded-xl py-2.5 font-black text-sm ${loading ? "" : "plan-cta"}`}
+            >
+              {loading ? tr("در حال اتصال به درگاه…") : p.buttonText || (k === "silver" ? tr("خرید اشتراک دوره اول") : tr("خرید اشتراک دوره دوم"))}
+            </button>
+          ) : (
+            <button disabled style={{ ...ff, background: "rgba(107,114,128,0.5)", color: "#D5D9E0", cursor: "not-allowed" }} className="w-full rounded-xl py-2.5 font-black text-sm">
+              {tr("به‌زودی فعال می‌شه")}</button>
+          )}
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
       <div className="flex flex-col items-center text-center mb-6 mt-2">
@@ -10788,170 +10878,15 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
           {tr("دسترسی به دوره‌های آموزشی رو با یکی از این دو پلن باز کن")}</p>
       </div>
 
-      <style>{PLAN_CARD_CSS}</style>
+      <style>{PLAN_CARD_CSS + PLAN_FRAME_CSS}</style>
 
-      {/* پلن نقره‌ای */}
-      <PlanCard tone="gold" className="mb-5">
-        {isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}
-        <div className="text-center mb-1">
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-xl font-black">
-            <span className="plan-float">⭐</span> {pl.silver.title || tr("اشتراک دوره اول")} <span className="plan-float">⭐</span></span>
-        </div>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-lg font-black text-center mb-4">
-          {tr("({n} ماهه)", { n: pl.silver.months.toLocaleString(NUM_LOCALE) })}</p>
-
-        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0 mb-2">
-          {pl.silver.originalPrice > pl.silver.price && (
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#6B4A10", textDecoration: "line-through" }} className="text-base font-bold">
-            {formatPrice(pl.silver.originalPrice)}
-          </span>
-          )}
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#3A2300", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-[34px] leading-tight font-black">
-            {formatPrice(pl.silver.price)}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B4A10" }} className="text-base font-black">
-            {tr("تومان")}</span>
-        </div>
-        {pl.silver.badge !== "-" ? (
-          <div className="flex justify-center mb-5">
-            <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B6B38", background: "#283F35", border: "1px solid rgba(11,107,56,0.45)" }}
-              className="text-xs font-black rounded-full px-3.5 py-1.5"
-            >
-              {pl.silver.badge || tr("تخفیف آغازین")}</span>
-          </div>
-        ) : (
-          <div className="mb-5" />
-        )}
-
-        <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#2E1D00", fontWeight: 800 }}
-          className="text-sm leading-7 text-center mb-5"
-        >
-          {pl.silver.description || tr("دسترسی به ۳ فصل ({names})", { names: silverChapterNames })}
-        </p>
-
-        {plan === "silver" || plan === "gold" ? (
-          <div
-            className="rounded-xl py-3 text-center"
-            style={{ background: "rgba(255,255,255,0.65)", border: "1px solid rgba(150,100,0,0.45)" }}
-          >
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00" }} className="text-base font-black">
-              {tr("اشتراک دوره اول تو فعاله ✓")}</span>
-            {planExpiresAt && (
-              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3208" }} className="text-sm font-bold mt-1">
-                {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}
-              </p>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => handleBuy("silver")}
-            disabled={loadingPlan === "silver"}
-            style={{
-              fontFamily: "Vazirmatn, sans-serif",
-              background: loadingPlan === "silver" ? "#1f3a28" : "linear-gradient(135deg, #1FA855, #2fd37a)",
-              color: loadingPlan === "silver" ? "#5a7a63" : "#F3EEE6",
-              boxShadow: loadingPlan === "silver" ? "none" : "0 0 18px rgba(47,211,122,0.5)",
-            }}
-            className={`w-full rounded-xl py-3.5 font-black text-base transition-colors ${loadingPlan === "silver" ? "" : "plan-cta"}`}
-          >
-            {loadingPlan === "silver" ? tr("در حال اتصال به درگاه…") : pl.silver.buttonText || tr("خرید اشتراک دوره اول")}
-          </button>
-        )}
-      </PlanCard>
-
-      {/* پلن طلایی */}
-      <PlanCard tone="gold" delay={1.4} className="mb-3">
-        {isAdmin && <PlanEditButton onClick={() => setEditingPlan("gold")} />}
-        <div className="text-center mb-1">
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A2E00", textShadow: "0 0 14px rgba(255,255,255,0.9)" }} className="text-xl font-black">
-            <span className="plan-float">⭐</span> {pl.gold.title || tr("اشتراک دوره دوم")} <span className="plan-float">⭐</span></span>
-        </div>
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-lg font-black text-center mb-4">
-          {tr("({n} ماهه)", { n: pl.gold.months.toLocaleString(NUM_LOCALE) })}</p>
-
-        <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0 mb-2">
-          {pl.gold.originalPrice > pl.gold.price && (
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#6B4A10", textDecoration: "line-through" }} className="text-base font-bold">
-            {formatPrice(pl.gold.originalPrice)}
-          </span>
-          )}
-          <span
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              background: "linear-gradient(90deg, #7A4300, #B86A00)",
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "#7A4300",
-              filter: "drop-shadow(0 0 8px rgba(255,255,255,0.8))",
-            }}
-            className="text-[34px] leading-tight font-black"
-          >
-            {formatPrice(pl.gold.price)}</span>
-          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-base font-black">
-            {tr("تومان")}</span>
-        </div>
-        {pl.gold.badge !== "-" ? (
-          <div className="flex justify-center mb-5">
-            <span
-              style={{ fontFamily: "Vazirmatn, sans-serif", color: "#6B3A00", background: "rgba(255,255,255,0.55)", border: "1px solid rgba(122,67,0,0.45)" }}
-              className="text-xs font-black rounded-full px-3.5 py-1.5"
-            >
-              {pl.gold.badge || tr("تخفیف آغازین")}</span>
-          </div>
-        ) : (
-          <div className="mb-5" />
-        )}
-
-        <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#2E1D00", fontWeight: 800 }}
-          className="text-sm leading-7 text-center mb-5"
-        >
-          {pl.gold.description || tr("دسترسی به ۳ فصل ({names})", { names: goldChapterNames })}
-        </p>
-
-        {plan === "gold" ? (
-          <div
-            className="rounded-xl py-3 text-center"
-            style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(122,67,0,0.45)" }}
-          >
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#3A2300" }} className="text-base font-black">
-              {tr("اشتراک دوره دوم تو فعاله ✓")}</span>
-            {planExpiresAt && (
-              <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#4A3208" }} className="text-sm font-bold mt-1">
-                {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}
-              </p>
-            )}
-          </div>
-        ) : goldUnlocked ? (
-          <button
-            onClick={() => handleBuy("gold")}
-            disabled={loadingPlan === "gold"}
-            style={{
-              fontFamily: "Vazirmatn, sans-serif",
-              background: loadingPlan === "gold" ? "#8E949E" : "linear-gradient(135deg, #6B7280, #9CA3AF)",
-              color: "#FFFFFF",
-              boxShadow: loadingPlan === "gold" ? "none" : "0 0 16px rgba(120,128,140,0.5)",
-            }}
-            className={`w-full rounded-xl py-3.5 font-black text-base transition-colors ${loadingPlan === "gold" ? "" : "plan-cta"}`}
-          >
-            {loadingPlan === "gold" ? tr("در حال اتصال به درگاه…") : pl.gold.buttonText || tr("خرید اشتراک دوره دوم")}
-          </button>
-        ) : (
-          <button
-            disabled
-            style={{
-              fontFamily: "Vazirmatn, sans-serif",
-              background: "rgba(107,114,128,0.45)",
-              color: "#3F4650",
-              cursor: "not-allowed",
-            }}
-            className="w-full rounded-xl py-3.5 font-black text-base"
-          >
-            {tr("به‌زودی فعال می‌شه")}</button>
-        )}
-      </PlanCard>
+      {/* پلن‌ها: قاب طلایی */}
+      <PlanFrame img="assets/plan-first.webp" className="mb-5" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}>
+        {renderPlanBody("silver", silverChapterNames)}
+      </PlanFrame>
+      <PlanFrame img="assets/plan-second.webp" delay={1.6} className="mb-3" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("gold")} />}>
+        {renderPlanBody("gold", goldChapterNames)}
+      </PlanFrame>
 
       {error && (
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }} className="text-xs text-center mt-2">
@@ -11023,14 +10958,14 @@ function BottomTabs({ active, onNavigate }) {
       onClick={() => onNavigate?.(key)}
       aria-label={alt}
       className="flex flex-col items-center justify-self-center active:scale-95 transition-transform"
-      style={{ marginTop: raised ? "-26px" : 0 }}
+      style={{ marginTop: raised ? "-22px" : 0 }}
     >
       <img
         src={img}
         alt={alt}
         draggable={false}
         style={{
-          height: raised ? 90 : 78,
+          height: raised ? 76 : 64,
           width: "auto",
           opacity: active === key ? 1 : 0.72,
           filter: active === key ? "drop-shadow(0 0 8px rgba(243,238,230,0.55))" : "none",
