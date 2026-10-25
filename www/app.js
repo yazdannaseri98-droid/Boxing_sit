@@ -6705,10 +6705,7 @@ function HmHero({ lesson, chapterTitle, percent, onContinue }) {
   return /* @__PURE__ */ React.createElement("button", { onClick: onContinue, className: "relative w-full rounded-2xl overflow-hidden text-right block active:scale-[0.985] transition-transform", style: { background: "linear-gradient(180deg, #3A3B40 0%, #2A2B2F 100%)", border: "1px solid rgba(243,238,230,0.35)", padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between gap-2 mb-1" }, /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-[11px] font-bold" }, chapterTitle), /* @__PURE__ */ React.createElement("span", { className: "rounded-full px-2.5 py-0.5 text-[10px] font-black shrink-0", style: { fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#fff" } }, lesson ? "\u0627\u062F\u0627\u0645\u0647 \u062A\u0645\u0631\u06CC\u0646" : "\u0634\u0631\u0648\u0639 \u0645\u0633\u06CC\u0631")), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-base font-black leading-7 mb-2" }, lesson ? lesson.title : "\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u06F1\u06F0\u06F0 \u0631\u0648\u0632\u0647"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 rounded-full overflow-hidden", style: { height: 5, background: "#5A5B60" } }, /* @__PURE__ */ React.createElement("div", { style: { width: percent + "%", height: "100%", background: "linear-gradient(90deg,#1FA855,#3DE08A)" } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }, className: "text-xs" }, percent, "%"), /* @__PURE__ */ React.createElement("span", { className: "rounded-full flex items-center justify-center", style: { width: 32, height: 32, background: "#D91E2B", color: "#fff", fontSize: 12 } }, "\u25B6")));
 }
 function HmShortcuts({ items }) {
-  return /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-4 gap-2.5", style: { margin: "0 -20px", padding: "14px 20px 10px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" } }, items.map((it) => {
-    const Icon = it.icon;
-    return /* @__PURE__ */ React.createElement("button", { key: it.key, onClick: it.onClick, className: "flex flex-col items-center gap-1.5 active:scale-95 transition-transform" }, /* @__PURE__ */ React.createElement("span", { className: "rounded-2xl flex items-center justify-center", style: { width: 58, height: 58, background: "#2B2C30", border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)` } }, /* @__PURE__ */ React.createElement(Icon, { className: "w-7 h-7", style: { color: it.color, filter: `drop-shadow(0 0 6px ${it.color})` } })), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#17181A" }, className: "text-[12.5px] font-black text-center leading-5" }, it.label));
-  }));
+  return /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-4 gap-2.5", style: { margin: "0 -20px", padding: "14px 20px 10px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" } }, items.map((it) => /* @__PURE__ */ React.createElement("button", { key: it.key, onClick: it.onClick, className: "flex flex-col items-center gap-1.5 active:scale-95 transition-transform" }, /* @__PURE__ */ React.createElement("img", { src: it.img, alt: "", draggable: false, style: { width: 64, height: 64, objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.35))" } }), /* @__PURE__ */ React.createElement("span", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#17181A" }, className: "text-[12.5px] font-black text-center leading-5" }, it.label))));
 }
 function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, accountName, accountContact, onOpenAccount, memberCount, realMemberCount, adminStats, onSetMemberCount, chapterVisibility, onToggleChapterVisibility, onOpenSupport, chapterTitles, supportStatus, onInviteFriends, isGuest, onGuestLogin, completed, nextLesson, onContinue, onOpenProgramCat, plan, authToken }) {
   const [editingCount, setEditingCount] = useState(false);
@@ -6936,10 +6933,10 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     const heroCh = HM_CHAPTERS.find((c) => c.key === nextLesson?.curriculumKey) || HM_CHAPTERS[0];
     const titles = (k) => chapterTitles?.[k] || DEFAULT_CHAPTER_TITLES[k];
     return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(HmBanners, { isAdmin, authToken }), /* @__PURE__ */ React.createElement(HmHero, { lesson: nextLesson, chapterTitle: nextLesson ? titles(nextLesson.curriculumKey) : "", percent: pct, onContinue }), /* @__PURE__ */ React.createElement("div", { className: "mt-5" }, /* @__PURE__ */ React.createElement(HmShortcuts, { items: [
-      { key: "journey", label: tr("\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u0645\u0646"), color: "#4DA3FF", icon: MenuJourneyIcon, onClick: () => onNavigate("journey") },
-      { key: "programs", label: tr("\u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC"), color: "#4DA3FF", icon: MenuPlanIcon, onClick: () => onNavigate("programs") },
-      { key: "timer", label: tr("\u062A\u0627\u06CC\u0645\u0631 \u062A\u0645\u0631\u06CC\u0646"), color: "#D91E2B", icon: MenuTimerIcon, onClick: () => onNavigate("timer") },
-      { key: "boxsci", label: tr("\u0639\u0644\u0648\u0645 \u0636\u0631\u0648\u0631\u06CC \u0628\u0648\u06A9\u0633"), color: "#F3EEE6", icon: MenuBookIcon, onClick: () => onNavigate("boxsci") }
+      { key: "journey", label: tr("\u0645\u0633\u06CC\u0631 \u067E\u06CC\u0634\u0631\u0641\u062A \u0645\u0646"), img: "assets/sc-journey.webp", onClick: () => onNavigate("journey") },
+      { key: "programs", label: tr("\u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u06CC \u062A\u062E\u0635\u0635\u06CC"), img: "assets/sc-programs.webp", onClick: () => onNavigate("programs") },
+      { key: "timer", label: tr("\u062A\u0627\u06CC\u0645\u0631 \u062A\u0645\u0631\u06CC\u0646"), img: "assets/sc-timer.webp", onClick: () => onNavigate("timer") },
+      { key: "boxsci", label: tr("\u0639\u0644\u0648\u0645 \u0636\u0631\u0648\u0631\u06CC \u0628\u0648\u06A9\u0633"), img: "assets/sc-boxsci.webp", onClick: () => onNavigate("boxsci") }
     ] })), /* @__PURE__ */ React.createElement("div", { className: "mt-6" }, /* @__PURE__ */ React.createElement(HmSectionTitle, { title: "\u062F\u0648\u0631\u0647 A", sub: "\u0633\u0647 \u0641\u0635\u0644 \u0627\u0648\u0644", color: "#F2CF5E", gold: true }), /* @__PURE__ */ React.createElement(HmRow, { tone: "blue" }, HM_CHAPTERS.filter((c) => !c.gated).map((c) => {
       const { img, arr } = hmChapterData(c);
       const real = arr.filter((it) => it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
@@ -9124,127 +9121,40 @@ function HomeIcon({ className }) {
   return /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 24 24", className, fill: "currentColor" }, /* @__PURE__ */ React.createElement("path", { d: "M12 3l9 8h-2.5v9h-5v-6h-3v6h-5v-9H3z" }));
 }
 function BottomTabs({ active, onNavigate }) {
+  const tab = (key, img, alt, raised) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: () => onNavigate?.(key),
+      "aria-label": alt,
+      className: "flex flex-col items-center justify-self-center active:scale-95 transition-transform",
+      style: { marginTop: raised ? "-26px" : 0 }
+    },
+    /* @__PURE__ */ React.createElement(
+      "img",
+      {
+        src: img,
+        alt,
+        draggable: false,
+        style: {
+          height: raised ? 90 : 78,
+          width: "auto",
+          opacity: active === key ? 1 : 0.72,
+          filter: active === key ? "drop-shadow(0 0 8px rgba(243,238,230,0.55))" : "none",
+          transition: "all .2s"
+        }
+      }
+    )
+  );
   return /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "relative grid pt-2 pb-3 border-t shrink-0",
+      className: "relative grid pt-2 pb-2 border-t shrink-0",
       style: { background: "#0B0B0D", borderColor: "#1c1b1f", gridTemplateColumns: "1fr 1fr 1fr" },
       dir: APP_DIR
     },
-    /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => onNavigate?.("profile"),
-        className: "flex flex-col items-center gap-1 justify-self-center"
-      },
-      /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "rounded-full flex items-center justify-center",
-          style: {
-            width: "46px",
-            height: "46px",
-            background: active === "profile" ? "linear-gradient(145deg, #7CC4FF, #1E6FD9)" : "linear-gradient(145deg, #1B2A3E, #101A28)",
-            border: `1.5px solid ${active === "profile" ? "#D6ECFF" : "rgba(77,163,255,0.55)"}`,
-            boxShadow: active === "profile" ? "0 0 18px rgba(77,163,255,0.8), inset 0 0 8px rgba(255,255,255,0.35)" : "0 0 10px rgba(77,163,255,0.3), inset 0 0 6px rgba(77,163,255,0.15)",
-            transition: "all .2s"
-          }
-        },
-        /* @__PURE__ */ React.createElement(UserIcon, { className: "w-5 h-5", style: { color: active === "profile" ? "#FFFFFF" : "#6FB8FF" } })
-      ),
-      /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          style: {
-            fontFamily: "Vazirmatn, sans-serif",
-            color: active === "profile" ? "#D6ECFF" : "#6FB8FF",
-            fontSize: "9px",
-            fontWeight: 700
-          }
-        },
-        tr("\u067E\u0646\u0644 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC")
-      )
-    ),
-    /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => onNavigate?.("home"),
-        className: "flex flex-col items-center justify-self-center",
-        style: { marginTop: "-28px" }
-      },
-      /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "rounded-full flex items-center justify-center",
-          style: {
-            width: "56px",
-            height: "56px",
-            background: active === "home" ? "#D91E2B" : "#17161A",
-            border: `2px solid ${active === "home" ? "#F3EEE6" : "#2a292e"}`,
-            boxShadow: active === "home" ? "0 0 18px rgba(217,30,43,0.55)" : "none"
-          }
-        },
-        /* @__PURE__ */ React.createElement(HomeIcon, { className: "w-6 h-6", style: { color: active === "home" ? "#F3EEE6" : "#55535a" } })
-      ),
-      /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          style: {
-            fontFamily: "Oswald, sans-serif",
-            color: active === "home" ? "#F3EEE6" : "#55535a",
-            fontSize: "9px"
-          },
-          className: "mt-1"
-        },
-        "home"
-      )
-    ),
-    /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        onClick: () => onNavigate?.("subscription"),
-        className: "flex flex-col items-center gap-1 justify-self-center"
-      },
-      /* @__PURE__ */ React.createElement(
-        "div",
-        {
-          className: "rounded-full flex items-center justify-center",
-          style: {
-            width: "46px",
-            height: "46px",
-            background: active === "subscription" ? "linear-gradient(145deg, #FFFFFF, #E0A020)" : "linear-gradient(145deg, #2E2410, #1A140A)",
-            border: `1.5px solid ${active === "subscription" ? "#FFFFFF" : "rgba(243,238,230,0.55)"}`,
-            boxShadow: active === "subscription" ? "0 0 18px rgba(243,238,230,0.85), inset 0 0 8px rgba(255,255,255,0.45)" : "0 0 10px rgba(243,238,230,0.3), inset 0 0 6px rgba(243,238,230,0.15)",
-            transition: "all .2s"
-          }
-        },
-        /* @__PURE__ */ React.createElement(
-          "span",
-          {
-            style: {
-              fontFamily: "Oswald, sans-serif",
-              fontSize: "12px",
-              fontWeight: "700",
-              letterSpacing: "0.05em",
-              color: active === "subscription" ? "#3A1418" : "#F3EEE6"
-            }
-          },
-          "VIP"
-        )
-      ),
-      /* @__PURE__ */ React.createElement(
-        "span",
-        {
-          style: {
-            fontFamily: "Vazirmatn, sans-serif",
-            color: active === "subscription" ? "#FFFFFF" : "#F3EEE6",
-            fontSize: "9px",
-            fontWeight: 700
-          }
-        },
-        tr("\u0627\u0634\u062A\u0631\u0627\u06A9")
-      )
-    )
+    tab("profile", "assets/nav-profile.webp", tr("\u067E\u0646\u0644 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC"), false),
+    tab("home", "assets/nav-home.webp", "home", true),
+    tab("subscription", "assets/nav-sub.webp", tr("\u0627\u0634\u062A\u0631\u0627\u06A9"), false)
   );
 }
 const CHAPTER_ORDER = ["basic", "advanced", "extra", "fight", "fightb", "partner", "focus"];

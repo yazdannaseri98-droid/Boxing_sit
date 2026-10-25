@@ -7943,17 +7943,12 @@ function HmHero({ lesson, chapterTitle, percent, onContinue }) {
 function HmShortcuts({ items }) {
   return (
     <div className="grid grid-cols-4 gap-2.5" style={{ margin: "0 -20px", padding: "14px 20px 10px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
-      {items.map((it) => {
-        const Icon = it.icon;
-        return (
-          <button key={it.key} onClick={it.onClick} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
-            <span className="rounded-2xl flex items-center justify-center" style={{ width: 58, height: 58, background: "#2B2C30", border: `1px solid ${it.color}88`, boxShadow: `0 0 16px ${it.color}44, inset 0 1px 0 rgba(255,255,255,0.18)` }}>
-              <Icon className="w-7 h-7" style={{ color: it.color, filter: `drop-shadow(0 0 6px ${it.color})` }} />
-            </span>
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#17181A" }} className="text-[12.5px] font-black text-center leading-5">{it.label}</span>
-          </button>
-        );
-      })}
+      {items.map((it) => (
+        <button key={it.key} onClick={it.onClick} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
+          <img src={it.img} alt="" draggable={false} style={{ width: 64, height: 64, objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.35))" }} />
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#17181A" }} className="text-[12.5px] font-black text-center leading-5">{it.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -8204,10 +8199,10 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
 
                 <div className="mt-5">
                   <HmShortcuts items={[
-                    { key: "journey", label: tr("مسیر پیشرفت من"), color: "#4DA3FF", icon: MenuJourneyIcon, onClick: () => onNavigate("journey") },
-                    { key: "programs", label: tr("برنامه‌های تخصصی"), color: "#4DA3FF", icon: MenuPlanIcon, onClick: () => onNavigate("programs") },
-                    { key: "timer", label: tr("تایمر تمرین"), color: "#D91E2B", icon: MenuTimerIcon, onClick: () => onNavigate("timer") },
-                    { key: "boxsci", label: tr("علوم ضروری بوکس"), color: "#F3EEE6", icon: MenuBookIcon, onClick: () => onNavigate("boxsci") },
+                    { key: "journey", label: tr("مسیر پیشرفت من"), img: "assets/sc-journey.webp", onClick: () => onNavigate("journey") },
+                    { key: "programs", label: tr("برنامه‌های تخصصی"), img: "assets/sc-programs.webp", onClick: () => onNavigate("programs") },
+                    { key: "timer", label: tr("تایمر تمرین"), img: "assets/sc-timer.webp", onClick: () => onNavigate("timer") },
+                    { key: "boxsci", label: tr("علوم ضروری بوکس"), img: "assets/sc-boxsci.webp", onClick: () => onNavigate("boxsci") },
                   ]} />
                 </div>
 
@@ -11023,106 +11018,36 @@ function HomeIcon({ className }) {
 }
 
 function BottomTabs({ active, onNavigate }) {
+  const tab = (key, img, alt, raised) => (
+    <button
+      onClick={() => onNavigate?.(key)}
+      aria-label={alt}
+      className="flex flex-col items-center justify-self-center active:scale-95 transition-transform"
+      style={{ marginTop: raised ? "-26px" : 0 }}
+    >
+      <img
+        src={img}
+        alt={alt}
+        draggable={false}
+        style={{
+          height: raised ? 90 : 78,
+          width: "auto",
+          opacity: active === key ? 1 : 0.72,
+          filter: active === key ? "drop-shadow(0 0 8px rgba(243,238,230,0.55))" : "none",
+          transition: "all .2s",
+        }}
+      />
+    </button>
+  );
   return (
     <div
-      className="relative grid pt-2 pb-3 border-t shrink-0"
+      className="relative grid pt-2 pb-2 border-t shrink-0"
       style={{ background: "#0B0B0D", borderColor: "#1c1b1f", gridTemplateColumns: "1fr 1fr 1fr" }}
       dir={APP_DIR}
     >
-      <button
-        onClick={() => onNavigate?.("profile")}
-        className="flex flex-col items-center gap-1 justify-self-center"
-      >
-        <div
-          className="rounded-full flex items-center justify-center"
-          style={{
-            width: "46px",
-            height: "46px",
-            background: active === "profile" ? "linear-gradient(145deg, #7CC4FF, #1E6FD9)" : "linear-gradient(145deg, #1B2A3E, #101A28)",
-            border: `1.5px solid ${active === "profile" ? "#D6ECFF" : "rgba(77,163,255,0.55)"}`,
-            boxShadow: active === "profile" ? "0 0 18px rgba(77,163,255,0.8), inset 0 0 8px rgba(255,255,255,0.35)" : "0 0 10px rgba(77,163,255,0.3), inset 0 0 6px rgba(77,163,255,0.15)",
-            transition: "all .2s",
-          }}
-        >
-          <UserIcon className="w-5 h-5" style={{ color: active === "profile" ? "#FFFFFF" : "#6FB8FF" }} />
-        </div>
-        <span
-          style={{
-            fontFamily: "Vazirmatn, sans-serif",
-            color: active === "profile" ? "#D6ECFF" : "#6FB8FF",
-            fontSize: "9px",
-            fontWeight: 700,
-          }}
-        >
-          {tr("پنل حساب کاربری")}</span>
-      </button>
-
-      <button
-        onClick={() => onNavigate?.("home")}
-        className="flex flex-col items-center justify-self-center"
-        style={{ marginTop: "-28px" }}
-      >
-        <div
-          className="rounded-full flex items-center justify-center"
-          style={{
-            width: "56px",
-            height: "56px",
-            background: active === "home" ? "#D91E2B" : "#17161A",
-            border: `2px solid ${active === "home" ? "#F3EEE6" : "#2a292e"}`,
-            boxShadow: active === "home" ? "0 0 18px rgba(217,30,43,0.55)" : "none",
-          }}
-        >
-          <HomeIcon className="w-6 h-6" style={{ color: active === "home" ? "#F3EEE6" : "#55535a" }} />
-        </div>
-        <span
-          style={{
-            fontFamily: "Oswald, sans-serif",
-            color: active === "home" ? "#F3EEE6" : "#55535a",
-            fontSize: "9px",
-          }}
-          className="mt-1"
-        >
-          home
-        </span>
-      </button>
-
-      <button
-        onClick={() => onNavigate?.("subscription")}
-        className="flex flex-col items-center gap-1 justify-self-center"
-      >
-        <div
-          className="rounded-full flex items-center justify-center"
-          style={{
-            width: "46px",
-            height: "46px",
-            background: active === "subscription" ? "linear-gradient(145deg, #FFFFFF, #E0A020)" : "linear-gradient(145deg, #2E2410, #1A140A)",
-            border: `1.5px solid ${active === "subscription" ? "#FFFFFF" : "rgba(243,238,230,0.55)"}`,
-            boxShadow: active === "subscription" ? "0 0 18px rgba(243,238,230,0.85), inset 0 0 8px rgba(255,255,255,0.45)" : "0 0 10px rgba(243,238,230,0.3), inset 0 0 6px rgba(243,238,230,0.15)",
-            transition: "all .2s",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "Oswald, sans-serif",
-              fontSize: "12px",
-              fontWeight: "700",
-              letterSpacing: "0.05em",
-              color: active === "subscription" ? "#3A1418" : "#F3EEE6",
-            }}
-          >
-            VIP
-          </span>
-        </div>
-        <span
-          style={{
-            fontFamily: "Vazirmatn, sans-serif",
-            color: active === "subscription" ? "#FFFFFF" : "#F3EEE6",
-            fontSize: "9px",
-            fontWeight: 700,
-          }}
-        >
-          {tr("اشتراک")}</span>
-      </button>
+      {tab("profile", "assets/nav-profile.webp", tr("پنل حساب کاربری"), false)}
+      {tab("home", "assets/nav-home.webp", "home", true)}
+      {tab("subscription", "assets/nav-sub.webp", tr("اشتراک"), false)}
     </div>
   );
 }
