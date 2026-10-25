@@ -741,10 +741,11 @@ function toAbsoluteVideoUrl(url) {
 }
 
 // خروجی: لیست ویدیوها، یا null اگه گرفتن لیست شکست خورد (تا «ویدیو نیست» با «لیست دریافت نشد» قاطی نشه)
-async function apiFetchVideos() {
+async function apiFetchVideos(token) {
   if (DEMO_MODE) return {};
   try {
-    const res = await apiFetch(`${API_BASE_URL}/videos`);
+    // با توکن کاربر: سرور فقط برای ویدیوهایی که کاربر اجازه‌ی دیدنشون رو داره لینک امضادارِ موقت می‌ده
+    const res = await apiFetch(`${API_BASE_URL}/videos`, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
     const data = await res.json().catch(() => null);
     if (!res.ok || !data || !data.ok) return null;
     const videos = {};
@@ -9268,6 +9269,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
         src={mediaReady ? `${src}#t=0.1` : undefined}
         poster={poster || undefined}
         preload="metadata"
+        controlsList="nodownload noremoteplayback"
+        disablePictureInPicture
+        disableRemotePlayback
         style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         onTimeUpdate={onTimeUpdate}
         onProgress={updateBuffered}
@@ -11429,7 +11433,7 @@ function App() {
   // لیست ویدیوها + عنوان‌های ویرایش‌شده‌ی جلسات + عدد «اعضای فعال» + فصل‌های باز شده؛
   // این‌ها برای همه یکسانن و روی سرور ذخیره می‌شن
   const loadVideoList = () => {
-    apiFetchVideos().then((list) => {
+    apiFetchVideos(authToken).then((list) => {
       if (list) {
         const withAlias = { ...list };
         Object.keys(list).forEach((k) => { if (k.startsWith("fight-")) { const a = "fightb-" + k.slice(6); if (!withAlias[a]) withAlias[a] = list[k]; } });
@@ -11446,6 +11450,17 @@ function App() {
     setVideosStatus("loading");
     loadVideoList();
   };
+
+  // لینک ویدیوها موقتیه (۴ ساعت)؛ با عوض شدن ورود/اشتراک و هر ۳ ساعت و وقتی اپ دوباره دیده می‌شه تازه می‌شه
+  useEffect(() => {
+    const lastLoad = { t: Date.now() };
+    loadVideoList();
+    const refresh = () => { lastLoad.t = Date.now(); loadVideoList(); };
+    const iv = setInterval(refresh, 3 * 60 * 60 * 1000);
+    const onVis = () => { if (document.visibilityState === "visible" && Date.now() - lastLoad.t > 60 * 60 * 1000) refresh(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [authToken, authUser?.plan, authUser?.isAdmin]);
 
   const loadPublicData = () => {
     loadVideoList();

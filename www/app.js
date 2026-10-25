@@ -603,10 +603,10 @@ function toAbsoluteVideoUrl(url) {
   if (!url) return url;
   return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
 }
-async function apiFetchVideos() {
+async function apiFetchVideos(token) {
   if (DEMO_MODE) return {};
   try {
-    const res = await apiFetch(`${API_BASE_URL}/videos`);
+    const res = await apiFetch(`${API_BASE_URL}/videos`, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
     const data = await res.json().catch(() => null);
     if (!res.ok || !data || !data.ok) return null;
     const videos = {};
@@ -7760,6 +7760,9 @@ function VideoPlayer({ src, onComplete, onTick, storageScope, subKey, subVersion
         src: mediaReady ? `${src}#t=0.1` : void 0,
         poster: poster || void 0,
         preload: "metadata",
+        controlsList: "nodownload noremoteplayback",
+        disablePictureInPicture: true,
+        disableRemotePlayback: true,
         style: { width: "100%", height: "100%", objectFit: "contain", display: "block" },
         onTimeUpdate,
         onProgress: updateBuffered,
@@ -9567,7 +9570,7 @@ function App() {
     };
   }, []);
   const loadVideoList = () => {
-    apiFetchVideos().then((list) => {
+    apiFetchVideos(authToken).then((list) => {
       if (list) {
         const withAlias = { ...list };
         Object.keys(list).forEach((k) => {
@@ -9587,6 +9590,23 @@ function App() {
     setVideosStatus("loading");
     loadVideoList();
   };
+  useEffect(() => {
+    const lastLoad = { t: Date.now() };
+    loadVideoList();
+    const refresh = () => {
+      lastLoad.t = Date.now();
+      loadVideoList();
+    };
+    const iv = setInterval(refresh, 3 * 60 * 60 * 1e3);
+    const onVis = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastLoad.t > 60 * 60 * 1e3) refresh();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [authToken, authUser == null ? void 0 : authUser.plan, authUser == null ? void 0 : authUser.isAdmin]);
   const loadPublicData = () => {
     loadVideoList();
     apiFetchLessonTitles().then(setLessonTitles);
