@@ -7942,7 +7942,7 @@ function HmHero({ lesson, chapterTitle, percent, onContinue }) {
 }
 function HmShortcuts({ items }) {
   return (
-    <div className="grid grid-cols-4 gap-2.5" style={{ margin: "0 -20px", padding: "14px 20px 10px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
+    <div className="grid grid-cols-4 gap-2.5" style={{ margin: "0 -20px", padding: "8px 20px 4px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
       {items.map((it) => (
         <button key={it.key} onClick={it.onClick} className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform">
           <img src={it.img} alt="" draggable={false} style={{ width: 64, height: 64, objectFit: "contain", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.35))" }} />
@@ -10873,7 +10873,9 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xl font-black mb-3">
           {badgeLabel}
         </h1>
-        <PromoBanner text={promoText} isAdmin={isAdmin} onSave={onSavePromoText} />
+        <div style={{ alignSelf: "stretch", margin: "4px -20px 12px", padding: "12px 20px", background: "#F3EEE6", backgroundImage: "repeating-linear-gradient(45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.06) 0 2px, transparent 2px 12px)", borderTop: "1px solid #FFFFFF", borderBottom: "1px solid #FFFFFF" }}>
+          <PromoBanner text={promoText} isAdmin={isAdmin} onSave={onSavePromoText} />
+        </div>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", maxWidth: "280px" }} className="text-xs leading-6">
           {tr("دسترسی به دوره‌های آموزشی رو با یکی از این دو پلن باز کن")}</p>
       </div>
@@ -12130,7 +12132,7 @@ function App() {
           }
         `}</style>
         <IosInstallHint />
-        <PhoneMock bgImage={getScreenBackground(step)} pencil={!(step === "subscription" || step === "lesson" || (typeof step === "string" && step.startsWith("curriculum-")))}>
+        <PhoneMock bgImage={getScreenBackground(step)} pencil={!(step === "subscription" || step === "profile" || step === "lesson" || (typeof step === "string" && step.startsWith("curriculum-")))}>
           <TopNotch />
           <NetworkBanner />
           {bootGate === "offline" ? (
