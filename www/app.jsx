@@ -10429,12 +10429,12 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
 const GRAD_WHITE = { background: "linear-gradient(180deg, #FFFFFF 0%, #ECEFF5 45%, #A9B0BD 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" };
 const PLAN_FRAME_CSS = `
   .pf-mask { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; overflow: hidden; }
-  .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 4.8s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(255,236,170,0.55), rgba(255,255,255,0.9), rgba(255,236,170,0.55), transparent); }
+  .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 9s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(255,236,170,0.2), rgba(255,255,255,0.4), rgba(255,236,170,0.2), transparent); }
   .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(255,200,70,0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(255,170,40,0.4), transparent 55%); mix-blend-mode: screen; }
   .pf-spark { position: absolute; pointer-events: none; color: #FFE9A0; font-size: 13px; opacity: 0; animation: pfSpark 3s ease-in-out infinite; text-shadow: 0 0 8px #FFC83C; }
   .pf-neon { animation: pfNeon 2.2s ease-in-out infinite; }
-  @keyframes pfSweep { 0% { transform: translateX(-160%) skewX(-18deg); } 55%, 100% { transform: translateX(420%) skewX(-18deg); } }
-  @keyframes pfPulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.85; } }
+  @keyframes pfSweep { 0% { transform: translateX(-160%) skewX(-18deg); } 60%, 100% { transform: translateX(420%) skewX(-18deg); } }
+  @keyframes pfPulse { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.5; } }
   @keyframes pfSpark { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.2); } }
   @keyframes pfNeon { 0%, 100% { text-shadow: 0 0 6px #39FF14, 0 0 14px rgba(57,255,20,0.7); } 50% { text-shadow: 0 0 10px #39FF14, 0 0 26px rgba(57,255,20,1); } }
   @media (prefers-reduced-motion: reduce) { .pf-sweep, .pf-pulse, .pf-spark, .pf-neon { animation: none !important; } .pf-pulse { opacity: 0.4; } }
@@ -10788,7 +10788,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
     }
   };
 
-  const badgeSrc = plan === "gold" ? MEDAL_GOLD_SRC : plan === "silver" ? MEDAL_SILVER_SRC : MEDAL_BRONZE_SRC;
+  const badgeSrc = plan === "gold" || plan === "silver" ? "assets/medal-sub-gold.webp" : "assets/medal-sub-bronze.webp";
   const badgeLabel = plan === "gold" ? tr("اشتراک دوره دوم") : plan === "silver" ? tr("اشتراک دوره اول") : tr("اشتراک برنزی");
 
   const renderPlanBody = (k, names) => {
@@ -10799,7 +10799,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
     const ff = { fontFamily: "Vazirmatn, sans-serif" };
     return (
       <>
-        <p style={{ ...ff, ...GRAD_WHITE }} className="text-base font-black leading-tight mb-1">
+        <p style={{ ...ff, background: "linear-gradient(180deg, #FFF3B0 0%, #F5C542 45%, #B8801A 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 0 6px rgba(255,190,50,0.45))" }} className="text-xl font-black leading-tight mb-1">
           {tr("({n} ماهه)", { n: p.months.toLocaleString(NUM_LOCALE) })}</p>
         {p.originalPrice > p.price && (
           <span style={{ fontFamily: "Oswald, sans-serif", color: "#FF3B47", textDecoration: "line-through", textDecorationThickness: "1.5px", textShadow: "0 0 8px rgba(255,59,71,0.4)" }} className="text-lg font-bold leading-tight">
@@ -11905,7 +11905,9 @@ function App() {
   const heroLesson = (() => {
     const items = curriculumBasicMerged || [];
     const isReal = (it) => Boolean(it && it.t && it.t !== PLACEHOLDER_LESSON_TITLE);
-    const pick = lastBasic?.n ? items.find((it) => it.n === lastBasic.n + 1) : items[0];
+    // اولین جلسه‌ی فصل ۱ که هنوز کامل دیده نشده (سبز نشده)؛ جلسه‌ی نیمه‌دیده هم همین حساب می‌شه
+    const chained = computeChainedCompletions(completedLessons, videos);
+    const pick = items.find((it) => isReal(it) && !chained[`basic-${it.n}`]);
     if (isReal(pick)) return { curriculumKey: "basic", n: pick.n, title: pick.t };
     return nextLesson;
   })();
