@@ -5878,7 +5878,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
   const [done, setDone] = useState({});
   const [res, setRes] = useState({});
   const [blk, setBlk] = useState({});
-  const [ready, setReady] = useState(false);
+  const [ready2, setReady] = useState(false);
   const [showSet, setShowSet] = useState(false);
   const [sel, setSel] = useState(null);
   const [play, setPlay] = useState(null);
@@ -5959,7 +5959,7 @@ function JourneyScreen({ onBack, authToken, isGuest, isAdmin, plan, accountId, o
     if (rw) setSel(null);
   };
   const btn = (onClick, label, extra) => /* @__PURE__ */ React.createElement("button", { onClick, style: { ...JR_FONT, color: "#0B0B0D", background: "#DAD6CE", ...extra }, className: "text-sm rounded-lg px-3 py-1.5 font-bold inline-block" }, label);
-  if (!ready) return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex items-center justify-center", style: { ...JR_FONT, color: "#F3EEE6" } }, "...");
+  if (!ready2) return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex items-center justify-center", style: { ...JR_FONT, color: "#F3EEE6" } }, "...");
   if (play) {
     const prog = play.block.program;
     const exit = () => setPlay(null);
@@ -8763,7 +8763,7 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
     { top: "64px", left: "16px", d: 1.1 },
     { bottom: "96px", right: "26px", d: 2 }
   ];
-  return /* @__PURE__ */ React.createElement("div", { "data-testid": `plan-card-${tone}`, className: `relative rounded-2xl overflow-hidden ${className}`, style: { background: t.background, border: t.border, boxShadow: t.shadow } }, /* @__PURE__ */ React.createElement("div", { className: "plan-glow", style: { background: `radial-gradient(ellipse at 50% -15%, ${t.glow}, transparent 64%)`, animationDelay: `${delay}s` } }), /* @__PURE__ */ React.createElement("div", { className: "plan-shine", style: { background: `linear-gradient(90deg, transparent, ${t.shine}, transparent)`, animationDelay: `${delay}s` } }), sparks.map((sp, i) => /* @__PURE__ */ React.createElement("span", { key: i, className: "plan-spark", style: { top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, color: t.spark, animationDelay: `${sp.d + delay}s` } }, "\u2726")), /* @__PURE__ */ React.createElement("div", { className: "relative p-5" }, children));
+  return /* @__PURE__ */ React.createElement("div", { "data-testid": `plan-card-${tone}`, className: `relative rounded-2xl overflow-hidden ${className}`, style: { background: t.background, border: t.border, boxShadow: t.shadow } }, /* @__PURE__ */ React.createElement("div", { className: "plan-glow", style: { background: `radial-gradient(ellipse at 50% -15%, ${t.glow}, transparent 64%)`, animationDelay: `${delay}s` } }), /* @__PURE__ */ React.createElement("div", { className: "plan-shine", style: { background: `linear-gradient(90deg, transparent, ${t.shine}, transparent)`, animationDelay: `${delay}s` } }), ready && sparks.map((sp, i) => /* @__PURE__ */ React.createElement("span", { key: i, className: "plan-spark", style: { top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, color: t.spark, animationDelay: `${sp.d + delay}s` } }, "\u2726")), /* @__PURE__ */ React.createElement("div", { className: "relative p-5" }, children));
 }
 const GRAD_WHITE = { background: "linear-gradient(180deg, #FFFFFF 0%, #ECEFF5 45%, #A9B0BD 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" };
 const PLAN_FRAME_CSS = `
@@ -8779,9 +8779,13 @@ const PLAN_FRAME_CSS = `
   @media (prefers-reduced-motion: reduce) { .pf-sweep, .pf-pulse, .pf-spark, .pf-neon { animation: none !important; } .pf-pulse { opacity: 0.4; } }
 `;
 function PlanFrame({ img, delay = 0, className = "", edit, children }) {
+  const [ready2, setReady] = useState(false);
+  const ratio = img.includes("first") ? "1000 / 1627" : "1000 / 1613";
   const maskStyle = { WebkitMaskImage: `url(${img})`, maskImage: `url(${img})` };
   const sparks = [{ top: "3%", left: "47%", d: 0 }, { top: "22%", right: "9%", d: 1.1 }, { top: "24%", left: "8%", d: 2 }, { bottom: "6%", right: "14%", d: 0.6 }];
-  return /* @__PURE__ */ React.createElement("div", { className: `relative ${className}`, style: { filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))" } }, /* @__PURE__ */ React.createElement("img", { src: img, alt: "", draggable: false, style: { display: "block", width: "100%", height: "auto" } }), /* @__PURE__ */ React.createElement("div", { className: "pf-mask", style: maskStyle }, /* @__PURE__ */ React.createElement("div", { className: "pf-pulse", style: { animationDelay: `${delay}s` } }), /* @__PURE__ */ React.createElement("div", { className: "pf-sweep", style: { animationDelay: `${delay}s` } })), sparks.map((sp, i) => /* @__PURE__ */ React.createElement("span", { key: i, className: "pf-spark", style: { top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s` } }, "\u2726")), edit, /* @__PURE__ */ React.createElement("div", { className: "absolute flex flex-col items-center justify-center text-center", style: { top: "38%", bottom: "8%", left: "12%", right: "12%" } }, children));
+  return /* @__PURE__ */ React.createElement("div", { className: `relative ${className}`, style: { filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))", aspectRatio: ratio } }, /* @__PURE__ */ React.createElement("img", { src: img, alt: "", draggable: false, onLoad: () => setReady(true), ref: (el) => {
+    if (el && el.complete && !ready2) setReady(true);
+  }, style: { display: "block", width: "100%", height: "100%" } }), /* @__PURE__ */ React.createElement("div", { className: "pf-mask", style: { ...maskStyle, opacity: ready2 ? 1 : 0 } }, /* @__PURE__ */ React.createElement("div", { className: "pf-pulse", style: { animationDelay: `${delay}s` } }), /* @__PURE__ */ React.createElement("div", { className: "pf-sweep", style: { animationDelay: `${delay}s` } })), sparks.map((sp, i) => /* @__PURE__ */ React.createElement("span", { key: i, className: "pf-spark", style: { top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s` } }, "\u2726")), ready2 && edit, /* @__PURE__ */ React.createElement("div", { className: "absolute flex flex-col items-center justify-center text-center", style: { top: "38%", bottom: "8%", left: "12%", right: "12%", opacity: ready2 ? 1 : 0, transition: "opacity .3s" } }, children));
 }
 const DEFAULT_PROMO_TEXT = tr("\u{1F525} \u062A\u062E\u0641\u06CC\u0641 \u0648\u06CC\u0698\u0647\u200C\u06CC \u0622\u063A\u0627\u0632\u06CC\u0646!\n\u0647\u0645\u06CC\u0646 \u062D\u0627\u0644\u0627 \u0627\u0634\u062A\u0631\u0627\u06A9\u062A \u0631\u0648 \u0628\u06AF\u06CC\u0631 \u0648 \u0645\u0633\u06CC\u0631 \u0642\u0647\u0631\u0645\u0627\u0646\u06CC \u0631\u0648 \u0634\u0631\u0648\u0639 \u06A9\u0646");
 const PROMO_TEXT_MAX = 100;

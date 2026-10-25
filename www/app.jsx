@@ -10416,7 +10416,7 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
     <div data-testid={`plan-card-${tone}`} className={`relative rounded-2xl overflow-hidden ${className}`} style={{ background: t.background, border: t.border, boxShadow: t.shadow }}>
       <div className="plan-glow" style={{ background: `radial-gradient(ellipse at 50% -15%, ${t.glow}, transparent 64%)`, animationDelay: `${delay}s` }} />
       <div className="plan-shine" style={{ background: `linear-gradient(90deg, transparent, ${t.shine}, transparent)`, animationDelay: `${delay}s` }} />
-      {sparks.map((sp, i) => (
+      {ready && sparks.map((sp, i) => (
         <span key={i} className="plan-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, color: t.spark, animationDelay: `${sp.d + delay}s` }}>
           ✦
         </span>
@@ -10442,20 +10442,22 @@ const PLAN_FRAME_CSS = `
 
 // قاب طلایی اشتراک: عکس قاب، متن‌ها داخل بخش مشکی، و نور زنده‌ای که دقیقاً به شکل قاب بریده می‌شه (mask)
 function PlanFrame({ img, delay = 0, className = "", edit, children }) {
+  const [ready, setReady] = useState(false);
+  const ratio = img.includes("first") ? "1000 / 1627" : "1000 / 1613"; // جا از قبل رزرو می‌شه تا موقع لود عکس صفحه نپره
   const maskStyle = { WebkitMaskImage: `url(${img})`, maskImage: `url(${img})` };
   const sparks = [{ top: "3%", left: "47%", d: 0 }, { top: "22%", right: "9%", d: 1.1 }, { top: "24%", left: "8%", d: 2 }, { bottom: "6%", right: "14%", d: 0.6 }];
   return (
-    <div className={`relative ${className}`} style={{ filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))" }}>
-      <img src={img} alt="" draggable={false} style={{ display: "block", width: "100%", height: "auto" }} />
-      <div className="pf-mask" style={maskStyle}>
+    <div className={`relative ${className}`} style={{ filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))", aspectRatio: ratio }}>
+      <img src={img} alt="" draggable={false} onLoad={() => setReady(true)} ref={(el) => { if (el && el.complete && !ready) setReady(true); }} style={{ display: "block", width: "100%", height: "100%" }} />
+      <div className="pf-mask" style={{ ...maskStyle, opacity: ready ? 1 : 0 }}>
         <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
         <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
       </div>
       {sparks.map((sp, i) => (
         <span key={i} className="pf-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s` }}>✦</span>
       ))}
-      {edit}
-      <div className="absolute flex flex-col items-center justify-center text-center" style={{ top: "38%", bottom: "8%", left: "12%", right: "12%" }}>
+      {ready && edit}
+      <div className="absolute flex flex-col items-center justify-center text-center" style={{ top: "38%", bottom: "8%", left: "12%", right: "12%", opacity: ready ? 1 : 0, transition: "opacity .3s" }}>
         {children}
       </div>
     </div>
