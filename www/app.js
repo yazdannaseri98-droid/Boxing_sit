@@ -8294,6 +8294,54 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
     setScreenCaptureBlocked(!isAdmin);
     return () => setScreenCaptureBlocked(false);
   }, [isAdmin]);
+  useEffect(() => {
+    var _a2, _b2;
+    if (isAdmin || ((_b2 = (_a2 = window.Capacitor) == null ? void 0 : _a2.Plugins) == null ? void 0 : _b2.PrivacyScreen)) return void 0;
+    const st = document.createElement("style");
+    st.textContent = ".cap-hide video { visibility: hidden !important; } @media print { video, .cap-video { display: none !important; } body { display: none !important; } }";
+    document.head.appendChild(st);
+    let t = 0;
+    const hideFor = (ms) => {
+      document.body.classList.add("cap-hide");
+      clearTimeout(t);
+      t = setTimeout(() => document.body.classList.remove("cap-hide"), ms);
+    };
+    const onKey = (e) => {
+      var _a3;
+      const k = (e.key || "").toLowerCase();
+      if (k === "printscreen" || e.keyCode === 44) {
+        hideFor(2e3);
+        try {
+          (_a3 = navigator.clipboard) == null ? void 0 : _a3.writeText("");
+        } catch {
+        }
+      } else if (e.metaKey && e.shiftKey && k === "s" || e.metaKey && e.shiftKey && (k === "3" || k === "4" || k === "5") || e.ctrlKey && (k === "p" || k === "s")) {
+        hideFor(2500);
+        if (k === "p" || k === "s") e.preventDefault();
+      }
+    };
+    const onVis = () => {
+      if (document.hidden) document.body.classList.add("cap-hide");
+      else hideFor(300);
+    };
+    const onCtx = (e) => {
+      var _a3, _b3;
+      if ((_b3 = (_a3 = e.target) == null ? void 0 : _a3.closest) == null ? void 0 : _b3.call(_a3, "video")) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("keyup", onKey, true);
+    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("contextmenu", onCtx);
+    return () => {
+      clearTimeout(t);
+      document.body.classList.remove("cap-hide");
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keyup", onKey, true);
+      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("contextmenu", onCtx);
+      st.remove();
+    };
+  }, [isAdmin]);
   const handleFile = (e) => {
     var _a2;
     const file = (_a2 = e.target.files) == null ? void 0 : _a2[0];

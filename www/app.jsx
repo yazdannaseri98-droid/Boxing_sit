@@ -9850,6 +9850,46 @@ function LessonScreen({ item, videoSrc, curriculumKey, isAdmin, authToken, accou
     return () => setScreenCaptureBlocked(false);
   }, [isAdmin]);
 
+  // نسخه‌ی وب: مرورگر اجازه‌ی مسدودسازی واقعی نمی‌ده؛ اینجا حداکثر کاری که می‌شه کرد برای کاربرهای عادی (نه ادمین):
+  // با PrintScreen / Win+Shift+S / Ctrl+P / تب مخفی‌شدن ویدیو موقتاً مخفی می‌شه و کلیپ‌بورد پاک می‌شه
+  useEffect(() => {
+    if (isAdmin || window.Capacitor?.Plugins?.PrivacyScreen) return undefined;
+    const st = document.createElement("style");
+    st.textContent = ".cap-hide video { visibility: hidden !important; } @media print { video, .cap-video { display: none !important; } body { display: none !important; } }";
+    document.head.appendChild(st);
+    let t = 0;
+    const hideFor = (ms) => {
+      document.body.classList.add("cap-hide");
+      clearTimeout(t);
+      t = setTimeout(() => document.body.classList.remove("cap-hide"), ms);
+    };
+    const onKey = (e) => {
+      const k = (e.key || "").toLowerCase();
+      if (k === "printscreen" || e.keyCode === 44) {
+        hideFor(2000);
+        try { navigator.clipboard?.writeText(""); } catch {}
+      } else if ((e.metaKey && e.shiftKey && k === "s") || (e.metaKey && e.shiftKey && (k === "3" || k === "4" || k === "5")) || (e.ctrlKey && (k === "p" || k === "s"))) {
+        hideFor(2500);
+        if (k === "p" || k === "s") e.preventDefault();
+      }
+    };
+    const onVis = () => { if (document.hidden) document.body.classList.add("cap-hide"); else hideFor(300); };
+    const onCtx = (e) => { if (e.target?.closest?.("video")) e.preventDefault(); };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("keyup", onKey, true);
+    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("contextmenu", onCtx);
+    return () => {
+      clearTimeout(t);
+      document.body.classList.remove("cap-hide");
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keyup", onKey, true);
+      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("contextmenu", onCtx);
+      st.remove();
+    };
+  }, [isAdmin]);
+
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
