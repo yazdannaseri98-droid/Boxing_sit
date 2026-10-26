@@ -176,7 +176,6 @@ const NETWORK_BLOCKED_DETAIL = tr("ارتباط با سرور برقرار نش�
 const NETWORK_OFFLINE_ERROR = `${NETWORK_OFFLINE_MESSAGE}${tr("؛ ")}${NETWORK_VPN_HINT}`;
 const NETWORK_WEAK_ERROR = `${NETWORK_WEAK_MESSAGE} (${NETWORK_VPN_HINT})`;
 const API_TIMEOUT_MS = 20000;
-const API_VOICE_TIMEOUT_MS = 60000;
 const CONNECTIVITY_PROBE_INTERVAL_MS = 4000;
 
 const connectivity = {
@@ -310,7 +309,7 @@ async function apiFetch(url, options = {}) {
     markNetworkFailure("offline");
     throw new NetworkError(NETWORK_OFFLINE_ERROR, false);
   }
-  const timeoutMs = String(url).includes("/voice") ? API_VOICE_TIMEOUT_MS : API_TIMEOUT_MS;
+  const timeoutMs = API_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1235,44 +1234,6 @@ async function apiSendSupportReply(token, identifier, message) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) throw new Error(data.error || tr("ارسال پاسخ با خطا مواجه شد"));
 }
-
-async function apiSendSupportVoice(token, audioData) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    const messages = stored ? JSON.parse(stored) : [];
-    messages.push({ sender: "user", message: tr("پیام صوتی"), type: "voice", audioData, createdAt: Date.now() });
-    await AppStorage.set("demo-support-messages", JSON.stringify(messages));
-    return { botReply: null };
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/messages/voice`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ audioData }),
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("ارسال پیام صوتی با خطا مواجه شد"));
-  return { botReply: data.botReply || null };
-}
-
-async function apiSendSupportVoiceReply(token, identifier, audioData) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    const messages = stored ? JSON.parse(stored) : [];
-    messages.push({ sender: "admin", message: tr("پیام صوتی"), type: "voice", audioData, createdAt: Date.now() });
-    await AppStorage.set("demo-support-messages", JSON.stringify(messages));
-    return;
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/threads/${encodeURIComponent(identifier)}/reply/voice`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ audioData }),
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("ارسال پاسخ صوتی با خطا مواجه شد"));
-}
-
 
 function formatExpiryDate(timestamp) {
   try {
@@ -4594,7 +4555,7 @@ function buildFaqItems(t) {
   },
   {
     q: tr("اگه مشکل تو تمرین یا اپ داشتم چیکار کنم؟"),
-    a: tr("برای مشکل تمرین، «کمک مربی» رو ببین. برای مشکل فنی، پرداخت یا اشتراک از گزینه‌ی «پشتیبانی» توی منو پیام بده (متن یا پیام صوتی)؛ جواب همون‌جا برات میاد."),
+    a: tr("برای مشکل تمرین، «کمک مربی» رو ببین. برای مشکل فنی، پرداخت یا اشتراک از گزینه‌ی «پشتیبانی» توی منو پیام متنی بده؛ جواب همون‌جا برات میاد."),
   },
   {
     q: tr("چطور زبان اپ رو عوض کنم؟"),
@@ -5150,126 +5111,14 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
 
 // ---------- Screen: Admin - User list ----------
 // ---------- Screen: پشتیبانی - چت (هم برای کاربر عادی، هم برای ادمین وقتی یه گفتگوی خاص رو باز می‌کنه) ----------
-// ---------- ضبط پیام صوتی: روی گوشی از پلاگین بومی Capacitor استفاده می‌کنه، توی مرورگر/دمو از MediaRecorder وب ----------
-// صفحه‌ی تنظیمات خود اپ رو توی گوشی باز می‌کنه (برای وقتی که کاربر باید یه دسترسی رو دستی فعال کنه)
-function openAppSettings() {
-  const NS = window.Capacitor?.Plugins?.NativeSettings;
-  if (NS?.open) {
-    NS.open({ optionAndroid: "application_details", optionIOS: "App" }).catch(() => {});
-  }
-}
-
-// وقتی که پرتاب می‌شه یعنی کاربر باید خودش دستی از تنظیمات گوشی دسترسی رو فعال کنه
-class PermissionDeniedError extends Error {}
-
-async function startVoiceRecording() {
-  const VR = window.Capacitor?.Plugins?.VoiceRecorder;
-  if (VR?.startRecording) {
-    const has = await VR.hasAudioRecordingPermission().catch(() => ({ value: false }));
-    if (!has?.value) {
-      const granted = await VR.requestAudioRecordingPermission().catch(() => ({ value: false }));
-      if (!granted?.value) {
-        throw new PermissionDeniedError(tr("اجازه‌ی دسترسی به میکروفون داده نشد."));
-      }
-    }
-    await VR.startRecording();
-    return { mode: "native" };
-  }
-  // پلاگین بومی ضبط صدا روی این نسخه از اپ شناسایی نشد؛ فالبک وب رو امتحان می‌کنیم
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
-    const chunks = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-    recorder.start();
-    return { mode: "web", recorder, chunks, stream };
-  } catch {
-    // برای عیب‌یابی: لیست پلاگین‌های Capacitor که واقعاً روی این نسخه از اپ نصب و شناسایی شدن
-    const available = Object.keys(window.Capacitor?.Plugins || {}).join(tr("، ")) || tr("هیچ‌کدام");
-    throw new Error(tr("قابلیت ضبط صدا روی این نسخه از اپ فعال نیست. (پلاگین‌های شناسایی‌شده: {available})", { available }));
-  }
-}
-
-async function stopVoiceRecording(session) {
-  if (session.mode === "native") {
-    const VR = window.Capacitor?.Plugins?.VoiceRecorder;
-    const result = await VR.stopRecording();
-    const mimeType = result?.value?.mimeType || "audio/aac";
-    const base64 = result?.value?.recordDataBase64 || "";
-    if (!base64) throw new Error(tr("ضبط صدا با خطا مواجه شد"));
-    return `data:${mimeType};base64,${base64}`;
-  }
-  return new Promise((resolve, reject) => {
-    session.recorder.onstop = () => {
-      const blob = new Blob(session.chunks, { type: session.recorder.mimeType || "audio/webm" });
-      session.stream.getTracks().forEach((t) => t.stop());
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error(tr("ضبط صدا با خطا مواجه شد")));
-      reader.readAsDataURL(blob);
-    };
-    session.recorder.stop();
-  });
-}
-
-function cancelVoiceRecording(session) {
-  if (!session) return;
-  if (session.mode === "native") {
-    window.Capacitor?.Plugins?.VoiceRecorder?.stopRecording?.().catch(() => {});
-  } else {
-    try {
-      session.recorder.stop();
-    } catch {
-      // ضبط از قبل متوقف شده - مشکلی نیست
-    }
-    session.stream.getTracks().forEach((t) => t.stop());
-  }
-}
-
-function MicIcon({ className }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8" />
-    </svg>
-  );
-}
-
-function StopSquareIcon({ className }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-      <rect x="6" y="6" width="12" height="12" rx="2" />
-    </svg>
-  );
-}
-
-// حداکثر مدت مجاز یه پیام صوتی (ثانیه) - بعد از این مدت خودکار قطع و ارسال می‌شه
-const MAX_VOICE_SECONDS = 120;
-
-function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVoice, onBack }) {
+function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordSeconds, setRecordSeconds] = useState(0);
-  const [voiceError, setVoiceError] = useState("");
-  const [voicePermissionDenied, setVoicePermissionDenied] = useState(false);
-  const recordingSessionRef = useRef(null);
-  const recordingTimerRef = useRef(null);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
-
-  useEffect(() => {
-    // اگه کاربر وسط ضبط از صفحه خارج بشه، ضبط رو کامل قطع می‌کنیم تا میکروفون آزاد بمونه
-    return () => {
-      if (recordingSessionRef.current) cancelVoiceRecording(recordingSessionRef.current);
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    };
-  }, []);
 
   const handleSend = async () => {
     const value = text.trim();
@@ -5283,57 +5132,6 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
     } finally {
       setSending(false);
     }
-  };
-
-  const handleStartRecording = async () => {
-    setVoiceError("");
-    setVoicePermissionDenied(false);
-    try {
-      const session = await startVoiceRecording();
-      recordingSessionRef.current = session;
-      setIsRecording(true);
-      setRecordSeconds(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordSeconds((s) => {
-          if (s + 1 >= MAX_VOICE_SECONDS) {
-            handleStopRecording();
-            return s;
-          }
-          return s + 1;
-        });
-      }, 1000);
-    } catch (err) {
-      setVoiceError(err.message || tr("دسترسی به میکروفون امکان‌پذیر نشد"));
-      setVoicePermissionDenied(err instanceof PermissionDeniedError);
-    }
-  };
-
-  const handleStopRecording = async () => {
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-    const session = recordingSessionRef.current;
-    recordingSessionRef.current = null;
-    setIsRecording(false);
-    if (!session) return;
-    try {
-      const audioData = await stopVoiceRecording(session);
-      await onSendVoice(audioData);
-    } catch (err) {
-      setVoiceError(err.message || tr("ارسال پیام صوتی با خطا مواجه شد"));
-    }
-  };
-
-  const handleCancelRecording = () => {
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-    cancelVoiceRecording(recordingSessionRef.current);
-    recordingSessionRef.current = null;
-    setIsRecording(false);
-    setRecordSeconds(0);
   };
 
   // وضعیت گفتگو فقط برای خودِ کاربر نشون داده می‌شه: بر اساس آخرین پیام مشخص می‌شه
@@ -5402,16 +5200,12 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
                   border: isMine ? "none" : "1px solid #2a292e",
                 }}
               >
-                {m.type === "voice" ? (
-                  <audio controls src={m.audioData} style={{ maxWidth: "220px", height: "34px" }} />
-                ) : (
-                  <p
-                    style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
-                    className="text-sm leading-6 whitespace-pre-wrap"
-                  >
-                    {m.message}
-                  </p>
-                )}
+                <p
+                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }}
+                  className="text-sm leading-6 whitespace-pre-wrap"
+                >
+                  {m.message}
+                </p>
               </div>
               {m.createdAt && (
                 <span
@@ -5426,81 +5220,29 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onSendVo
         })}
       </div>
 
-      {voiceError && (
-        <div className="px-4 pb-2 shrink-0 text-center">
-          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }} className="text-xs mb-1.5">
-            {voiceError}
-          </p>
-          {voicePermissionDenied && (
-            <button
-              onClick={openAppSettings}
-              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#17161A", color: "#4DA3FF", border: "1px solid #4DA3FF" }}
-              className="rounded-lg px-3 py-1.5 text-xs font-bold"
-            >
-              {tr("برو به تنظیمات و مجوز میکروفون رو فعال کن")}</button>
-          )}
-        </div>
-      )}
-      {isRecording ? (
-        <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
-          <button
-            onClick={handleCancelRecording}
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
-            className="rounded-xl px-3 py-2.5 text-sm shrink-0"
-          >
-            {tr("لغو")}</button>
-          <div
-            className="flex-1 flex items-center gap-2 rounded-xl px-3.5 py-2.5"
-            style={{ background: "#17161A", border: "1px solid #D91E2B" }}
-          >
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "#D91E2B" }} />
-            <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", direction: "ltr" }} className="text-sm">
-              {String(Math.floor(recordSeconds / 60)).padStart(2, "0")}:{String(recordSeconds % 60).padStart(2, "0")}
-            </span>
-          </div>
-          <button
-            onClick={handleStopRecording}
-            style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" }}
-            className="rounded-xl p-2.5 shrink-0"
-          >
-            <StopSquareIcon className="w-5 h-5" />
-          </button>
-        </div>
-      ) : (
-        <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSend();
-            }}
-            placeholder={myRole === "admin" ? tr("پیامت رو بنویس یا 🎤 رو بزن...") : tr("پیامت رو بنویس...")}
-            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
-            className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
-          />
-          {text.trim() || myRole !== "admin" ? (
-            <button
-              onClick={handleSend}
-              disabled={sending}
-              style={{
-                fontFamily: "Vazirmatn, sans-serif",
-                background: !sending ? "#D91E2B" : "#3a2226",
-                color: !sending ? "#F3EEE6" : "#7a5a5d",
-              }}
-              className="rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
-            >
-              {tr("ارسال")}</button>
-          ) : (
-            <button
-              onClick={handleStartRecording}
-              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" }}
-              className="rounded-xl p-2.5 shrink-0"
-            >
-              <MicIcon className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      )}
+      <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSend();
+          }}
+          placeholder={tr("پیامت رو بنویس...")}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
+          className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
+        />
+        <button
+          onClick={handleSend}
+          disabled={sending}
+          style={{
+            fontFamily: "Vazirmatn, sans-serif",
+            background: !sending ? "#D91E2B" : "#3a2226",
+            color: !sending ? "#F3EEE6" : "#7a5a5d",
+          }}
+          className="rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
+        >
+          {tr("ارسال")}</button>
+      </div>
       {myRole === "user" && (
         <p
           style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }}
@@ -7523,29 +7265,203 @@ const BS_TOPICS_2 = [
     ],
   },
   {
-    id: "glossary", icon: "📖", color: "#F3EEE6", title: "فرهنگ اصطلاحات بوکس", sub: "واژه‌های ضروری",
+    id: "glossary", icon: "📖", color: "#F3EEE6", title: "فرهنگ اصطلاحات بوکس", sub: "169 اصطلاح، دسته‌بندی‌شده",
     blocks: [
+      { t: "h", x: "ضربه‌ها (Punches)" },
       { t: "kv", x: [
-        ["Jab (جَب)", "ضربه‌ی مستقیم دست جلو."],
-        ["Cross (کراس)", "ضربه‌ی مستقیم دست عقب."],
-        ["Hook (هوک)", "ضربه‌ی قوسی از کنار."],
-        ["Uppercut (آپرکات)", "ضربه‌ی رو به بالا از زیر چانه یا بدن."],
+        ["Jab (جَب)", "ضربه‌ی مستقیم و سریع دست جلو؛ پایه‌ی حمله و کنترل فاصله."],
+        ["Cross (کراس)", "ضربه‌ی مستقیم و قدرتمند دست عقب؛ با چرخش لگن و شونه زده می‌شه."],
+        ["One-two (وان‌تو)", "ترکیب پایه‌ی جب و کراس پشت سر هم (ضربه‌ی ۱ و ۲)."],
+        ["Hook (هوک)", "ضربه‌ی قوسی از کنار با آرنج خم‌شده، به سر یا بدن."],
+        ["Lead hook / Rear hook", "هوک با دست جلو / هوک با دست عقب."],
+        ["Uppercut (آپرکات)", "ضربه‌ی رو به بالا از زیر چانه یا بدن؛ برای فاصله‌ی نزدیک."],
+        ["Overhand (اُورهَند)", "ضربه‌ی قوسی از بالای سر حریف، معمولاً با دست عقب؛ برای ضدحمله به جب حریف."],
+        ["Straight (استریت)", "هر ضربه‌ی مستقیم؛ اغلب منظور کراس یا جب است."],
+        ["Body shot (بادی‌شات)", "ضربه به بدن؛ معمولاً برای تحلیل بردن نفس و انرژی حریف."],
+        ["Liver shot (لیور‌شات)", "هوک به سمت راست بدن حریف زیر دنده‌ها (محل کبد)؛ می‌تونه بوکسور رو بی‌حرکت کنه."],
+        ["Solar plexus (سولار پلکسوس)", "گودی شکم زیر استخوان جناغ؛ ضربه‌ی دقیق به اینجا نفس رو می‌بُره."],
+        ["Check hook (چک هوک)", "هوکی که همزمان با چرخیدن و کنار کشیدن، به حریفِ در حال هجوم می‌زنی."],
+        ["Shovel hook (شاول هوک)", "ترکیبی بین هوک و آپرکات از زاویه‌ی پایین، مخصوص بدن."],
+        ["Haymaker (هی‌میکر)", "ضربه‌ی بزرگ و پرچرخش با تمام قدرت؛ پرقدرته ولی خطر باز شدن گارد داره."],
+        ["Bolo punch (بولو)", "ضربه‌ی دورانی و فریبنده که از پایین با چرخش بزرگ دست میاد؛ بیشتر نمایشیه."],
+        ["Combination (کامبینیشن)", "چند ضربه‌ی پشت‌سرهم و هماهنگ."],
+        ["Flurry (فلوری)", "رگبار ضربات سریع و پیاپی."],
+        ["Double jab (دابل جب)", "دو جب پشت سر هم؛ برای رسیدن به فاصله یا باز کردن گارد."],
+        ["Power punch (پاور پانچ)", "ضربه‌ی سنگین با تمام وزن بدن."],
+        ["Counterpunch (کانترپانچ)", "ضربه‌ای که بلافاصله بعد از حمله‌ی حریف می‌زنی."],
+        ["Sucker punch (ساکر پانچ)", "ضربه‌ی غافلگیرکننده وقتی حریف آماده نیست یا حواسش نیست."],
+        ["Feint (فینت)", "حرکت فریب؛ وانمود به ضربه یا حرکت برای گرفتن واکنش حریف."],
+        ["Rabbit punch (رَبیت پانچ)", "ضربه به پشت سر یا گردن؛ غیرقانونی و خطرناک."],
+      ] },
+      { t: "h", x: "دفاع و جاخالی" },
+      { t: "kv", x: [
+        ["Guard (گارد)", "حالت دفاعی پایه با دست‌های بالا برای محافظت از سر و بدن."],
+        ["High guard (هایگارد)", "گارد با دست‌ها چسبیده به سر؛ پوشش کامل صورت."],
+        ["Peek-a-boo (پیک‌اِ‌بو)", "گارد بسته با مشت‌ها جلوی صورت و حرکت دائمی سر؛ سبک کاس دامتو."],
+        ["Philly shell (فیلی شل)", "دفاع با چرخاندن شانه‌ی جلو برای منحرف کردن ضربه؛ دست جلو روی شکم و دست عقب کنار چانه (Shoulder roll)."],
         ["Slip (اسلیپ)", "جاخالی کناری از ضربه‌ی مستقیم."],
         ["Roll / Bob & Weave (رول / باب‌ویو)", "چرخش یا خم‌شدن زیر ضربه‌ی قوسی."],
-        ["Pull back (پولبک)", "عقب بردن سر برای دور شدن از ضربه."],
+        ["Duck (داک)", "خم شدن سریع زیر ضربه."],
+        ["Pull back (پولبک)", "عقب بردن سر برای دور شدن از ضربه (Lean back)."],
+        ["Parry (پَری)", "کنار زدن ضربه‌ی مستقیم با کف دست."],
+        ["Block (بلاک)", "گرفتن ضربه با دست یا بازو."],
+        ["Cover up (کاورآپ)", "جمع کردن کامل گارد و محافظت از خود زیر حمله‌ی حریف."],
+        ["Catch (کَچ)", "گرفتن ضربه‌ی حریف با دستکش یا کف دست."],
         ["Clinch (کلینچ)", "گرفتن حریف برای قطع حمله؛ بیش از حد مجاز خطاست."],
+        ["Tie up (تای‌آپ)", "بستن دست‌های حریف در فاصله‌ی نزدیک."],
         ["Counter (ضدحمله)", "ضربه‌ای که بلافاصله بعد از ضربه یا جاخالی حریف می‌زنی."],
-        ["Orthodox / Southpaw", "استایل راست‌دست / چپ‌دست."],
+        ["Rope-a-dope (راپ‌ا‌دوپ)", "تکیه به طناب و دفاع، تا حریف خسته بشه و بعد ضدحمله؛ معروف‌شده با محمدعلی."],
+      ] },
+      { t: "h", x: "حرکت و پاکار" },
+      { t: "kv", x: [
+        ["Footwork (فوت‌ورک)", "پاکار؛ نحوه‌ی جابجایی و تعادل پاها."],
+        ["Stance (استنس)", "حالت ایستادن و نحوه‌ی قرارگیری پاها."],
+        ["Orthodox / Southpaw", "استایل راست‌دست (پای چپ جلو) / چپ‌دست (پای راست جلو)."],
+        ["Switch-hitter (سوییچ)", "بوکسوری که بین استایل راست و چپ جابجا می‌شه."],
+        ["Pivot (پیوت)", "چرخش روی پای جلو برای تغییر زاویه و دور شدن از ضربه."],
+        ["Angle (آنگل)", "گرفتن زاویه نسبت به حریف برای ضربه‌ی بهتر و دفاع راحت‌تر."],
+        ["Shuffle (شافل)", "جابجایی کوتاه و سریع با پای جلو و عقب."],
+        ["Step-in / Step-out", "قدم به داخل برای حمله / قدم به بیرون برای خروج از دسترس."],
+        ["Circling (سیرکلینگ)", "چرخیدن دور حریف به‌جای عقب رفتن مستقیم."],
+        ["Cutting off the ring", "بستن مسیر فرار حریف و محدود کردن فضای رینگ."],
+        ["Backpedal (بک‌پدل)", "عقب رفتن مستقیم؛ معمولاً اشتباه تاکتیکی چون حریف رو به جلو داره."],
+        ["Distance (دیستنس)", "فاصله‌ی دو بوکسور؛ بلند، متوسط و نزدیک."],
+        ["Range (رِنج)", "محدوده‌ی ضربه‌زنی؛ بلند، متوسط یا نزدیک."],
+        ["Timing (تایمینگ)", "زمان‌بندی درست ضربه یا دفاع."],
+        ["Tempo / Rhythm", "ریتم و سرعت مبارزه."],
+      ] },
+      { t: "h", x: "سبک مبارزه" },
+      { t: "kv", x: [
+        ["Out-boxer (اوت‌باکسر)", "بوکسور فاصله‌ی دور؛ با جب و پاکار امتیاز می‌گیره."],
+        ["Boxer-puncher (باکسر‌پانچر)", "ترکیبی از تکنیک و قدرت ضربه."],
+        ["Slugger / Brawler", "بوکسور پرقدرت که به ضربه‌های سنگین و درگیری متکی‌ست."],
+        ["Swarmer / Pressure fighter", "بوکسور فشاری؛ با حمله‌ی مداوم حریف رو مجبور به دفاع می‌کنه."],
+        ["Counterpuncher (کانترپانچر)", "بوکسوری که صبر می‌کنه و روی اشتباه حریف ضربه می‌زنه."],
+        ["Infighter (این‌فایتر)", "بوکسور فاصله‌ی نزدیک."],
+        ["Inside / Outside fighting", "مبارزه در فاصله‌ی نزدیک / دور."],
         ["Ring generalship", "کنترل رینگ و تعیین ریتم مبارزه."],
-        ["Knockdown / KO / TKO", "به زمین رفتن / ناک‌اوت / توقف فنی."],
-        ["Prospect", "بوکسور جوان آینده‌دار."],
-        ["Journeyman", "بوکسور باتجربه‌ای که اغلب نقش حریف تست را بازی می‌کنه."],
-        ["Pound-for-pound", "رتبه‌بندی بهترین‌ها بدون در نظر گرفتن وزن."],
-        ["Purse", "پول مسابقه‌ی بوکسور."],
-        ["Cutman", "مراقب بریدگی و تورم در کورنر."],
+        ["Fight IQ / Ring IQ", "هوش مبارزه؛ تصمیم‌گیری درست در موقعیت‌های مختلف."],
+      ] },
+      { t: "h", x: "تمرین و وسایل" },
+      { t: "kv", x: [
+        ["Shadowboxing (شدوباکسینگ)", "تمرین ضربه و حرکت جلوی آینه یا هوا، بدون حریف."],
         ["Sparring (اسپارینگ)", "تمرین مبارزه با حریف."],
+        ["Technical sparring", "اسپارینگ سبک و کنترل‌شده برای تمرین تکنیک."],
+        ["Heavy bag (هوی بگ)", "کیسه‌ی سنگین؛ برای تمرین قدرت و ترکیب ضربات."],
+        ["Speed bag (اسپید بگ)", "توپ سرعت؛ برای ریتم و هماهنگی دست و چشم."],
+        ["Double-end bag", "توپ دوسر کشی؛ برای دقت و واکنش."],
+        ["Mitts / Focus mitts", "دستکش تمرینی مربی؛ برای تمرین ترکیب ضربه، دقت و دفاع."],
+        ["Roadwork (رودورک)", "دویدن و تمرین هوازی؛ پایه‌ی آمادگی بوکسور."],
+        ["Skipping / Jump rope", "طناب‌زنی؛ برای هماهنگی، پاکار و استقامت."],
+        ["Conditioning", "آمادگی جسمانی کلی؛ قدرت، استقامت و سرعت."],
+        ["Training camp (کمپ)", "دوره‌ی آماده‌سازی چندهفته‌ای قبل از مسابقه."],
+        ["Hand wraps (باندپیچی)", "نوار دست برای محافظت از مچ و انگشتان."],
+        ["Gloves (دستکش)", "دستکش بوکس؛ وزن آن بر اساس رده‌ی وزنی و نوع مسابقه فرق داره."],
+        ["Mouthguard (ماوس‌گارد)", "محافظ دهان و دندان."],
+        ["Headgear (هدگیر)", "کلاه محافظ سر؛ در تمرین و آماتور."],
+        ["Groin protector (کاپ)", "محافظ ناحیه‌ی کشاله‌ی ران."],
+      ] },
+      { t: "h", x: "مسابقه و عنوان" },
+      { t: "kv", x: [
+        ["Bout (بات)", "یک مسابقه‌ی بوکس."],
+        ["Round (راند)", "هر دوره‌ی مسابقه؛ بین هر دو راند یک دقیقه استراحت هست."],
+        ["Bell (بِل)", "زنگ شروع و پایان راند."],
+        ["Ring / Ropes / Canvas", "رینگ / طناب‌ها / کف رینگ."],
+        ["Corner (کورنر)", "گوشه‌ی بوکسور که بین راندها اونجا استراحت می‌کنه."],
+        ["Corner man / Second", "نفرات کورنر که بین راندها به بوکسور کمک می‌کنن."],
+        ["Trainer (ترینر)", "مربی اصلی بوکسور."],
+        ["Cutman (کات‌من)", "مراقب بریدگی و تورم در کورنر."],
+        ["Manager (منیجر)", "مدیر برنامه‌ی بوکسور؛ قرارداد و مسابقات رو هماهنگ می‌کنه."],
+        ["Promoter (پروموتر)", "برگزارکننده و سازنده‌ی مسابقه."],
+        ["Matchmaker (مچ‌میکر)", "کسی که حریف مناسب برای مسابقه رو انتخاب می‌کنه."],
+        ["Fight card", "فهرست همه‌ی مسابقات یک شب."],
+        ["Undercard (آندرکارت)", "مسابقات مقدماتی قبل از مسابقه‌ی اصلی."],
+        ["Main event (مین ایونت)", "مسابقه‌ی اصلی شب."],
+        ["Co-main event", "دومین مسابقه‌ی مهم شب."],
+        ["Weigh-in (وزن‌کشی)", "وزن‌کشی رسمی، معمولاً روز قبل از مسابقه."],
+        ["Face-off (فیس‌آف)", "رو در رویی دو بوکسور روی صحنه‌ی وزن‌کشی."],
+        ["Purse (پرس)", "پول مسابقه‌ی بوکسور."],
+        ["Pay-per-view (PPV)", "پخش پولی مسابقه؛ بیننده برای دیدنش جدا هزینه می‌ده."],
+        ["Prospect", "بوکسور جوان آینده‌دار."],
+        ["Contender (کانتندر)", "رقیب جدی برای رسیدن به عنوان."],
+        ["Journeyman", "بوکسور باتجربه‌ای که اغلب نقش حریف تست را بازی می‌کنه."],
+        ["Gatekeeper (گیت‌کیپر)", "بوکسور باتجربه‌ای که قبل از رسیدن به سطح بالا باید ازش عبور کرد."],
+        ["Tune-up fight", "مسابقه‌ی آماده‌سازی؛ معمولاً با حریف آسان‌تر قبل از مسابقه‌ی بزرگ."],
+        ["Title fight", "مسابقه‌ی عنوان قهرمانی."],
+        ["Champion / Challenger", "قهرمان / چالشگر."],
         ["Mandatory challenger", "چالشگر اجباری عنوان."],
-        ["Weigh-in", "وزن‌کشی رسمی."],
+        ["Defense (دفاع از عنوان)", "مسابقه‌ای که قهرمان برای حفظ کمربندش انجام می‌ده."],
+        ["Unification bout", "مسابقه‌ی یکپارچه‌سازی؛ قهرمان‌های سازمان‌های مختلف برای جمع کردن کمربندها."],
+        ["Interim champion", "قهرمان موقت تا برگشتن قهرمان اصلی."],
+        ["Vacant title", "عنوان خالی؛ بدون قهرمان."],
+        ["Lineal champion", "قهرمان اصلی با زنجیره‌ی پیروزی از قهرمان قبلی."],
+        ["Rematch (ری‌مچ)", "مسابقه‌ی مجدد با همان حریف."],
+        ["Pound-for-pound", "رتبه‌بندی بهترین‌ها بدون در نظر گرفتن وزن."],
+        ["Sanctioning body", "سازمان معتبر بوکس مثل WBC، WBA، IBF و WBO."],
+        ["Commission (کمیسیون)", "نهاد قانونی که مسابقه‌ها رو تایید و نظارت می‌کنه."],
+      ] },
+      { t: "h", x: "وزن و بدن" },
+      { t: "kv", x: [
+        ["Weight class", "رده‌ی وزنی."],
+        ["Catchweight (کچ‌ویت)", "وزن توافقی بین دو بوکسور، خارج از رده‌های رسمی."],
+        ["Making weight", "رسیدن به وزن مجاز در وزن‌کشی."],
+        ["Cutting weight", "کاهش سریع وزن قبل از وزن‌کشی؛ اگه اصولی نباشه خطرناکه."],
+        ["Rehydration (ریهیدریشن)", "جبران آب و املاح بدن بعد از وزن‌کشی."],
+        ["Reach (ریچ)", "طول بازو؛ مزیت مهم در فاصله‌ی دور."],
+        ["Chin (چین)", "چانه؛ منظور توانایی تحمل ضربه‌ی روی سر."],
+        ["Glass jaw (گلس جاو)", "بوکسوری که با یک ضربه‌ی کوچک به راحتی از پا می‌افته."],
+        ["Iron chin (آیرن چین)", "بوکسور با تحمل ضربه‌ی بسیار بالا."],
+        ["Stamina / Gas tank", "استقامت؛ توان ادامه دادن در راندهای آخر."],
+        ["Gassed (گسد)", "خسته و بی‌نفس شدن."],
+        ["Hand speed", "سرعت دست‌ها."],
+        ["Power (پاور)", "قدرت ضربه."],
+        ["Heart (هارت)", "اراده و روحیه‌ی جنگندگی."],
+      ] },
+      { t: "h", x: "داوری و نتیجه" },
+      { t: "kv", x: [
+        ["Referee (داور)", "داور وسط رینگ؛ مسابقه رو کنترل می‌کنه و ایمنی رو تضمین می‌کنه."],
+        ["Judges (قاضی‌ها)", "داوران کنار رینگ که امتیاز می‌دن."],
+        ["Ringside doctor", "پزشک کنار رینگ؛ می‌تونه مسابقه رو متوقف کنه."],
+        ["Scorecard (اسکورکارت)", "کارت امتیازدهی هر قاضی."],
+        ["10-point must system", "سیستم ۱۰ امتیازی؛ برنده‌ی راند ۱۰ و بازنده ۹ یا کمتر می‌گیره."],
+        ["10-9 / 10-8 round", "راند معمولی / راندی که با یک یا دو ناک‌داون یا برتری کامل بازنده امتیاز کمتری می‌گیره."],
+        ["Clean punching", "ضربه‌ی تمیز و دقیق که به ناحیه‌ی مجاز می‌خوره؛ معیار اصلی امتیاز."],
+        ["Effective aggression", "حمله‌ی مؤثر؛ حمله‌ای که نتیجه داشته باشه، نه فقط جلو رفتن."],
+        ["Knockdown (ناک‌داون)", "به زمین رفتن بوکسور بر اثر ضربه."],
+        ["Count (کانت)", "شمارش داور برای بوکسور زمین‌خورده تا ۱۰."],
+        ["Standing eight count", "شمارش ۸ بدون زمین خوردن؛ وقتی داور بوکسور آسیب‌دیده رو چک می‌کنه (در برخی قوانین)."],
+        ["KO (ناک‌اوت)", "بوکسور بعد از ۱۰ شمارش نتونه بلند بشه."],
+        ["TKO (توقف فنی)", "توقف مسابقه توسط داور یا پزشک چون بوکسور نمی‌تونه ادامه بده."],
+        ["RTD (انصراف)", "بوکسور یا کورنر قبل از شروع راند بعد انصراف می‌دن."],
+        ["Technical decision", "مسابقه به‌خاطر اتفاقی مثل بریدگی نیمه‌کاره می‌مونه و با امتیاز تا اون لحظه تصمیم‌گیری می‌شه."],
+        ["Unanimous decision (UD)", "هر سه قاضی یک بوکسور رو برنده اعلام می‌کنن."],
+        ["Split decision (SD)", "قاضی‌ها اختلاف نظر دارن؛ دو نفر به یک بوکسور و یکی به دیگری رای می‌ده."],
+        ["Majority decision (MD)", "دو قاضی یک برنده و قاضی سوم مساوی می‌ده."],
+        ["Draw (مساوی)", "نتیجه‌ی مساوی؛ می‌تونه اکثریتی، اختلافی یا یکپارچه باشه."],
+        ["No contest (NC)", "مسابقه بدون نتیجه؛ مثلاً بعد از اتفاق غیرعمدی در راندهای اول."],
+        ["DQ (رد صلاحیت)", "رد صلاحیت بوکسور به‌خاطر خطای فاحش."],
+        ["Saved by the bell", "زنگ راند درست قبل از ناک‌اوت نجاتش داد."],
+        ["Throw in the towel", "پرتاب حوله از کورنر؛ علامت انصراف و توقف مسابقه."],
+        ["Stoppage (استاپیج)", "توقف مسابقه توسط داور."],
+        ["Low blow", "ضربه‌ی غیرقانونی زیر کمربند."],
+        ["Holding (هولدینگ)", "گرفتن و نگه‌داشتن حریف؛ خطا محسوب می‌شه."],
+        ["Headbutt (هدباتینگ)", "برخورد عمدی یا غیرعمدی سر؛ باعث بریدگی می‌شه."],
+        ["Break (بریک)", "فرمان داور برای جدا شدن از کلینچ."],
+        ["Box / Stop / Time", "فرمان شروع یا ادامه / توقف / توقف ساعت."],
+        ["Protect yourself at all times", "همیشه از خودت محافظت کن؛ جمله‌ی معروف داور قبل از شروع مسابقه."],
+      ] },
+      { t: "h", x: "اصطلاحات تفسیر مسابقه" },
+      { t: "kv", x: [
+        ["Hurt (هرت)", "بوکسور آسیب دیده و ضربه رو حس کرده."],
+        ["Stunned / Wobbled / Buzzed", "گیج شدن، تلوتلو خوردن یا لحظه‌ای بی‌تعادلی بر اثر ضربه."],
+        ["On the ropes", "گیر افتادن روی طناب‌ها."],
+        ["Backing up", "عقب رفتن زیر فشار حریف."],
+        ["Dropped (دراپ)", "به زمین رفتن."],
+        ["Take the count", "ماندن روی زمین و پذیرفتن شمارش."],
+        ["Ring rust", "کم‌فروغی بعد از مدت طولانی دوری از مسابقه."],
+        ["Sweet science", "علم شیرین؛ لقب بوکس به‌خاطر ظرافت تاکتیکی."],
+        ["Cauliflower ear", "گوش گل‌کلمی؛ ورم دائمی گوش بر اثر ضربه‌ی مکرر."],
+        ["Hematoma (هماتوم)", "تجمع خون زیر پوست؛ ورم و کبودی بعد از ضربه."],
       ] },
     ],
   },
@@ -7978,8 +7894,8 @@ function HomeScreen({ onNavigate, menuOpen, setMenuOpen, onLogout, isAdmin, acco
     { color: "#8FA3B8", key: "info-rules", label: tr("قوانین و مقررات"), icon: MenuRulesIcon },
     { color: "#D91E2B", key: "invite", label: tr("دعوت از دوستان"), icon: MenuInviteIcon },
     { color: "#4DA3FF", key: "language", label: tr("تغییر زبان") + " / Language", icon: MenuGlobeIcon },
-    // فعلاً پشتیبانی فقط برای ادمین نشون داده می‌شه (برای مدیریت گفتگوهای قبلی)، از دسترس کاربر عادی خارجه
-    ...(isAdmin ? [{ color: "#4DA3FF", key: "support", label: tr("پشتیبانی"), icon: MenuSupportIcon }] : []),
+    // پشتیبانی برای همه‌ی کاربران بازه (فقط متنی)؛ مهمان قبل از ارسال پیام باید وارد حساب بشه
+    { color: "#4DA3FF", key: "support", label: tr("پشتیبانی"), icon: MenuSupportIcon },
     { color: "#4DA3FF", key: "info-about", label: tr("درباره آکادمی Naseri"), icon: MenuAboutIcon },
     ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-users", label: tr("لیست کاربران"), icon: MenuUsersIcon }] : []),
     ...(isAdmin ? [{ color: "#4DA3FF", key: "admin-announce", label: tr("ارسال اعلان به کاربران"), icon: MenuUpdateIcon }] : []),
@@ -11647,6 +11563,7 @@ function App() {
   };
 
   const handleOpenSupport = () => {
+    if (authUser?.isGuest) { handleLeaveGuest(); return; }
     if (authUser?.isAdmin) openSupportInbox();
     else openMySupportChat();
   };
@@ -11691,29 +11608,6 @@ function App() {
       });
       // اگه ربات جواب داد یعنی همون لحظه پاسخ داده شده، وگرنه هنوز منتظر پشتیبانه
       setSupportStatus(botReply ? "answered" : "pending");
-    }
-  };
-
-  const handleSendSupportVoice = async (audioData) => {
-    if (authUser?.isAdmin && activeSupportIdentifier) {
-      await apiSendSupportVoiceReply(authToken, activeSupportIdentifier, audioData);
-      setSupportMessages((prev) => [
-        ...prev,
-        { sender: "admin", message: tr("پیام صوتی"), type: "voice", audioData, createdAt: Date.now() },
-      ]);
-      refreshSupportStatus();
-    } else {
-      const { botReply } = await apiSendSupportVoice(authToken, audioData);
-      setSupportMessages((prev) => {
-        const next = [
-          ...prev,
-          { sender: "user", message: tr("پیام صوتی"), type: "voice", audioData, createdAt: Date.now() },
-        ];
-        if (botReply) next.push(botReply);
-        return next;
-      });
-      // پیام صوتی رو ربات نمی‌فهمه، پس همیشه منتظر پشتیبانی می‌مونه
-      setSupportStatus("pending");
     }
   };
 
@@ -12401,7 +12295,6 @@ function App() {
               messages={supportMessages}
               myRole={authUser?.isAdmin && activeSupportIdentifier ? "admin" : "user"}
               onSend={handleSendSupportMessage}
-              onSendVoice={handleSendSupportVoice}
               onBack={() => {
                 if (authUser?.isAdmin && activeSupportIdentifier) {
                   setStep("support-inbox");
