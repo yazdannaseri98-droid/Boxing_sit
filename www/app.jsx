@@ -1162,93 +1162,33 @@ function demoMatchBotReply(message) {
   return null;
 }
 
-async function apiSendSupportMessage(token, message) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    const messages = stored ? JSON.parse(stored) : [];
-    messages.push({ sender: "user", message, createdAt: Date.now() });
-    let botReply = null;
-    const botAnswer = demoMatchBotReply(message);
-    if (botAnswer) {
-      botReply = { sender: "bot", message: botAnswer, createdAt: Date.now() };
-      messages.push(botReply);
-    }
-    await AppStorage.set("demo-support-messages", JSON.stringify(messages));
-    return { botReply };
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ message }),
+// ---------- پشتیبانی: گفتگوها (هر گفتگو یه تیکت با وضعیت open / closed) ----------
+async function supportApi(token, path, { method = "GET", body, fallback } = {}) {
+  const res = await apiFetch(`${API_BASE_URL}/support/${path}`, {
+    method,
+    headers: { ...(body ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${token}` },
+    body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) triggerAuthFailure();
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("ارسال پیام با خطا مواجه شد"));
-  return { botReply: data.botReply || null };
+  if (!res.ok || !data.ok) {
+    const err = new Error(data.error || fallback || tr("خطایی رخ داد. دوباره امتحان کن"));
+    err.code = data.code;
+    throw err;
+  }
+  return data;
 }
 
-async function apiFetchMySupportMessages(token) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    return stored ? JSON.parse(stored) : [];
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/messages`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("دریافت پیام‌ها با خطا مواجه شد"));
-  return data.messages || [];
-}
-
-async function apiFetchSupportThreads(token) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    const messages = stored ? JSON.parse(stored) : [];
-    if (!messages.length) return [];
-    const last = messages[messages.length - 1];
-    return [{ identifier: "demo@example.com", lastMessage: last.message, lastSender: last.sender, lastAt: last.createdAt }];
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/threads`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("دریافت لیست گفتگوها با خطا مواجه شد"));
-  return data.threads || [];
-}
-
-async function apiFetchSupportThread(token, identifier) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    return stored ? JSON.parse(stored) : [];
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/threads/${encodeURIComponent(identifier)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("دریافت گفتگو با خطا مواجه شد"));
-  return data.messages || [];
-}
-
-async function apiSendSupportReply(token, identifier, message) {
-  if (DEMO_MODE) {
-    const stored = await AppStorage.get("demo-support-messages");
-    const messages = stored ? JSON.parse(stored) : [];
-    messages.push({ sender: "admin", message, createdAt: Date.now() });
-    await AppStorage.set("demo-support-messages", JSON.stringify(messages));
-    return;
-  }
-  const res = await apiFetch(`${API_BASE_URL}/support/threads/${encodeURIComponent(identifier)}/reply`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ message }),
-  });
-  if (res.status === 401) triggerAuthFailure();
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) throw new Error(data.error || tr("ارسال پاسخ با خطا مواجه شد"));
-}
+// کاربر
+const apiMyChats = async (token) => (await supportApi(token, "chats", { fallback: tr("دریافت لیست گفتگوها با خطا مواجه شد") })).chats || [];
+const apiStartChat = (token, message) => supportApi(token, "chats", { method: "POST", body: { message }, fallback: tr("ارسال پیام با خطا مواجه شد") });
+const apiMyChat = (token, id) => supportApi(token, `chats/${id}`, { fallback: tr("دریافت گفتگو با خطا مواجه شد") });
+const apiChatSend = (token, id, message) => supportApi(token, `chats/${id}/messages`, { method: "POST", body: { message }, fallback: tr("ارسال پیام با خطا مواجه شد") });
+// ادمین
+const apiAdminChats = (token, status) => supportApi(token, `admin/chats?status=${status}`, { fallback: tr("دریافت لیست گفتگوها با خطا مواجه شد") });
+const apiAdminChat = (token, id) => supportApi(token, `admin/chats/${id}`, { fallback: tr("دریافت گفتگو با خطا مواجه شد") });
+const apiAdminChatReply = (token, id, message) => supportApi(token, `admin/chats/${id}/reply`, { method: "POST", body: { message }, fallback: tr("ارسال پاسخ با خطا مواجه شد") });
+const apiAdminChatStatus = (token, id, action) => supportApi(token, `admin/chats/${id}/${action}`, { method: "POST", fallback: tr("تغییر وضعیت گفتگو با خطا مواجه شد") });
 
 function formatExpiryDate(timestamp) {
   try {
@@ -5209,10 +5149,15 @@ function AccordionScreen({ title, items, onBack, headerExtra }) {
 
 // ---------- Screen: Admin - User list ----------
 // ---------- Screen: پشتیبانی - چت (هم برای کاربر عادی، هم برای ادمین وقتی یه گفتگوی خاص رو باز می‌کنه) ----------
-function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }) {
+const SUPPORT_BG_STYLE = { backgroundImage: "url(assets/support-bg.webp)", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" };
+
+function SupportChatScreen({ title, subtitle, messages, myRole, status, onSend, onBack, onCloseChat, onReopenChat, onNewChat }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
   const scrollRef = useRef(null);
+  const closed = status === "closed";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -5220,37 +5165,72 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
 
   const handleSend = async () => {
     const value = text.trim();
-    if (!value || sending) return;
+    if (!value || sending || closed) return;
     setSending(true);
+    setSendError("");
     try {
       await onSend(value);
       setText("");
-    } catch {
-      // خطای شبکه - متن توی فیلد می‌مونه تا دوباره امتحان کنه
+    } catch (err) {
+      // متن توی فیلد می‌مونه تا کاربر دوباره امتحان کنه؛ دلیل خطا نشون داده می‌شه
+      setSendError(err?.message || tr("ارسال پیام با خطا مواجه شد"));
     } finally {
       setSending(false);
     }
   };
 
-  // وضعیت گفتگو فقط برای خودِ کاربر نشون داده می‌شه: بر اساس آخرین پیام مشخص می‌شه
-  // که پیامش هنوز در حال بررسیه (زرد) یا پشتیبانی جواب داده (سبز)
+  const changeStatus = async (fn) => {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    setSendError("");
+    try {
+      await fn();
+    } catch (err) {
+      setSendError(err?.message || tr("تغییر وضعیت گفتگو با خطا مواجه شد"));
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  // وضعیت گفتگو فقط برای خودِ کاربر و فقط وقتی گفتگو بازه: بر اساس آخرین پیام مشخص می‌شه
+  // که پیامش هنوز در حال بررسیه (زرد) یا پشتیبانی جواب داده (آبی)
   const lastMessage = messages.length ? messages[messages.length - 1] : null;
-  const showStatusBanner = myRole === "user" && Boolean(lastMessage);
+  const showStatusBanner = myRole === "user" && Boolean(lastMessage) && !closed;
   const isAnswered = lastMessage?.sender === "admin" || lastMessage?.sender === "bot";
 
   return (
-    <div
-      className="flex-1 flex flex-col min-h-0"
-      dir={APP_DIR}
-      style={{ backgroundImage: "url(assets/support-bg.webp)", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
-    >
+    <div className="flex-1 flex flex-col min-h-0" dir={APP_DIR} style={SUPPORT_BG_STYLE}>
       <div className="px-5 pt-3 pb-2 shrink-0">
-        <button
-          onClick={onBack}
-          style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }}
-          className="text-sm mb-3 rounded-lg px-3 py-1.5 font-bold inline-block"
-        >
-          {tr("› بازگشت")}</button>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <button
+            onClick={onBack}
+            style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }}
+            className="text-sm rounded-lg px-3 py-1.5 font-bold inline-block"
+          >
+            {tr("› بازگشت")}</button>
+          {myRole === "admin" && !closed && onCloseChat && (
+            <button
+              onClick={() => {
+                if (window.confirm(tr("این گفتگو رو بسته اعلام کنی؟ کاربر دیگه نمی‌تونه توش پیام بده."))) changeStatus(onCloseChat);
+              }}
+              disabled={statusBusy}
+              data-testid="close-chat"
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" }}
+              className="text-sm rounded-lg px-3 py-1.5 font-bold"
+            >
+              {tr("بستن گفتگو")}</button>
+          )}
+          {myRole === "admin" && closed && onReopenChat && (
+            <button
+              onClick={() => changeStatus(onReopenChat)}
+              disabled={statusBusy}
+              data-testid="reopen-chat"
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#17161A", color: "#4DA3FF", border: "1px solid #4DA3FF" }}
+              className="text-sm rounded-lg px-3 py-1.5 font-bold"
+            >
+              {tr("باز کردن دوباره")}</button>
+          )}
+        </div>
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black">
           {title}
         </h1>
@@ -5322,30 +5302,53 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
         })}
       </div>
 
-      <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
-          }}
-          placeholder={tr("پیامت رو بنویس...")}
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
-          className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
-        />
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          style={{
-            fontFamily: "Vazirmatn, sans-serif",
-            background: !sending ? "#D91E2B" : "#3a2226",
-            color: !sending ? "#F3EEE6" : "#7a5a5d",
-          }}
-          className="rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
-        >
-          {tr("ارسال")}</button>
-      </div>
-      {myRole === "user" && (
+      {sendError && (
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }} className="text-xs text-center px-4 pb-2 shrink-0 leading-6">
+          {sendError}
+        </p>
+      )}
+
+      {closed ? (
+        <div className="px-4 py-3 shrink-0 text-center" style={{ borderTop: "1px solid #2a292e", background: "rgba(11,11,13,0.85)" }}>
+          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-bold mb-1">
+            {tr("این گفتگو بسته شده.")}</p>
+          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }} className="text-xs leading-6">
+            {myRole === "admin" ? tr("برای پاسخ دادن، اول دوباره بازش کن.") : tr("برای سوال جدید یه گفتگوی تازه شروع کن.")}</p>
+          {myRole === "user" && onNewChat && (
+            <button
+              onClick={onNewChat}
+              style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" }}
+              className="rounded-xl px-5 py-2.5 text-sm font-bold mt-3"
+            >
+              {tr("شروع گفتگوی جدید")}</button>
+          )}
+        </div>
+      ) : (
+        <div className="px-4 py-3 flex items-center gap-2 shrink-0" style={{ borderTop: "1px solid #2a292e" }}>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSend();
+            }}
+            placeholder={tr("پیامت رو بنویس...")}
+            style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" }}
+            className="flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            style={{
+              fontFamily: "Vazirmatn, sans-serif",
+              background: !sending ? "#D91E2B" : "#3a2226",
+              color: !sending ? "#F3EEE6" : "#7a5a5d",
+            }}
+            className="rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
+          >
+            {tr("ارسال")}</button>
+        </div>
+      )}
+      {myRole === "user" && !closed && (
         <p
           style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }}
           className="text-[11px] text-center leading-5 px-6 pb-3 shrink-0"
@@ -5356,10 +5359,109 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
   );
 }
 
-// ---------- Screen: پشتیبانی - لیست گفتگوها (فقط ادمین) ----------
-function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
+// ---------- پشتیبانی: کارت یک گفتگو توی لیست (هم برای کاربر هم برای ادمین) ----------
+function SupportChatCard({ chat, showIdentifier, isAdmin, onOpen }) {
+  const closed = chat.status === "closed";
+  const waiting = !closed && chat.lastSender === "user"; // کاربر پیام داده و هنوز جواب نگرفته
+  const preview = chat.lastMessage || chat.firstMessage || "";
   return (
-    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR}>
+    <button
+      onClick={() => onOpen(chat)}
+      className="text-right rounded-xl p-3 w-full"
+      style={{ background: "rgba(23,22,26,0.94)", border: `1px solid ${closed ? "#2a292e" : waiting ? "#D91E2B" : "#1C6FD1"}` }}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        {showIdentifier ? (
+          <span style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }} className="text-sm font-bold truncate">
+            {chat.identifier}
+          </span>
+        ) : (
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs font-bold truncate">
+            {tr("گفتگوی {n}", { n: Number(chat.id).toLocaleString(NUM_LOCALE) })}
+          </span>
+        )}
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0"
+          style={{
+            fontFamily: "Vazirmatn, sans-serif",
+            color: closed ? "#9A97A0" : waiting ? "#F3EEE6" : "#8CC4FF",
+            background: closed ? "#26252a" : waiting ? "#D91E2B" : "rgba(28,111,209,0.2)",
+          }}
+        >
+          {closed ? tr("بسته‌شده") : isAdmin ? (waiting ? tr("منتظر پاسخ") : tr("فعال")) : waiting ? tr("در انتظار پاسخ") : tr("پاسخ داده شد")}
+        </span>
+      </div>
+      <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs truncate">
+        {chat.lastSender === "admin" ? tr("پشتیبان: ") : chat.lastSender === "bot" ? tr("🤖 ") : chat.lastSender === "user" && isAdmin ? "" : chat.lastSender === "user" ? tr("شما: ") : ""}
+        {preview}
+      </p>
+      <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0", direction: "ltr", display: "inline-block" }} className="text-[10px] mt-1">
+        {formatMessageTime(chat.lastAt)}
+      </span>
+    </button>
+  );
+}
+
+// ---------- Screen: پشتیبانی - صفحه‌ی اول کاربر (گفتگوهای فعال و بسته‌شده) ----------
+function SupportListScreen({ chats, loading, error, onOpen, onNew, onBack }) {
+  const active = chats.filter((c) => c.status !== "closed");
+  const closedList = chats.filter((c) => c.status === "closed");
+  const head = (text, n) => (
+    <h2 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black mt-5 mb-2">
+      {text} <span style={{ color: "#9A97A0" }}>({n.toLocaleString(NUM_LOCALE)})</span>
+    </h2>
+  );
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR} style={SUPPORT_BG_STYLE}>
+      <button
+        onClick={onBack}
+        style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }}
+        className="text-sm mb-4 rounded-lg px-3 py-1.5 font-bold inline-block"
+      >
+        {tr("› بازگشت")}</button>
+      <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-3">
+        {tr("پشتیبانی")}</h1>
+      <button
+        onClick={onNew}
+        data-testid="new-chat"
+        style={{ fontFamily: "Vazirmatn, sans-serif", background: "#D91E2B", color: "#F3EEE6" }}
+        className="w-full rounded-xl py-3.5 text-sm font-bold"
+      >
+        {tr("＋ گفتگوی جدید")}</button>
+
+      {loading && (
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm text-center mt-10">
+          {tr("در حال بارگذاری…")}</p>
+      )}
+      {error && (
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }} className="text-sm text-center mt-10">{error}</p>
+      )}
+      {!loading && !error && chats.length === 0 && (
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }} className="text-sm text-center leading-7 mt-10">
+          {tr("هنوز گفتگویی نداری. برای سوال یا مشکلت یه گفتگوی جدید شروع کن.")}</p>
+      )}
+
+      {!loading && !error && active.length > 0 && (
+        <>
+          {head(tr("گفتگوهای فعال"), active.length)}
+          <div className="flex flex-col gap-2">{active.map((c) => <SupportChatCard key={c.id} chat={c} onOpen={onOpen} />)}</div>
+        </>
+      )}
+      {!loading && !error && closedList.length > 0 && (
+        <>
+          {head(tr("گفتگوهای بسته‌شده"), closedList.length)}
+          <div className="flex flex-col gap-2">{closedList.map((c) => <SupportChatCard key={c.id} chat={c} onOpen={onOpen} />)}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------- Screen: پشتیبانی - لیست گفتگوها (فقط ادمین) ----------
+function SupportInboxScreen({ chats, counts, tab, onTab, loading, error, onOpenChat, onBack }) {
+  const tabs = [["open", tr("فعال")], ["closed", tr("بسته‌شده")]];
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pt-3 pb-6" dir={APP_DIR} style={SUPPORT_BG_STYLE}>
       <button
         onClick={onBack}
         style={{ color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" }}
@@ -5369,47 +5471,37 @@ function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-4">
         {tr("پشتیبانی")}</h1>
 
+      <div className="flex rounded-xl p-1 mb-4" style={{ background: "rgba(23,22,26,0.94)", border: "1px solid #2a292e" }}>
+        {tabs.map(([k, l]) => (
+          <button
+            key={k}
+            data-testid={`inbox-tab-${k}`}
+            onClick={() => onTab(k)}
+            className="flex-1 rounded-lg py-2 text-sm font-bold"
+            style={{ fontFamily: "Vazirmatn, sans-serif", background: tab === k ? "#D91E2B" : "transparent", color: tab === k ? "#F3EEE6" : "#8A8790" }}
+          >
+            {l} ({Number(counts?.[k] || 0).toLocaleString(NUM_LOCALE)})
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm text-center mt-10">
           {tr("در حال بارگذاری…")}</p>
       )}
       {error && (
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#D91E2B" }} className="text-sm text-center mt-10">
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#FF6B76" }} className="text-sm text-center mt-10">
           {error}
         </p>
       )}
-      {!loading && !error && threads.length === 0 && (
-        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }} className="text-sm text-center mt-10">
-          {tr("هنوز هیچ تیکتی ثبت نشده.")}</p>
+      {!loading && !error && chats.length === 0 && (
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }} className="text-sm text-center mt-10">
+          {tab === "closed" ? tr("هنوز گفتگوی بسته‌شده‌ای نیست.") : tr("هیچ گفتگوی فعالی نیست.")}</p>
       )}
 
       <div className="flex flex-col gap-2">
-        {threads.map((t) => (
-          <button
-            key={t.identifier}
-            onClick={() => onOpenThread(t.identifier)}
-            className="text-right rounded-xl p-3"
-            style={{ background: "#17161A", border: "1px solid #2a292e" }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span
-                style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }}
-                className="text-sm font-bold"
-              >
-                {t.identifier}
-              </span>
-              {t.lastSender === "user" && (
-                <span
-                  style={{ background: "#D91E2B" }}
-                  className="w-2 h-2 rounded-full shrink-0"
-                />
-              )}
-            </div>
-            <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs truncate">
-              {t.lastSender === "admin" ? tr("شما: ") : ""}
-              {t.lastMessage}
-            </p>
-          </button>
+        {chats.map((c) => (
+          <SupportChatCard key={c.id} chat={c} showIdentifier isAdmin onOpen={onOpenChat} />
         ))}
       </div>
     </div>
@@ -11233,11 +11325,10 @@ function getHardwareBackDestination(step, activeLesson, isAdmin, activeSupportId
     case "admin-update":
     case "admin-announce":
     case "support-inbox":
+    case "support-list":
       return { type: "stepAndMenu", step: "home" };
     case "support-chat":
-      return isAdmin && activeSupportIdentifier
-        ? { type: "step", step: "support-inbox" }
-        : { type: "stepAndMenu", step: "home" };
+      return { type: "step", step: isAdmin ? "support-inbox" : "support-list" };
     default:
       return { type: "root" };
   }
@@ -11313,7 +11404,10 @@ function App() {
   const chapterTitles = useMemo(() => T(chapterTitlesRaw), [chapterTitlesRaw, dynVer, showRaw]);
   const contentOverrides = useMemo(() => T(contentOverridesRaw), [contentOverridesRaw, dynVer, showRaw]); // متن‌های ویرایش‌شده‌ی ادمین (نکات / سوالات / مربی / قوانین / درباره)
   const [supportMessages, setSupportMessages] = useState([]);
-  const [supportThreads, setSupportThreads] = useState([]);
+  const [supportChats, setSupportChats] = useState([]); // کاربر: گفتگوهای خودش | ادمین: گفتگوهای تب فعلی
+  const [supportCounts, setSupportCounts] = useState({ open: 0, closed: 0 });
+  const [supportTab, setSupportTab] = useState("open"); // تب صندوق ادمین: "open" | "closed"
+  const [activeChat, setActiveChat] = useState(null); // { id (null = گفتگوی جدید)، status, identifier? }
   const [supportLoading, setSupportLoading] = useState(false);
   const [supportError, setSupportError] = useState("");
   const [activeSupportIdentifier, setActiveSupportIdentifier] = useState(null); // null = گفتگوی خودِ کاربر
@@ -11595,20 +11689,21 @@ function App() {
   };
 
   const refreshSupportStatus = async () => {
-    if (!authToken) {
+    if (!authToken || authUser?.isGuest) {
       setSupportStatus(null);
       return;
     }
     try {
       if (authUser?.isAdmin) {
-        const threads = await apiFetchSupportThreads(authToken);
-        if (threads.length === 0) setSupportStatus(null);
-        else if (threads.some((t) => t.lastSender === "user")) setSupportStatus("pending");
+        const { chats } = await apiAdminChats(authToken, "open");
+        if (chats.length === 0) setSupportStatus(null);
+        else if (chats.some((c) => c.lastSender === "user")) setSupportStatus("pending");
         else setSupportStatus("answered");
       } else {
-        const messages = await apiFetchMySupportMessages(authToken);
-        if (messages.length === 0) setSupportStatus(null);
-        else setSupportStatus(messages[messages.length - 1].sender === "user" ? "pending" : "answered");
+        const open = (await apiMyChats(authToken)).filter((c) => c.status === "open");
+        if (open.length === 0) setSupportStatus(null);
+        else if (open.some((c) => c.lastSender === "user")) setSupportStatus("pending");
+        else setSupportStatus("answered");
       }
     } catch {
       // خطای شبکه - نقطه‌ی رنگی فعلی رو دست‌نخورده می‌ذاریم
@@ -11620,28 +11715,18 @@ function App() {
     refreshSupportStatus();
   }, [authToken, authUser?.isAdmin]);
 
-  const openMySupportChat = async () => {
+  // ----- کاربر: صفحه‌ی اول پشتیبانی (لیست گفتگوهای فعال و بسته‌شده) -----
+  const openSupportList = async () => {
+    setActiveChat(null);
     setActiveSupportIdentifier(null);
-    setStep("support-chat");
+    setStep("support-list");
     setSupportLoading(true);
     setSupportError("");
     try {
-      const messages = await apiFetchMySupportMessages(authToken);
-      setSupportMessages(messages);
-    } catch (err) {
-      setSupportError(err.message || tr("دریافت گفتگو با خطا مواجه شد"));
-    } finally {
-      setSupportLoading(false);
-    }
-  };
-
-  const openSupportInbox = async () => {
-    setStep("support-inbox");
-    setSupportLoading(true);
-    setSupportError("");
-    try {
-      const threads = await apiFetchSupportThreads(authToken);
-      setSupportThreads(threads);
+      const chats = await apiMyChats(authToken);
+      setSupportChats(chats);
+      const open = chats.filter((c) => c.status === "open");
+      setSupportStatus(open.length === 0 ? null : open.some((c) => c.lastSender === "user") ? "pending" : "answered");
     } catch (err) {
       setSupportError(err.message || tr("دریافت لیست گفتگوها با خطا مواجه شد"));
     } finally {
@@ -11649,25 +11734,78 @@ function App() {
     }
   };
 
-  const openAdminSupportThread = async (identifier) => {
-    setActiveSupportIdentifier(identifier);
+  const openMyChat = async (chat) => {
+    setActiveChat({ id: chat.id, status: chat.status });
+    setActiveSupportIdentifier(null);
+    setSupportMessages([]);
+    setSupportError("");
     setStep("support-chat");
+    try {
+      const data = await apiMyChat(authToken, chat.id);
+      setSupportMessages(data.messages || []);
+      setActiveChat({ id: chat.id, status: data.chat?.status || chat.status });
+    } catch (err) {
+      setSupportError(err.message || tr("دریافت گفتگو با خطا مواجه شد"));
+    }
+  };
+
+  const startNewChat = () => {
+    setActiveChat({ id: null, status: "open" });
+    setActiveSupportIdentifier(null);
+    setSupportMessages([]);
+    setSupportError("");
+    setStep("support-chat");
+  };
+
+  // ----- ادمین: صندوق گفتگوها با دو تب «فعال» و «بسته‌شده» -----
+  const openSupportInbox = async (tab = supportTab) => {
+    setSupportTab(tab);
+    setActiveChat(null);
+    setActiveSupportIdentifier(null);
+    setStep("support-inbox");
     setSupportLoading(true);
     setSupportError("");
     try {
-      const messages = await apiFetchSupportThread(authToken, identifier);
-      setSupportMessages(messages);
+      const data = await apiAdminChats(authToken, tab);
+      setSupportChats(data.chats || []);
+      setSupportCounts(data.counts || { open: 0, closed: 0 });
+      if (tab === "open") {
+        const list = data.chats || [];
+        setSupportStatus(list.length === 0 ? null : list.some((c) => c.lastSender === "user") ? "pending" : "answered");
+      }
     } catch (err) {
-      setSupportError(err.message || tr("دریافت گفتگو با خطا مواجه شد"));
+      setSupportError(err.message || tr("دریافت لیست گفتگوها با خطا مواجه شد"));
     } finally {
       setSupportLoading(false);
     }
   };
 
+  const openAdminChat = async (chat) => {
+    setActiveChat({ id: chat.id, status: chat.status, identifier: chat.identifier });
+    setActiveSupportIdentifier(chat.identifier);
+    setSupportMessages([]);
+    setSupportError("");
+    setStep("support-chat");
+    try {
+      const data = await apiAdminChat(authToken, chat.id);
+      setSupportMessages(data.messages || []);
+      setActiveChat({ id: chat.id, status: data.chat?.status || chat.status, identifier: chat.identifier });
+    } catch (err) {
+      setSupportError(err.message || tr("دریافت گفتگو با خطا مواجه شد"));
+    }
+  };
+
+  const handleChatStatus = async (action) => {
+    if (!activeChat?.id) return;
+    await apiAdminChatStatus(authToken, activeChat.id, action);
+    setActiveChat((c) => (c ? { ...c, status: action === "close" ? "closed" : "open" } : c));
+    refreshSupportStatus();
+  };
+
   const handleOpenSupport = () => {
     if (authUser?.isGuest) { handleLeaveGuest(); return; }
-    if (authUser?.isAdmin) openSupportInbox();
-    else openMySupportChat();
+    if (authUser?.isAdmin) openSupportInbox("open");
+    else openSupportList();
   };
 
   const handleInviteFriends = async (kind = "android") => {
@@ -11697,12 +11835,24 @@ function App() {
   };
 
   const handleSendSupportMessage = async (text) => {
-    if (authUser?.isAdmin && activeSupportIdentifier) {
-      await apiSendSupportReply(authToken, activeSupportIdentifier, text);
-      setSupportMessages((prev) => [...prev, { sender: "admin", message: text, createdAt: Date.now() }]);
-      refreshSupportStatus();
-    } else {
-      const { botReply } = await apiSendSupportMessage(authToken, text);
+    if (!activeChat) return;
+    try {
+      if (authUser?.isAdmin && activeChat.id) {
+        await apiAdminChatReply(authToken, activeChat.id, text);
+        setSupportMessages((prev) => [...prev, { sender: "admin", message: text, createdAt: Date.now() }]);
+        refreshSupportStatus();
+        return;
+      }
+      let botReply;
+      if (!activeChat.id) {
+        // اولین پیام: گفتگوی جدید ساخته می‌شه
+        const data = await apiStartChat(authToken, text);
+        botReply = data.botReply || null;
+        setActiveChat({ id: data.chat.id, status: "open" });
+      } else {
+        const data = await apiChatSend(authToken, activeChat.id, text);
+        botReply = data.botReply || null;
+      }
       setSupportMessages((prev) => {
         const next = [...prev, { sender: "user", message: text, createdAt: Date.now() }];
         if (botReply) next.push(botReply);
@@ -11710,6 +11860,9 @@ function App() {
       });
       // اگه ربات جواب داد یعنی همون لحظه پاسخ داده شده، وگرنه هنوز منتظر پشتیبانه
       setSupportStatus(botReply ? "answered" : "pending");
+    } catch (err) {
+      if (err.code === "CHAT_CLOSED") setActiveChat((c) => (c ? { ...c, status: "closed" } : c));
+      throw err;
     }
   };
 
@@ -12378,12 +12531,28 @@ function App() {
               }}
             />
           )}
-          {step === "support-inbox" && (
-            <SupportInboxScreen
-              threads={supportThreads}
+          {step === "support-list" && (
+            <SupportListScreen
+              chats={supportChats}
               loading={supportLoading}
               error={supportError}
-              onOpenThread={openAdminSupportThread}
+              onOpen={openMyChat}
+              onNew={startNewChat}
+              onBack={() => {
+                setStep("home");
+                setMenuOpen(true);
+              }}
+            />
+          )}
+          {step === "support-inbox" && (
+            <SupportInboxScreen
+              chats={supportChats}
+              counts={supportCounts}
+              tab={supportTab}
+              onTab={(t) => openSupportInbox(t)}
+              loading={supportLoading}
+              error={supportError}
+              onOpenChat={openAdminChat}
               onBack={() => {
                 setStep("home");
                 setMenuOpen(true);
@@ -12393,17 +12562,17 @@ function App() {
           {step === "support-chat" && (
             <SupportChatScreen
               title={tr("پشتیبانی")}
-              subtitle={authUser?.isAdmin && activeSupportIdentifier ? activeSupportIdentifier : null}
+              subtitle={authUser?.isAdmin && activeChat?.identifier ? activeChat.identifier : null}
               messages={supportMessages}
-              myRole={authUser?.isAdmin && activeSupportIdentifier ? "admin" : "user"}
+              myRole={authUser?.isAdmin ? "admin" : "user"}
+              status={activeChat?.status || "open"}
               onSend={handleSendSupportMessage}
+              onCloseChat={authUser?.isAdmin ? () => handleChatStatus("close") : undefined}
+              onReopenChat={authUser?.isAdmin ? () => handleChatStatus("reopen") : undefined}
+              onNewChat={startNewChat}
               onBack={() => {
-                if (authUser?.isAdmin && activeSupportIdentifier) {
-                  setStep("support-inbox");
-                } else {
-                  setStep("home");
-                  setMenuOpen(true);
-                }
+                if (authUser?.isAdmin) openSupportInbox(activeChat?.status === "closed" ? "closed" : supportTab);
+                else openSupportList();
               }}
             />
           )}
