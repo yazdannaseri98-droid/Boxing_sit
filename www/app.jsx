@@ -500,11 +500,21 @@ const OTP_CODE_LENGTH = 6;
 // قوانین رمز؛ دقیقاً همونی که سرور هم چک می‌کنه (این‌جا فقط برای نشون دادن زنده‌ی «چی کمه»)
 function getPasswordChecks(rawPassword, phone) {
   const password = toLatinDigits(rawPassword);
-  const phoneDigits = toLatinDigits(phone || "").replace(/^0/, "");
+  const idText = toLatinDigits(phone || "").trim();
+  let notPhone;
+  if (idText.includes("@")) {
+    // حساب ایمیلی: رمز نباید خودِ ایمیل یا بخش اول اون باشه
+    const lowered = password.toLowerCase();
+    const local = idText.split("@")[0].toLowerCase();
+    notPhone = lowered !== idText.toLowerCase() && !(local.length >= 4 && lowered === local);
+  } else {
+    const phoneDigits = idText.replace(/^0/, "");
+    notPhone = !phoneDigits || !password.replace(/\D/g, "").includes(phoneDigits);
+  }
   return {
     length: Array.from(password).length >= 8 && Array.from(password).length <= 64,
     mix: /\p{L}/u.test(password) && /[0-9]/.test(password),
-    notPhone: !phoneDigits || !password.replace(/\D/g, "").includes(phoneDigits),
+    notPhone,
   };
 }
 
@@ -529,14 +539,19 @@ async function apiAuthPost(path, body) {
   return data;
 }
 
-async function apiOtpSend(phone, purpose) {
-  if (DEMO_MODE) return { ok: true };
-  return apiAuthPost("otp/send", { phone, purpose });
+// شناسه‌ی حساب = شماره موبایل یا ایمیل؛ سرور از روی فیلد (phone / email) نوعش رو می‌فهمه
+function acctBody(id) {
+  return String(id).includes("@") ? { email: id } : { phone: id };
 }
 
-async function apiOtpVerify(phone, code, purpose) {
+async function apiOtpSend(id, purpose) {
+  if (DEMO_MODE) return { ok: true };
+  return apiAuthPost("otp/send", { ...acctBody(id), purpose });
+}
+
+async function apiOtpVerify(id, code, purpose) {
   if (DEMO_MODE) return { ok: true, proofToken: "demo-proof" };
-  return apiAuthPost("otp/verify", { phone, code, purpose });
+  return apiAuthPost("otp/verify", { ...acctBody(id), code, purpose });
 }
 
 function demoAuthResult(phone) {
@@ -551,7 +566,7 @@ async function apiRegisterAccount(proofToken, password, deviceId, force, phone) 
 
 async function apiPasswordLogin(phone, password, deviceId, force) {
   if (DEMO_MODE) return demoAuthResult(phone);
-  return apiAuthPost("login", { phone, password, deviceId, force: Boolean(force) });
+  return apiAuthPost("login", { ...acctBody(phone), password, deviceId, force: Boolean(force) });
 }
 
 async function apiResetPassword(proofToken, password, deviceId, phone) {
@@ -1789,6 +1804,53 @@ function AuthPhoneField({ value, onChange, onEnter, hasError, autoFocus }) {
   );
 }
 
+function AuthEmailField({ value, onChange, onEnter, hasError, autoFocus }) {
+  return (
+    <div
+      className="flex items-center rounded-xl px-4 py-3.5 border"
+      style={{ background: "#17161A", borderColor: hasError ? "#D91E2B" : "#2a292e" }}
+    >
+      <input
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        autoFocus={autoFocus}
+        placeholder="example@gmail.com"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\s/g, ""))}
+        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+        style={{ fontFamily: "Oswald, sans-serif", color: "#F3EEE6" }}
+        className="bg-transparent outline-none flex-1 text-base min-w-0"
+        dir="ltr"
+        maxLength={254}
+      />
+    </div>
+  );
+}
+
+// انتخاب روش حساب: شماره موبایل یا ایمیل (هر دو با رمز عبور)
+function AuthMethodTabs({ method, onChange }) {
+  return (
+    <div className="flex rounded-xl p-1 mb-4" style={{ background: "#17161A", border: "1px solid #2a292e" }}>
+      {[["phone", tr("شماره موبایل")], ["email", tr("ایمیل")]].map(([k, l]) => (
+        <button
+          key={k}
+          type="button"
+          data-testid={`auth-tab-${k}`}
+          onClick={() => onChange(k)}
+          className="flex-1 rounded-lg py-2 text-sm font-bold"
+          style={{ fontFamily: "Vazirmatn, sans-serif", background: method === k ? "#D91E2B" : "transparent", color: method === k ? "#F3EEE6" : "#8A8790" }}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AuthPasswordField({ value, onChange, onEnter, placeholder, autoComplete, hasError }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -1869,7 +1931,7 @@ function PasswordRules({ password, phone }) {
   const rows = [
     [c.length, tr("حداقل ۸ کاراکتر")],
     [c.mix, tr("هم حرف و هم عدد داشته باشه")],
-    [c.notPhone, tr("شماره موبایلت نباشه")],
+    [c.notPhone, String(phone || "").includes("@") ? tr("ایمیلت نباشه") : tr("شماره موبایلت نباشه")],
   ];
   return (
     <div className="mt-3 flex flex-col gap-1.5">
@@ -1888,6 +1950,8 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
   const [mode, setMode] = useState("login");
   const [stage, setStage] = useState("phone");
   const [phone, setPhone] = useState(initialPhone || "");
+  const [method, setMethod] = useState("phone"); // "phone" | "email"
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [digits, setDigits] = useState(Array(OTP_CODE_LENGTH).fill(""));
@@ -1900,6 +1964,11 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
 
   const normalizedPhone = normalizeIranPhone(toLatinDigits(phone));
   const phoneValid = isValidIranPhone(normalizedPhone);
+  const isEmail = method === "email";
+  const normalizedEmail = email.trim().toLowerCase();
+  const emailValid = isValidEmail(normalizedEmail) && normalizedEmail.length <= 254;
+  const acctId = isEmail ? normalizedEmail : normalizedPhone; // شناسه‌ی حساب
+  const acctValid = isEmail ? emailValid : phoneValid;
   const purpose = mode === "forgot" ? "reset" : "register";
 
   useEffect(() => {
@@ -1945,7 +2014,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
   const handleLogin = (force) =>
     run(async () => {
       try {
-        const data = await apiPasswordLogin(normalizedPhone, password, deviceId, force, normalizedPhone);
+        const data = await apiPasswordLogin(acctId, password, deviceId, force, acctId);
         onSuccess(data);
       } catch (err) {
         if (err.code === "DEVICE_CONFLICT") {
@@ -1960,7 +2029,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
   // ارسال کد (ثبت‌نام یا فراموشی)
   const handleSendCode = () =>
     run(async () => {
-      await apiOtpSend(normalizedPhone, purpose);
+      await apiOtpSend(acctId, purpose);
       setDigits(Array(OTP_CODE_LENGTH).fill(""));
       setStage("code");
       setResendLeft(60);
@@ -1968,7 +2037,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
 
   const handleResend = () =>
     run(async () => {
-      await apiOtpSend(normalizedPhone, purpose);
+      await apiOtpSend(acctId, purpose);
       setDigits(Array(OTP_CODE_LENGTH).fill(""));
       setResendLeft(60);
     });
@@ -1976,20 +2045,20 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
   const handleVerifyCode = (codeOverride) =>
     run(async () => {
       const code = codeOverride || digits.join("");
-      const data = await apiOtpVerify(normalizedPhone, code, purpose);
+      const data = await apiOtpVerify(acctId, code, purpose);
       setProofToken(data.proofToken);
       setStage("password");
     });
 
   const handleSetPassword = (force) =>
     run(async () => {
-      if (!isPasswordAcceptable(password, normalizedPhone)) throw new Error(tr("رمز عبور شرایط لازم رو نداره"));
+      if (!isPasswordAcceptable(password, acctId)) throw new Error(tr("رمز عبور شرایط لازم رو نداره"));
       if (password !== confirm) throw new Error(tr("تکرار رمز عبور با رمز اصلی یکی نیست"));
       try {
         const data =
           mode === "forgot"
-            ? await apiResetPassword(proofToken, password, deviceId, normalizedPhone)
-            : await apiRegisterAccount(proofToken, password, deviceId, force, normalizedPhone);
+            ? await apiResetPassword(proofToken, password, deviceId, acctId)
+            : await apiRegisterAccount(proofToken, password, deviceId, force, acctId);
         onSuccess(data);
       } catch (err) {
         if (err.code === "DEVICE_CONFLICT") {
@@ -2006,6 +2075,20 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         throw err;
       }
     });
+
+  const switchMethod = (k) => {
+    if (k === method) return;
+    setMethod(k);
+    clearError();
+    setConflict(false);
+  };
+  const idField = (onEnter, autoFocus) =>
+    isEmail ? (
+      <AuthEmailField value={email} onChange={(v) => { setEmail(v); clearError(); setConflict(false); }} onEnter={onEnter} hasError={Boolean(error)} autoFocus={autoFocus} />
+    ) : (
+      <AuthPhoneField value={phone} onChange={(v) => { setPhone(v); clearError(); setConflict(false); }} onEnter={onEnter} hasError={Boolean(error)} autoFocus={autoFocus} />
+    );
+  const idLabel = isEmail ? tr("ایمیل") : tr("شماره موبایل");
 
   const label = { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" };
   const primaryBtn = (enabled) => ({
@@ -2032,8 +2115,10 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         <div className="flex gap-4 mt-1">
           <button onClick={() => goMode("register")} style={linkBtn} className="text-xs font-bold">
             {tr("تعیین رمز عبور")}</button>
-          <button onClick={() => onUseLegacy?.(normalizedPhone)} style={linkBtn} className="text-xs font-bold">
-            {tr("ورود با کد پیامکی")}</button>
+          {!isEmail && (
+            <button onClick={() => onUseLegacy?.(normalizedPhone)} style={linkBtn} className="text-xs font-bold">
+              {tr("ورود با کد پیامکی")}</button>
+          )}
         </div>
       )}
     </div>
@@ -2078,18 +2163,19 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
 
   // ----- ورود -----
   if (mode === "login") {
-    const canLogin = phoneValid && password.length > 0 && !loading && Boolean(deviceId);
+    const canLogin = acctValid && password.length > 0 && !loading && Boolean(deviceId);
     return (
       <div className="flex-1 flex flex-col px-6 pt-4 overflow-y-auto" dir={APP_DIR}>
         {header}
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", lineHeight: 1.3 }} className="text-3xl font-black mb-2">
           {tr("وارد رینگ شو.")}</h1>
         <p style={label} className="text-sm mb-6 leading-7">
-          {tr("با شماره موبایل و رمز عبورت وارد شو.")}</p>
+          {isEmail ? tr("با ایمیل و رمز عبورت وارد شو.") : tr("با شماره موبایل و رمز عبورت وارد شو.")}</p>
 
-        <label style={label} className="text-xs mb-2 block">{tr("شماره موبایل")}</label>
+        <AuthMethodTabs method={method} onChange={switchMethod} />
+        <label style={label} className="text-xs mb-2 block">{idLabel}</label>
         <div className="mb-4">
-          <AuthPhoneField value={phone} onChange={(v) => { setPhone(v); clearError(); setConflict(false); }} hasError={Boolean(error)} />
+          {idField(undefined, false)}
         </div>
 
         <label style={label} className="text-xs mb-2 block">{tr("رمز عبور")}</label>
@@ -2144,7 +2230,7 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
 
   // ----- مرحله‌ی ۱: شماره -----
   if (stage === "phone") {
-    const canSend = phoneValid && !loading;
+    const canSend = acctValid && !loading;
     return (
       <div className="flex-1 flex flex-col px-6 pt-4 overflow-y-auto" dir={APP_DIR}>
         {header}
@@ -2153,12 +2239,17 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         </h1>
         <p style={label} className="text-sm mb-6 leading-7">
           {isForgot
-            ? tr("شماره‌ای که با اون ثبت‌نام کردی رو وارد کن تا یه کد تایید برات پیامک کنیم.")
+            ? isEmail
+              ? tr("ایمیلی که با اون ثبت‌نام کردی رو وارد کن تا یه کد تایید برات ایمیل کنیم.")
+              : tr("شماره‌ای که با اون ثبت‌نام کردی رو وارد کن تا یه کد تایید برات پیامک کنیم.")
+            : isEmail
+            ? tr("ایمیلت رو وارد کن تا یه کد تایید برات ایمیل کنیم. بعدش رمز عبورت رو انتخاب می‌کنی.")
             : tr("شماره موبایلت رو وارد کن تا یه کد تایید برات پیامک کنیم. بعدش رمز عبورت رو انتخاب می‌کنی.")}
         </p>
-        <label style={label} className="text-xs mb-2 block">{tr("شماره موبایل")}</label>
+        <AuthMethodTabs method={method} onChange={switchMethod} />
+        <label style={label} className="text-xs mb-2 block">{idLabel}</label>
         <div className="mb-3">
-          <AuthPhoneField value={phone} onChange={(v) => { setPhone(v); clearError(); }} onEnter={() => canSend && handleSendCode()} hasError={Boolean(error)} autoFocus />
+          {idField(() => canSend && handleSendCode(), true)}
         </div>
         {errorBox}
         <button onClick={handleSendCode} disabled={!canSend} style={primaryBtn(canSend)} className="w-full rounded-xl py-4 font-bold text-base transition-colors mb-4 mt-2">
@@ -2184,10 +2275,15 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
         <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-2xl font-black mb-2">
           {tr("کد تایید رو وارد کن")}</h1>
         <p style={label} className="text-sm mb-6 leading-7">
-          {trNode("کد {n} رقمی به شماره {phone} پیامک شد.", {
-            n: OTP_CODE_LENGTH.toLocaleString(NUM_LOCALE),
-            phone: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{normalizedPhone}</span>,
-          })}
+          {isEmail
+            ? trNode("کد {n} رقمی به ایمیل {email} ارسال شد. اگه نیومد، پوشه‌ی اسپم رو هم نگاه کن.", {
+                n: OTP_CODE_LENGTH.toLocaleString(NUM_LOCALE),
+                email: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{normalizedEmail}</span>,
+              })
+            : trNode("کد {n} رقمی به شماره {phone} پیامک شد.", {
+                n: OTP_CODE_LENGTH.toLocaleString(NUM_LOCALE),
+                phone: <span style={{ color: "#F3EEE6", direction: "ltr", display: "inline-block" }}>{normalizedPhone}</span>,
+              })}
         </p>
         <div className="mb-4">
           <AuthCodeInput digits={digits} setDigits={(d) => { setDigits(d); clearError(); }} hasError={Boolean(error)} onComplete={(code) => !loading && handleVerifyCode(code)} />
@@ -2212,13 +2308,13 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
           {loading ? tr("در حال بررسی…") : tr("تایید")}
         </button>
         <button onClick={() => { setStage("phone"); clearError(); }} style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-xs underline mt-4">
-          {tr("ویرایش شماره")}</button>
+          {isEmail ? tr("ویرایش ایمیل") : tr("ویرایش شماره")}</button>
       </div>
     );
   }
 
   // ----- مرحله‌ی ۳: انتخاب رمز -----
-  const passwordOk = isPasswordAcceptable(password, normalizedPhone);
+  const passwordOk = isPasswordAcceptable(password, acctId);
   const matches = password.length > 0 && password === confirm;
   const canSubmit = passwordOk && matches && !loading && Boolean(deviceId);
   return (
@@ -2230,12 +2326,14 @@ function PasswordAuthFlow({ deviceId, onSuccess, onUseLegacy, onGuest, initialPh
       <p style={label} className="text-sm mb-6 leading-7">
         {isForgot
           ? tr("با ثبت رمز جدید، اگه روی گوشی دیگه‌ای وارد شده باشی از اون خارج می‌شی.")
+          : isEmail
+          ? tr("ایمیلت تایید شد. این رمز رو برای ورودهای بعدی لازم داری.")
           : tr("شماره‌ات تایید شد. این رمز رو برای ورودهای بعدی لازم داری.")}
       </p>
 
       <label style={label} className="text-xs mb-2 block">{isForgot ? tr("رمز عبور جدید") : tr("رمز عبور")}</label>
       <AuthPasswordField value={password} onChange={(v) => { setPassword(v); clearError(); setConflict(false); }} placeholder={tr("رمز عبور")} autoComplete="new-password" hasError={false} />
-      <PasswordRules password={password} phone={normalizedPhone} />
+      <PasswordRules password={password} phone={acctId} />
 
       <label style={label} className="text-xs mb-2 mt-5 block">{tr("تکرار رمز عبور")}</label>
       <AuthPasswordField
