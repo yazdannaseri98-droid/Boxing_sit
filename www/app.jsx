@@ -5359,6 +5359,52 @@ function SupportChatScreen({ title, subtitle, messages, myRole, status, onSend, 
   );
 }
 
+// ---------- دکمه‌ی شناور و زنده‌ی پشتیبانی (گوشه‌ی پایین صفحه‌ی هوم) ----------
+function SupportFab({ onClick, badge }) {
+  return (
+    <div style={{ position: "absolute", left: 14, bottom: 96, zIndex: 40 }}>
+      <style>{`
+        @keyframes sfPulse { 0% { transform: scale(1); opacity: 0.55; } 70%, 100% { transform: scale(1.75); opacity: 0; } }
+      `}</style>
+      <span
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#22C55E", animation: "sfPulse 2.2s ease-out infinite", pointerEvents: "none" }}
+      />
+      <span
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#22C55E", animation: "sfPulse 2.2s ease-out 1.1s infinite", pointerEvents: "none" }}
+      />
+      <button
+        onClick={onClick}
+        aria-label={tr("پشتیبانی")}
+        data-testid="support-fab"
+        className="relative active:scale-95 transition-transform flex items-center justify-center"
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          background: "linear-gradient(145deg, #34D673 0%, #16A34A 100%)",
+          border: "2px solid rgba(255,255,255,0.35)",
+          color: "#FFFFFF",
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+          <rect x="3" y="14" width="4" height="6" rx="2" />
+          <rect x="17" y="14" width="4" height="6" rx="2" />
+          <path d="M20 20c0 1.5-2 2-5 2h-2" />
+        </svg>
+        {badge && (
+          <span
+            data-testid="support-fab-badge"
+            style={{ position: "absolute", top: -2, right: -2, width: 14, height: 14, borderRadius: "50%", background: "#D91E2B", border: "2px solid #0B0B0D" }}
+          />
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ---------- پشتیبانی: کارت یک گفتگو توی لیست (هم برای کاربر هم برای ادمین) ----------
 function SupportChatCard({ chat, showIdentifier, isAdmin, onOpen }) {
   const closed = chat.status === "closed";
@@ -5421,6 +5467,16 @@ function SupportListScreen({ chats, loading, error, onOpen, onNew, onBack }) {
         {tr("› بازگشت")}</button>
       <h1 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-lg font-black mb-3">
         {tr("پشتیبانی")}</h1>
+      <div
+        data-testid="support-notice"
+        className="rounded-xl px-4 py-3.5 mb-3"
+        style={{ background: "#FFFFFF", border: "1px solid #DAD6CE" }}
+      >
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#0B0B0D" }} className="text-sm font-black mb-1.5">
+          {tr("حوزه‌ی خدمات پشتیبانی")}</p>
+        <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#2a292e" }} className="text-xs leading-6">
+          {tr("پشتیبانی این اپلیکیشن صرفاً برای راهنمایی در نحوه‌ی استفاده از برنامه و گزارش مشکلات فنی، پرداخت و اشتراک در نظر گرفته شده است. این بخش به پرسش‌های ورزشی، تمرینی، تغذیه‌ای و پزشکی پاسخ نمی‌دهد؛ لطفاً برای این موارد به مربی یا متخصص مربوطه مراجعه کنید.")}</p>
+      </div>
       <button
         onClick={onNew}
         data-testid="new-chat"
@@ -12754,6 +12810,12 @@ function App() {
           )}
           {bootGate === "ok" && (step === "home" || step === "profile" || step === "subscription") && (
             <BottomTabs active={step} onNavigate={setStep} />
+          )}
+          {bootGate === "ok" && step === "home" && !menuOpen && (
+            <SupportFab
+              onClick={handleOpenSupport}
+              badge={authUser?.isAdmin ? supportStatus === "pending" : supportStatus === "answered"}
+            />
           )}
           {exitHint && (
             <div
