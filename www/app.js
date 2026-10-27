@@ -4139,100 +4139,111 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
   const lastMessage = messages.length ? messages[messages.length - 1] : null;
   const showStatusBanner = myRole === "user" && Boolean(lastMessage);
   const isAnswered = (lastMessage == null ? void 0 : lastMessage.sender) === "admin" || (lastMessage == null ? void 0 : lastMessage.sender) === "bot";
-  return /* @__PURE__ */ React.createElement("div", { className: "flex-1 flex flex-col min-h-0", dir: APP_DIR }, /* @__PURE__ */ React.createElement("div", { className: "px-5 pt-3 pb-2 shrink-0" }, /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: onBack,
-      style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" },
-      className: "text-sm mb-3 rounded-lg px-3 py-1.5 font-bold inline-block"
-    },
-    tr("\u203A \u0628\u0627\u0632\u06AF\u0634\u062A")
-  ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black" }, title), subtitle && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }, className: "text-xs mt-1" }, subtitle), showStatusBanner && /* @__PURE__ */ React.createElement(
+  return /* @__PURE__ */ React.createElement(
     "div",
     {
-      className: "mt-3 rounded-xl px-3.5 py-2.5 text-center",
-      style: {
-        background: isAnswered ? "rgba(28,111,209,0.15)" : "rgba(243,238,230,0.15)",
-        border: `1px solid ${isAnswered ? "#1C6FD1" : "#F3EEE6"}`
-      }
+      className: "flex-1 flex flex-col min-h-0",
+      dir: APP_DIR,
+      style: { backgroundImage: "url(assets/support-bg.webp)", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }
     },
-    /* @__PURE__ */ React.createElement(
-      "span",
+    /* @__PURE__ */ React.createElement("div", { className: "px-5 pt-3 pb-2 shrink-0" }, /* @__PURE__ */ React.createElement(
+      "button",
       {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: isAnswered ? "#1C6FD1" : "#F3EEE6" },
-        className: "text-xs font-bold"
+        onClick: onBack,
+        style: { color: "#0B0B0D", fontFamily: "Vazirmatn, sans-serif", background: "#DAD6CE" },
+        className: "text-sm mb-3 rounded-lg px-3 py-1.5 font-bold inline-block"
       },
-      isAnswered ? tr("\u2713 \u067E\u0627\u0633\u062E \u067E\u0634\u062A\u06CC\u0628\u0627\u0646") : tr("\u23F3 \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC\u0647")
-    )
-  )), /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2" }, messages.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }, className: "text-xs text-center mt-10" }, tr("\u0647\u0646\u0648\u0632 \u067E\u06CC\u0627\u0645\u06CC \u0631\u062F \u0648 \u0628\u062F\u0644 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644\u06CC\u0646 \u067E\u06CC\u0627\u0645 \u0631\u0648 \u0628\u0641\u0631\u0633\u062A.")), messages.map((m, i) => {
-    const isMine = m.sender === myRole;
-    const showSenderLabel = myRole === "user" && !isMine && m.sender === "bot";
-    return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex flex-col ${isMine ? "items-start" : "items-end"}` }, showSenderLabel && /* @__PURE__ */ React.createElement(
-      "span",
-      {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" },
-        className: "text-[10px] font-bold mb-1 px-1"
-      },
-      tr("\u{1F916} \u067E\u0627\u0633\u062E \u062E\u0648\u062F\u06A9\u0627\u0631")
-    ), /* @__PURE__ */ React.createElement(
+      tr("\u203A \u0628\u0627\u0632\u06AF\u0634\u062A")
+    ), /* @__PURE__ */ React.createElement("h1", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }, className: "text-lg font-black" }, title), subtitle && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Oswald, sans-serif", color: "#F3EEE6", direction: "ltr" }, className: "text-xs mt-1" }, subtitle), showStatusBanner && /* @__PURE__ */ React.createElement(
       "div",
       {
-        className: "rounded-2xl px-3.5 py-2.5",
+        className: "mt-3 rounded-xl px-3.5 py-2.5 text-center",
         style: {
-          maxWidth: "78%",
-          background: isMine ? "#D91E2B" : "#17161A",
-          border: isMine ? "none" : "1px solid #2a292e"
+          background: isAnswered ? "rgba(28,111,209,0.15)" : "rgba(243,238,230,0.15)",
+          border: `1px solid ${isAnswered ? "#1C6FD1" : "#F3EEE6"}`
         }
       },
       /* @__PURE__ */ React.createElement(
-        "p",
+        "span",
         {
-          style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" },
-          className: "text-sm leading-6 whitespace-pre-wrap"
+          style: { fontFamily: "Vazirmatn, sans-serif", color: isAnswered ? "#1C6FD1" : "#F3EEE6" },
+          className: "text-xs font-bold"
         },
-        m.message
+        isAnswered ? tr("\u2713 \u067E\u0627\u0633\u062E \u067E\u0634\u062A\u06CC\u0628\u0627\u0646") : tr("\u23F3 \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0631 \u062D\u0627\u0644 \u0628\u0631\u0631\u0633\u06CC\u0647")
       )
-    ), m.createdAt && /* @__PURE__ */ React.createElement(
-      "span",
+    )),
+    /* @__PURE__ */ React.createElement("div", { ref: scrollRef, className: "flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2" }, messages.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }, className: "text-xs text-center mt-10" }, tr("\u0647\u0646\u0648\u0632 \u067E\u06CC\u0627\u0645\u06CC \u0631\u062F \u0648 \u0628\u062F\u0644 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644\u06CC\u0646 \u067E\u06CC\u0627\u0645 \u0631\u0648 \u0628\u0641\u0631\u0633\u062A.")), messages.map((m, i) => {
+      const isMine = m.sender === myRole;
+      const showSenderLabel = myRole === "user" && !isMine && m.sender === "bot";
+      return /* @__PURE__ */ React.createElement("div", { key: i, className: `flex flex-col ${isMine ? "items-start" : "items-end"}` }, showSenderLabel && /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: { fontFamily: "Vazirmatn, sans-serif", color: "#4DA3FF" },
+          className: "text-[10px] font-bold mb-1 px-1"
+        },
+        tr("\u{1F916} \u067E\u0627\u0633\u062E \u062E\u0648\u062F\u06A9\u0627\u0631")
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "rounded-2xl px-3.5 py-2.5",
+          style: {
+            maxWidth: "78%",
+            background: isMine ? "#D91E2B" : "#17161A",
+            border: isMine ? "none" : "1px solid #2a292e"
+          }
+        },
+        /* @__PURE__ */ React.createElement(
+          "p",
+          {
+            style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" },
+            className: "text-sm leading-6 whitespace-pre-wrap"
+          },
+          m.message
+        )
+      ), m.createdAt && /* @__PURE__ */ React.createElement(
+        "span",
+        {
+          style: { fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0", direction: "ltr" },
+          className: "text-[10px] mt-1 px-1"
+        },
+        formatMessageTime(m.createdAt)
+      ));
+    })),
+    /* @__PURE__ */ React.createElement("div", { className: "px-4 py-3 flex items-center gap-2 shrink-0", style: { borderTop: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement(
+      "input",
       {
-        style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a", direction: "ltr" },
-        className: "text-[10px] mt-1 px-1"
+        value: text,
+        onChange: (e) => setText(e.target.value),
+        onKeyDown: (e) => {
+          if (e.key === "Enter") handleSend();
+        },
+        placeholder: tr("\u067E\u06CC\u0627\u0645\u062A \u0631\u0648 \u0628\u0646\u0648\u06CC\u0633..."),
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" },
+        className: "flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
+      }
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSend,
+        disabled: sending,
+        style: {
+          fontFamily: "Vazirmatn, sans-serif",
+          background: !sending ? "#D91E2B" : "#3a2226",
+          color: !sending ? "#F3EEE6" : "#7a5a5d"
+        },
+        className: "rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
       },
-      formatMessageTime(m.createdAt)
-    ));
-  })), /* @__PURE__ */ React.createElement("div", { className: "px-4 py-3 flex items-center gap-2 shrink-0", style: { borderTop: "1px solid #2a292e" } }, /* @__PURE__ */ React.createElement(
-    "input",
-    {
-      value: text,
-      onChange: (e) => setText(e.target.value),
-      onKeyDown: (e) => {
-        if (e.key === "Enter") handleSend();
+      tr("\u0627\u0631\u0633\u0627\u0644")
+    )),
+    myRole === "user" && /* @__PURE__ */ React.createElement(
+      "p",
+      {
+        style: { fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" },
+        className: "text-[11px] text-center leading-5 px-6 pb-3 shrink-0"
       },
-      placeholder: tr("\u067E\u06CC\u0627\u0645\u062A \u0631\u0648 \u0628\u0646\u0648\u06CC\u0633..."),
-      style: { fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", background: "#17161A", border: "1px solid #2a292e" },
-      className: "flex-1 rounded-xl px-3.5 py-2.5 text-sm outline-none"
-    }
-  ), /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: handleSend,
-      disabled: sending,
-      style: {
-        fontFamily: "Vazirmatn, sans-serif",
-        background: !sending ? "#D91E2B" : "#3a2226",
-        color: !sending ? "#F3EEE6" : "#7a5a5d"
-      },
-      className: "rounded-xl px-4 py-2.5 text-sm font-bold shrink-0"
-    },
-    tr("\u0627\u0631\u0633\u0627\u0644")
-  )), myRole === "user" && /* @__PURE__ */ React.createElement(
-    "p",
-    {
-      style: { fontFamily: "Vazirmatn, sans-serif", color: "#55535a" },
-      className: "text-[11px] text-center leading-5 px-6 pb-3 shrink-0"
-    },
-    tr("\u067E\u0627\u0633\u062E\u200C\u06AF\u0648\u06CC\u06CC \u062A\u06CC\u0645 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0646\u0627\u0635\u0631\u06CC \u0645\u0639\u0645\u0648\u0644\u0627\u064B \u062F\u0631 \u06A9\u0648\u062A\u0627\u0647\u200C\u062A\u0631\u06CC\u0646 \u0632\u0645\u0627\u0646 \u0645\u0645\u06A9\u0646 \u0627\u0646\u062C\u0627\u0645 \u0645\u06CC\u200C\u0634\u0647 \u0648 \u062D\u062F\u0627\u06A9\u062B\u0631 \u0638\u0631\u0641 \u06F7\u06F2 \u0633\u0627\u0639\u062A \u06A9\u0627\u0631\u06CC \u067E\u0627\u0633\u062E \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0627\u062F\u0647 \u062E\u0648\u0627\u0647\u062F \u0634\u062F.")
-  ));
+      tr("\u067E\u0627\u0633\u062E\u200C\u06AF\u0648\u06CC\u06CC \u062A\u06CC\u0645 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0646\u0627\u0635\u0631\u06CC \u0645\u0639\u0645\u0648\u0644\u0627\u064B \u062F\u0631 \u06A9\u0648\u062A\u0627\u0647\u200C\u062A\u0631\u06CC\u0646 \u0632\u0645\u0627\u0646 \u0645\u0645\u06A9\u0646 \u0627\u0646\u062C\u0627\u0645 \u0645\u06CC\u200C\u0634\u0647 \u0648 \u062D\u062F\u0627\u06A9\u062B\u0631 \u0638\u0631\u0641 \u06F7\u06F2 \u0633\u0627\u0639\u062A \u06A9\u0627\u0631\u06CC \u067E\u0627\u0633\u062E \u067E\u06CC\u0627\u0645 \u0634\u0645\u0627 \u062F\u0627\u062F\u0647 \u062E\u0648\u0627\u0647\u062F \u0634\u062F.")
+    )
+  );
 }
 function SupportInboxScreen({ threads, loading, error, onOpenThread, onBack }) {
   return /* @__PURE__ */ React.createElement("div", { className: "flex-1 overflow-y-auto px-5 pt-3 pb-6", dir: APP_DIR }, /* @__PURE__ */ React.createElement(

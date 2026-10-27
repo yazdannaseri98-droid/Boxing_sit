@@ -5239,7 +5239,11 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
   const isAnswered = lastMessage?.sender === "admin" || lastMessage?.sender === "bot";
 
   return (
-    <div className="flex-1 flex flex-col min-h-0" dir={APP_DIR}>
+    <div
+      className="flex-1 flex flex-col min-h-0"
+      dir={APP_DIR}
+      style={{ backgroundImage: "url(assets/support-bg.webp)", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
+    >
       <div className="px-5 pt-3 pb-2 shrink-0">
         <button
           onClick={onBack}
@@ -5275,7 +5279,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2">
         {messages.length === 0 && (
-          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }} className="text-xs text-center mt-10">
+          <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }} className="text-xs text-center mt-10">
             {tr("هنوز پیامی رد و بدل نشده. اولین پیام رو بفرست.")}</p>
         )}
         {messages.map((m, i) => {
@@ -5307,7 +5311,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
               </div>
               {m.createdAt && (
                 <span
-                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a", direction: "ltr" }}
+                  style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0", direction: "ltr" }}
                   className="text-[10px] mt-1 px-1"
                 >
                   {formatMessageTime(m.createdAt)}
@@ -5343,7 +5347,7 @@ function SupportChatScreen({ title, subtitle, messages, myRole, onSend, onBack }
       </div>
       {myRole === "user" && (
         <p
-          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#55535a" }}
+          style={{ fontFamily: "Vazirmatn, sans-serif", color: "#9A97A0" }}
           className="text-[11px] text-center leading-5 px-6 pb-3 shrink-0"
         >
           {tr("پاسخ‌گویی تیم پشتیبانی ناصری معمولاً در کوتاه‌ترین زمان ممکن انجام می‌شه و حداکثر ظرف ۷۲ ساعت کاری پاسخ پیام شما داده خواهد شد.")}</p>
