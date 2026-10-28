@@ -1260,13 +1260,17 @@ async function apiFetchPromoText() {
 // ---------- قیمت و متن باکس‌های اشتراک (ادمین ویرایش می‌کنه) ----------
 // متن خالی یعنی «متن پیش‌فرض اپ»؛ قیمت همون عددیه که به درگاه پرداخت (زرین‌پال/سپ) هم فرستاده می‌شه
 const DEFAULT_PLANS = {
-  silver: { title: "", months: 12, price: 1490000, originalPrice: 2000000, badge: "", description: "", buttonText: "" },
-  gold: { title: "", months: 12, price: 1490000, originalPrice: 2000000, badge: "", description: "", buttonText: "" },
+  // کلید silver = باکس طلایی دوره اول (۱۲ ماهه)؛ silver6 / bronze3 = باکس‌های نقره‌ای (۶ ماهه) و برنزی (۳ ماهه) دوره اول
+  silver: { title: "", months: 12, price: 1490000, badge: "", description: "", buttonText: "" },
+  silver6: { title: "", months: 6, price: 699000, badge: "", description: "", buttonText: "" },
+  bronze3: { title: "", months: 3, price: 499000, badge: "", description: "", buttonText: "" },
+  gold: { title: "", months: 12, price: 1490000, badge: "", description: "", buttonText: "" },
 };
+const PLAN_KEYS = ["silver", "silver6", "bronze3", "gold"];
 
 function mergePlans(data) {
   const out = {};
-  for (const key of ["silver", "gold"]) out[key] = { ...DEFAULT_PLANS[key], ...((data && data[key]) || {}) };
+  for (const key of PLAN_KEYS) out[key] = { ...DEFAULT_PLANS[key], ...((data && data[key]) || {}) };
   return out;
 }
 
@@ -10616,9 +10620,11 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
 
 const GRAD_WHITE = { background: "linear-gradient(180deg, #FFFFFF 0%, #ECEFF5 45%, #A9B0BD 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" };
 const PLAN_FRAME_CSS = `
+  .plan-strip { scrollbar-width: none; }
+  .plan-strip::-webkit-scrollbar { display: none; }
   .pf-mask { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; overflow: hidden; }
-  .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 9s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(255,236,170,0.2), rgba(255,255,255,0.4), rgba(255,236,170,0.2), transparent); }
-  .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(255,200,70,0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(255,170,40,0.4), transparent 55%); mix-blend-mode: screen; }
+  .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 9s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(var(--pf-a),0.2), rgba(255,255,255,0.4), rgba(var(--pf-a),0.2), transparent); }
+  .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(var(--pf-b),0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(var(--pf-c),0.4), transparent 55%); mix-blend-mode: screen; }
   .pf-spark { position: absolute; pointer-events: none; color: #FFE9A0; font-size: 13px; opacity: 0; animation: pfSpark 3s ease-in-out infinite; text-shadow: 0 0 8px #FFC83C; }
   .pf-neon { animation: pfNeon 2.2s ease-in-out infinite; }
   @keyframes pfSweep { 0% { transform: translateX(-160%) skewX(-18deg); } 60%, 100% { transform: translateX(420%) skewX(-18deg); } }
@@ -10629,22 +10635,33 @@ const PLAN_FRAME_CSS = `
 `;
 
 // قاب طلایی اشتراک: عکس قاب، متن‌ها داخل بخش مشکی، و نور زنده‌ای که دقیقاً به شکل قاب بریده می‌شه (mask)
-function PlanFrame({ img, delay = 0, className = "", edit, children }) {
+const PLAN_TIERS = {
+  gold: { a: "255,236,170", b: "255,200,70", c: "255,170,40", spark: "#FFE9A0", sparkGlow: "#FFC83C" },
+  silver: { a: "235,240,255", b: "200,210,235", c: "170,185,220", spark: "#F2F6FF", sparkGlow: "#BFD0F5" },
+  bronze: { a: "255,214,170", b: "255,160,90", c: "230,120,50", spark: "#FFD9B0", sparkGlow: "#FF9A50" },
+};
+function PlanFrame({ img, delay = 0, className = "", edit, tier = "gold", label, children }) {
+  const T = PLAN_TIERS[tier] || PLAN_TIERS.gold;
   const [ready, setReady] = useState(false);
-  const ratio = img.includes("first") ? "1000 / 1627" : "1000 / 1613"; // جا از قبل رزرو می‌شه تا موقع لود عکس صفحه نپره
+  const ratio = img.includes("second") ? "1000 / 1613" : "1000 / 1627"; // جا از قبل رزرو می‌شه تا موقع لود عکس صفحه نپره
   const maskStyle = { WebkitMaskImage: `url(${img})`, maskImage: `url(${img})` };
   const sparks = [{ top: "3%", left: "47%", d: 0 }, { top: "22%", right: "9%", d: 1.1 }, { top: "24%", left: "8%", d: 2 }, { bottom: "6%", right: "14%", d: 0.6 }];
   return (
-    <div className={`relative ${className}`} style={{ filter: "drop-shadow(0 6px 18px rgba(255,170,40,0.28))", aspectRatio: ratio }}>
+    <div className={`relative ${className}`} style={{ filter: `drop-shadow(0 6px 18px rgba(${T.c},0.28))`, aspectRatio: ratio, "--pf-a": T.a, "--pf-b": T.b, "--pf-c": T.c }}>
       <img src={img} alt="" draggable={false} onLoad={() => setReady(true)} ref={(el) => { if (el && el.complete && !ready) setReady(true); }} style={{ display: "block", width: "100%", height: "100%" }} />
       <div className="pf-mask" style={{ ...maskStyle, opacity: ready ? 1 : 0 }}>
         <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
         <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
       </div>
       {sparks.map((sp, i) => (
-        <span key={i} className="pf-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s` }}>✦</span>
+        <span key={i} className="pf-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s`, color: T.spark, textShadow: `0 0 8px ${T.sparkGlow}` }}>✦</span>
       ))}
       {ready && edit}
+      {label && (
+        <div className="absolute flex items-center justify-center" style={{ top: "28.2%", height: "5.6%", left: "30%", right: "30%", opacity: ready ? 1 : 0 }}>
+          <span style={{ fontFamily: "Vazirmatn, sans-serif", color: "#16110A", textShadow: "0 1px 0 rgba(255,255,255,0.35)" }} className="text-lg font-black">{label}</span>
+        </div>
+      )}
       <div className="absolute flex flex-col items-center justify-center text-center" style={{ top: "38%", bottom: "8%", left: "12%", right: "12%", opacity: ready ? 1 : 0, transition: "opacity .3s" }}>
         {children}
       </div>
@@ -10652,7 +10669,7 @@ function PlanFrame({ img, delay = 0, className = "", edit, children }) {
   );
 }
 
-const DEFAULT_PROMO_TEXT = tr("🔥 تخفیف ویژه‌ی آغازین!\nهمین حالا اشتراکت رو بگیر و مسیر قهرمانی رو شروع کن");
+const DEFAULT_PROMO_TEXT = tr("🔥 مسیر قهرمانی از همین‌جا شروع می‌شه!\nهمین حالا اشتراکت رو بگیر و تمرین رو شروع کن");
 const PROMO_TEXT_MAX = 100;
 
 // باکس تبلیغاتی بالای صفحه‌ی اشتراک: وسط‌چین، ارتفاع دو خط، گرادیان نئونی با بک‌لایت. ادمین می‌تونه متنش رو عوض کنه.
@@ -10809,7 +10826,6 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
     title: initial.title || "",
     months: String(initial.months),
     price: String(initial.price),
-    originalPrice: initial.originalPrice ? String(initial.originalPrice) : "",
     badge: initial.badge || "",
     description: initial.description || "",
     buttonText: initial.buttonText || "",
@@ -10840,7 +10856,6 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
         title: draft.title,
         months,
         price,
-        originalPrice: parseNumberInput(draft.originalPrice),
         badge: draft.badge,
         description: draft.description,
         buttonText: draft.buttonText,
@@ -10877,7 +10892,7 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
     <div className="fixed inset-0 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.7)", zIndex: 60 }} dir={APP_DIR}>
       <div className="w-full rounded-t-2xl px-4 pt-4 pb-6 overflow-y-auto" style={{ background: "#141317", border: "1px solid #2a292e", maxHeight: "88%", maxWidth: 480 }}>
         <h2 style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6" }} className="text-sm font-black mb-1">
-          {planKey === "silver" ? tr("ویرایش اشتراک دوره اول") : tr("ویرایش اشتراک دوره دوم")}
+          {planKey === "silver" ? tr("ویرایش باکس طلایی دوره اول") : planKey === "silver6" ? tr("ویرایش باکس نقره‌ای دوره اول") : planKey === "bronze3" ? tr("ویرایش باکس برنزی دوره اول") : tr("ویرایش اشتراک دوره دوم")}
         </h2>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#E8B33D" }} className="text-[11px] leading-5 mb-4">
           {tr("قیمت جدید همون لحظه برای خرید از درگاه پرداخت (زرین‌پال) هم اعمال می‌شه. فیلدهای متنی خالی = متن پیش‌فرض اپ (به زبان کاربر).")}
@@ -10886,16 +10901,13 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
         <Field label={tr("قیمت (تومان)")}>
           <input value={draft.price} onChange={(e) => set("price", e.target.value)} inputMode="numeric" dir="ltr" style={fieldStyle} className="w-full rounded-lg px-3 py-2 text-sm outline-none" />
         </Field>
-        <Field label={tr("قیمت قبل از تخفیف (تومان)")} hint={tr("خالی = قیمت خط‌خورده نمایش داده نشه")}>
-          <input value={draft.originalPrice} onChange={(e) => set("originalPrice", e.target.value)} inputMode="numeric" dir="ltr" style={fieldStyle} className="w-full rounded-lg px-3 py-2 text-sm outline-none" />
-        </Field>
         <Field label={tr("مدت اعتبار (ماه)")}>
           <input value={draft.months} onChange={(e) => set("months", e.target.value)} inputMode="numeric" dir="ltr" style={fieldStyle} className="w-full rounded-lg px-3 py-2 text-sm outline-none" />
         </Field>
         <Field label={tr("عنوان باکس")}>
           <input value={draft.title} onChange={(e) => set("title", e.target.value.slice(0, 40))} dir={APP_DIR} style={fieldStyle} className="w-full rounded-lg px-3 py-2 text-sm outline-none" />
         </Field>
-        <Field label={tr("برچسب (مثلاً تخفیف آغازین)")} hint={tr("برای پنهان کردن برچسب، فقط - بنویس")}>
+        <Field label={tr("متن باکس سبز (زیر قیمت)")} hint={tr("برای پنهان کردن باکس سبز، فقط - بنویس")}>
           <input value={draft.badge} onChange={(e) => set("badge", e.target.value.slice(0, 30))} dir={APP_DIR} style={fieldStyle} className="w-full rounded-lg px-3 py-2 text-sm outline-none" />
         </Field>
         <Field label={tr("توضیح (زیر برچسب)")}>
@@ -10930,7 +10942,7 @@ function PlanEditor({ planKey, initial, onSave, onReset, onClose }) {
 
 function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequireLogin, onPlanConfirmed, chapterVisibility, chapterTitles, promoText, plans, isAdmin, onSavePromoText, onSavePlan, onResetPlan }) {
   const pl = mergePlans(plans);
-  const [editingPlan, setEditingPlan] = useState(null); // "silver" | "gold" | null
+  const [editingPlan, setEditingPlan] = useState(null); // یکی از PLAN_KEYS یا null
   // اسم فصل‌ها همون اسمیه که ادمین توی صفحه‌ی اصلی گذاشته (با تغییرش، این‌جا هم خودکار عوض می‌شه)
   const chapterName = (key) => chapterTitles?.[key] || DEFAULT_CHAPTER_TITLES[key];
   const silverChapterNames = ["basic", "advanced", "extra"].map(chapterName).join(tr("، "));
@@ -10948,7 +10960,6 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
     });
   }, [isLoggedIn, plan, authToken]);
 
-  // قیمت اصلی (قبل از تخفیف) فقط برای نمایش خط‌خورده - خود قیمت نهایی همون PLAN_PRICES سمت سرور می‌مونه
 
   const handleBuy = async (planKey) => {
     setError("");
@@ -10963,7 +10974,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       // چون سرور واقعی وصل نیست، خرید رو فقط شبیه‌سازی می‌کنیم تا بتونی قفل شدن/باز شدن فصل‌ها رو تست کنی
       await new Promise((r) => setTimeout(r, 500));
       const twoYearsFromNow = Date.now() + 2 * 365 * 24 * 60 * 60 * 1000;
-      onPlanConfirmed?.(planKey, twoYearsFromNow);
+      onPlanConfirmed?.(planKey === "gold" ? "gold" : "silver", twoYearsFromNow);
       setLoadingPlan(null);
       return;
     }
@@ -10983,18 +10994,15 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
 
   const renderPlanBody = (k, names) => {
     const p = pl[k];
-    const active = k === "silver" ? (plan === "silver" || plan === "gold") : plan === "gold";
+    const isC1 = k !== "gold"; // سه باکس دوره اول: طلایی / نقره‌ای / برنزی
+    const active = isC1 ? (plan === "silver" || plan === "gold") : plan === "gold";
     const loading = loadingPlan === k;
-    const canBuy = k === "silver" ? true : goldUnlocked;
+    const canBuy = isC1 ? true : goldUnlocked;
     const ff = { fontFamily: "Vazirmatn, sans-serif" };
     return (
       <>
         <p style={{ ...ff, background: "linear-gradient(180deg, #FFF3B0 0%, #F5C542 45%, #B8801A 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 0 6px rgba(255,190,50,0.45))" }} className="text-xl font-black leading-tight mb-1">
           {tr("({n} ماهه)", { n: p.months.toLocaleString(NUM_LOCALE) })}</p>
-        {p.originalPrice > p.price && (
-          <span style={{ fontFamily: "Oswald, sans-serif", color: "#FF3B47", textDecoration: "line-through", textDecorationThickness: "1.5px", textShadow: "0 0 8px rgba(255,59,71,0.4)" }} className="text-lg font-bold leading-tight">
-            {formatPrice(p.originalPrice)}</span>
-        )}
         <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0">
           <span style={{ fontFamily: "Oswald, sans-serif", color: "#3DE08A", textShadow: "0 0 12px rgba(61,224,138,0.45)" }} className="text-[32px] leading-tight font-black">
             {formatPrice(p.price)}</span>
@@ -11002,7 +11010,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
         </div>
         {p.badge !== "-" && (
           <span style={{ ...ff, color: "#39FF14" }} className="pf-neon text-sm font-black mt-0.5">
-            {p.badge || tr("تخفیف آغازین")}</span>
+            {p.badge || tr("دسترسی کامل")}</span>
         )}
         <p style={{ ...ff, ...GRAD_WHITE, fontWeight: 800 }} className="text-xs leading-5 mt-1 mb-2">
           {p.description || tr("دسترسی به ۳ فصل ({names})", { names })}
@@ -11011,7 +11019,7 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
           {active ? (
             <div className="rounded-xl py-2 text-center" style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,200,70,0.6)" }}>
               <span style={{ ...ff, color: "#FFFFFF" }} className="text-sm font-black">
-                {k === "silver" ? tr("اشتراک دوره اول تو فعاله ✓") : tr("اشتراک دوره دوم تو فعاله ✓")}</span>
+                {isC1 ? tr("اشتراک دوره اول تو فعاله ✓") : tr("اشتراک دوره دوم تو فعاله ✓")}</span>
               {planExpiresAt && (
                 <p style={{ ...ff, color: "#E9ECF2" }} className="text-xs font-bold mt-0.5">
                   {tr("معتبر تا {date}", { date: formatExpiryDate(planExpiresAt) })}</p>
@@ -11021,10 +11029,10 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
             <button
               onClick={() => handleBuy(k)}
               disabled={loading}
-              style={{ ...ff, background: loading ? "#1f3a28" : k === "silver" ? "linear-gradient(135deg, #1FA855, #2fd37a)" : "linear-gradient(135deg, #6B7280, #9CA3AF)", color: loading ? "#5a7a63" : "#FFFFFF", boxShadow: loading ? "none" : k === "silver" ? "0 0 16px rgba(47,211,122,0.5)" : "0 0 14px rgba(120,128,140,0.5)" }}
+              style={{ ...ff, background: loading ? "#1f3a28" : isC1 ? "linear-gradient(135deg, #1FA855, #2fd37a)" : "linear-gradient(135deg, #6B7280, #9CA3AF)", color: loading ? "#5a7a63" : "#FFFFFF", boxShadow: loading ? "none" : isC1 ? "0 0 16px rgba(47,211,122,0.5)" : "0 0 14px rgba(120,128,140,0.5)" }}
               className={`w-full rounded-xl py-2.5 font-black text-sm ${loading ? "" : "plan-cta"}`}
             >
-              {loading ? tr("در حال اتصال به درگاه…") : p.buttonText || (k === "silver" ? tr("خرید اشتراک دوره اول") : tr("خرید اشتراک دوره دوم"))}
+              {loading ? tr("در حال اتصال به درگاه…") : p.buttonText || (isC1 ? tr("خرید اشتراک دوره اول") : tr("خرید اشتراک دوره دوم"))}
             </button>
           ) : (
             <button disabled style={{ ...ff, background: "rgba(107,114,128,0.5)", color: "#D5D9E0", cursor: "not-allowed" }} className="w-full rounded-xl py-2.5 font-black text-sm">
@@ -11067,15 +11075,30 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
           <PromoBanner text={promoText} isAdmin={isAdmin} onSave={onSavePromoText} />
         </div>
         <p style={{ fontFamily: "Vazirmatn, sans-serif", color: "#F3EEE6", maxWidth: "280px" }} className="text-xs leading-6">
-          {tr("دسترسی به دوره‌های آموزشی رو با یکی از این دو پلن باز کن")}</p>
+          {tr("دسترسی به دوره‌های آموزشی رو با یکی از این پلن‌ها باز کن")}</p>
       </div>
 
       <style>{PLAN_CARD_CSS + PLAN_FRAME_CSS}</style>
 
       {/* پلن‌ها: قاب طلایی */}
-      <PlanFrame img="assets/plan-first.webp" className="mb-5" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}>
-        {renderPlanBody("silver", silverChapterNames)}
-      </PlanFrame>
+      {/* سه باکس دوره اول: اسکرول افقی روی پس‌زمینه‌ی نوک‌مدادی */}
+      <div className="plan-strip mb-5" dir={APP_DIR} style={{ margin: "0 -20px 20px", padding: "18px 20px", display: "flex", gap: 14, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", background: "linear-gradient(180deg, #4a4e55 0%, #35383d 45%, #2a2c30 100%)", backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 7px), linear-gradient(180deg, #4a4e55 0%, #35383d 45%, #2a2c30 100%)", borderTop: "1px solid #6a6f78", borderBottom: "1px solid #1a1b1e", boxShadow: "inset 0 8px 18px rgba(0,0,0,0.35), inset 0 -8px 18px rgba(0,0,0,0.35)" }}>
+        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+          <PlanFrame img="assets/plan-first.webp" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}>
+            {renderPlanBody("silver", silverChapterNames)}
+          </PlanFrame>
+        </div>
+        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+          <PlanFrame img="assets/plan-silver.webp" tier="silver" label={tr("نقره‌ای")} delay={0.8} edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver6")} />}>
+            {renderPlanBody("silver6", silverChapterNames)}
+          </PlanFrame>
+        </div>
+        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+          <PlanFrame img="assets/plan-bronze.webp" tier="bronze" label={tr("برنزی")} delay={1.2} edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("bronze3")} />}>
+            {renderPlanBody("bronze3", silverChapterNames)}
+          </PlanFrame>
+        </div>
+      </div>
       <PlanFrame img="assets/plan-second.webp" delay={1.6} className="mb-3" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("gold")} />}>
         {renderPlanBody("gold", goldChapterNames)}
       </PlanFrame>
