@@ -10620,13 +10620,14 @@ function PlanCard({ tone, delay = 0, className = "", children }) {
 
 const GRAD_WHITE = { background: "linear-gradient(180deg, #FFFFFF 0%, #ECEFF5 45%, #A9B0BD 100%)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" };
 const PLAN_FRAME_CSS = `
-  .plan-strip { scrollbar-width: none; }
+  .plan-strip { scrollbar-width: none; transform: translateZ(0); overscroll-behavior-x: contain; }
   .plan-strip::-webkit-scrollbar { display: none; }
   .pf-mask { position: absolute; inset: 0; pointer-events: none; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; overflow: hidden; }
   .pf-sweep { position: absolute; top: -10%; bottom: -10%; left: 0; width: 34%; transform: translateX(-160%) skewX(-18deg); animation: pfSweep 9s ease-in-out infinite; will-change: transform; background: linear-gradient(90deg, transparent, rgba(var(--pf-a),0.2), rgba(255,255,255,0.4), rgba(var(--pf-a),0.2), transparent); }
-  .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(var(--pf-b),0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(var(--pf-c),0.4), transparent 55%); mix-blend-mode: screen; }
+  .pf-pulse { position: absolute; inset: 0; animation: pfPulse 3.4s ease-in-out infinite; will-change: opacity; background: radial-gradient(ellipse at 50% 0%, rgba(var(--pf-b),0.55), transparent 55%), radial-gradient(ellipse at 50% 100%, rgba(var(--pf-c),0.4), transparent 55%); }
   .pf-spark { position: absolute; pointer-events: none; color: #FFE9A0; font-size: 13px; opacity: 0; animation: pfSpark 3s ease-in-out infinite; text-shadow: 0 0 8px #FFC83C; }
-  .pf-neon { animation: pfNeon 2.2s ease-in-out infinite; }
+  .pf-neon { text-shadow: 0 0 8px #39FF14, 0 0 18px rgba(57,255,20,0.8); }
+  .pf-live .pf-neon { animation: pfNeon 2.2s ease-in-out infinite; }
   @keyframes pfSweep { 0% { transform: translateX(-160%) skewX(-18deg); } 60%, 100% { transform: translateX(420%) skewX(-18deg); } }
   @keyframes pfPulse { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.5; } }
   @keyframes pfSpark { 0%, 100% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.2); } }
@@ -10643,17 +10644,28 @@ const PLAN_TIERS = {
 function PlanFrame({ img, delay = 0, className = "", edit, tier = "gold", label, children }) {
   const T = PLAN_TIERS[tier] || PLAN_TIERS.gold;
   const [ready, setReady] = useState(false);
+  const [live, setLive] = useState(false); // انیمیشن فقط وقتی باکس روی صفحه دیده می‌شه (برای سبک شدن اسکرول)
+  const boxRef = useRef(null);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setLive(true); return; }
+    const io = new IntersectionObserver((es) => setLive(es.some((e) => e.isIntersecting)), { threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const ratio = img.includes("second") ? "1000 / 1613" : "1000 / 1627"; // جا از قبل رزرو می‌شه تا موقع لود عکس صفحه نپره
   const maskStyle = { WebkitMaskImage: `url(${img})`, maskImage: `url(${img})` };
   const sparks = [{ top: "3%", left: "47%", d: 0 }, { top: "22%", right: "9%", d: 1.1 }, { top: "24%", left: "8%", d: 2 }, { bottom: "6%", right: "14%", d: 0.6 }];
   return (
-    <div className={`relative ${className}`} style={{ filter: `drop-shadow(0 6px 18px rgba(${T.c},0.28))`, aspectRatio: ratio, "--pf-a": T.a, "--pf-b": T.b, "--pf-c": T.c }}>
+    <div ref={boxRef} className={`relative ${className}${live ? " pf-live" : ""}`} style={{ aspectRatio: ratio, "--pf-a": T.a, "--pf-b": T.b, "--pf-c": T.c }}>
       <img src={img} alt="" draggable={false} onLoad={() => setReady(true)} ref={(el) => { if (el && el.complete && !ready) setReady(true); }} style={{ display: "block", width: "100%", height: "100%" }} />
-      <div className="pf-mask" style={{ ...maskStyle, opacity: ready ? 1 : 0 }}>
-        <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
-        <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
-      </div>
-      {sparks.map((sp, i) => (
+      {live && (
+        <div className="pf-mask" style={{ ...maskStyle, opacity: ready ? 1 : 0 }}>
+          <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
+          <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
+        </div>
+      )}
+      {live && sparks.map((sp, i) => (
         <span key={i} className="pf-spark" style={{ top: sp.top, bottom: sp.bottom, left: sp.left, right: sp.right, animationDelay: `${sp.d + delay}s`, color: T.spark, textShadow: `0 0 8px ${T.sparkGlow}` }}>✦</span>
       ))}
       {ready && edit}
@@ -11083,17 +11095,17 @@ function SubscriptionScreen({ plan, planExpiresAt, authToken, isLoggedIn, onRequ
       {/* پلن‌ها: قاب طلایی */}
       {/* سه باکس دوره اول: اسکرول افقی روی پس‌زمینه‌ی نوک‌مدادی */}
       <div className="plan-strip mb-5" dir={APP_DIR} style={{ margin: "0 -20px 20px", padding: "18px 20px", display: "flex", gap: 14, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", background: "linear-gradient(180deg, #4a4e55 0%, #35383d 45%, #2a2c30 100%)", backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 7px), linear-gradient(180deg, #4a4e55 0%, #35383d 45%, #2a2c30 100%)", borderTop: "1px solid #6a6f78", borderBottom: "1px solid #1a1b1e", boxShadow: "inset 0 8px 18px rgba(0,0,0,0.35), inset 0 -8px 18px rgba(0,0,0,0.35)" }}>
-        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+        <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
           <PlanFrame img="assets/plan-first.webp" edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver")} />}>
             {renderPlanBody("silver", silverChapterNames)}
           </PlanFrame>
         </div>
-        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+        <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
           <PlanFrame img="assets/plan-silver.webp" tier="silver" label={tr("نقره‌ای")} delay={0.8} edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("silver6")} />}>
             {renderPlanBody("silver6", silverChapterNames)}
           </PlanFrame>
         </div>
-        <div style={{ flex: "0 0 82%", scrollSnapAlign: "center" }}>
+        <div style={{ flex: "0 0 100%", scrollSnapAlign: "center" }}>
           <PlanFrame img="assets/plan-bronze.webp" tier="bronze" label={tr("برنزی")} delay={1.2} edit={isAdmin && <PlanEditButton onClick={() => setEditingPlan("bronze3")} />}>
             {renderPlanBody("bronze3", silverChapterNames)}
           </PlanFrame>
@@ -11630,6 +11642,52 @@ function App() {
     document.addEventListener("visibilitychange", onVis);
     return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
   }, [authToken, authUser?.plan, authUser?.isAdmin]);
+
+  // هشدار پیام جدید پشتیبانی: فقط برای ادمین. اپ ادمین هر ۲۰ ثانیه چک می‌کنه (باز یا پس‌زمینه) و نوتیفیکیشن محلی نشون می‌ده
+  useEffect(() => {
+    if (!authToken || !authUser?.isAdmin || DEMO_MODE) return;
+    let stopped = false;
+    let busy = false;
+    const LN = window.Capacitor?.Plugins?.LocalNotifications;
+    const KEY = "support_alert_last_id";
+    const readLast = () => { try { const v = Number(localStorage.getItem(KEY)); return localStorage.getItem(KEY) !== null && Number.isFinite(v) && v >= 0 ? v : -1; } catch { return -1; } };
+    const writeLast = (v) => { try { localStorage.setItem(KEY, String(v)); } catch {} };
+    const notify = async (alerts) => {
+      const title = tr("پیام جدید پشتیبانی");
+      const body = alerts.length > 1 ? tr("{n} پیام جدید از کاربران رسیده", { n: alerts.length }) : alerts[0].message;
+      if (LN) {
+        try {
+          let perm = await LN.checkPermissions();
+          if (perm.display !== "granted") perm = await LN.requestPermissions();
+          if (perm.display !== "granted") return;
+          await LN.schedule({ notifications: [{ id: 7100 + (alerts[alerts.length - 1].id % 800), title, body, smallIcon: "ic_stat_glove", schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true } }] });
+        } catch {}
+        return;
+      }
+      if (typeof Notification !== "undefined") {
+        try {
+          if (Notification.permission === "default") await Notification.requestPermission();
+          if (Notification.permission === "granted") new Notification(title, { body });
+        } catch {}
+      }
+    };
+    const tick = async () => {
+      if (busy || stopped) return;
+      busy = true;
+      try {
+        const after = readLast();
+        const data = await supportApi(authToken, `admin/alerts?after=${after}`);
+        if (stopped) return;
+        if (after >= 0 && data.alerts?.length) await notify(data.alerts);
+        if (data.lastId > after) writeLast(data.lastId);
+      } catch {} finally { busy = false; }
+    };
+    tick();
+    const iv = setInterval(tick, 20000);
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stopped = true; clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [authToken, authUser?.isAdmin]);
 
   const loadPublicData = () => {
     loadVideoList();
