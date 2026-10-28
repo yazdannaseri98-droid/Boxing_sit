@@ -1017,6 +1017,8 @@ async function apiFetchAdminStats(token) {
       guestDevices: Number(data.guestDevices) || 0,
       registeredUsers: Number(data.registeredUsers) || 0,
       activeSubscriptions: Number(data.activeSubscriptions) || 0,
+      onlineNow: Number(data.onlineNow) || 0,
+      onlineMembers: Number(data.onlineMembers) || 0,
     };
   } catch {
     return null;
@@ -5788,6 +5790,7 @@ function InfoScreen({ title, items, paragraph, onBack, headerExtra }) {
 // مهمان = ورود با رمز یکبار مصرف | ثابت = ثبت‌نام‌شده با رمز عبور | اشتراک فعال = خریداران اشتراکِ منقضی‌نشده
 function AdminStatsRows({ stats }) {
   const rows = [
+    { key: "online", label: tr("آنلاین الان"), hint: tr("اپ بازِ کاربران"), value: stats?.onlineNow, color: "#3DE08A" },
     { key: "guestdev", label: tr("کاربران مهمان"), hint: tr("ورود بدون ثبت‌نام"), value: stats?.guestDevices, color: "#F3EEE6" },
     { key: "registered", label: tr("کاربران ثابت"), hint: tr("ثبت‌نام‌شده"), value: stats?.registeredUsers, color: "#4DA3FF" },
     { key: "subscribed", label: tr("اشتراک فعال"), hint: tr("خریداران اشتراک"), value: stats?.activeSubscriptions, color: "#4DA3FF" },
@@ -10649,7 +10652,7 @@ function PlanFrame({ img, delay = 0, className = "", edit, tier = "gold", label,
   useEffect(() => {
     const el = boxRef.current;
     if (!el || typeof IntersectionObserver === "undefined") { setLive(true); return; }
-    const io = new IntersectionObserver((es) => setLive(es.some((e) => e.isIntersecting)), { threshold: 0.15 });
+    const io = new IntersectionObserver((es) => setLive(es.some((e) => e.isIntersecting)), { threshold: 0, rootMargin: "0px 35% 0px 35%" });
     io.observe(el);
     return () => io.disconnect();
   }, []);
@@ -10661,8 +10664,8 @@ function PlanFrame({ img, delay = 0, className = "", edit, tier = "gold", label,
       <img src={img} alt="" draggable={false} onLoad={() => setReady(true)} ref={(el) => { if (el && el.complete && !ready) setReady(true); }} style={{ display: "block", width: "100%", height: "100%" }} />
       {live && (
         <div className="pf-mask" style={{ ...maskStyle, opacity: ready ? 1 : 0 }}>
-          <div className="pf-pulse" style={{ animationDelay: `${delay}s` }} />
-          <div className="pf-sweep" style={{ animationDelay: `${delay}s` }} />
+          <div className="pf-pulse" />
+          <div className="pf-sweep" />
         </div>
       )}
       {live && sparks.map((sp, i) => (
@@ -11773,6 +11776,28 @@ function App() {
   useEffect(() => {
     loadPublicData();
   }, []);
+
+  // حضور آنلاین: تا وقتی اپ جلوی چشم کاربره (غیر ادمین) هر ۳۰ ثانیه پینگ می‌فرسته؛ ادمین حساب نمی‌شه
+  useEffect(() => {
+    if (DEMO_MODE || authUser?.isAdmin) return;
+    let cid = "";
+    try { cid = localStorage.getItem("presence_cid") || ""; if (!cid) { cid = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9_-]/g, ""); localStorage.setItem("presence_cid", cid); } } catch { cid = String(Math.random()).slice(2) + Date.now(); }
+    const ping = () => {
+      if (document.visibilityState !== "visible") return;
+      fetch(`${API_BASE_URL}/presence/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: cid, member: Boolean(authToken) }), keepalive: true }).catch(() => {});
+    };
+    ping();
+    const iv = setInterval(ping, 30000);
+    document.addEventListener("visibilitychange", ping);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", ping); };
+  }, [authUser?.isAdmin, authToken]);
+
+  // ادمین: عدد آنلاین‌ها هر ۱۵ ثانیه تازه می‌شه
+  useEffect(() => {
+    if (!authUser?.isAdmin || !authToken || DEMO_MODE) return;
+    const iv = setInterval(() => { if (document.visibilityState === "visible") loadAdminStats(); }, 15000);
+    return () => clearInterval(iv);
+  }, [authUser?.isAdmin, authToken]);
 
   useEffect(() => {
     if (!authUser?.isAdmin) {
