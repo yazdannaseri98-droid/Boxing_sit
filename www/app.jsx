@@ -42,6 +42,106 @@ function dynTr(v) {
   return v;
 }
 
+// ترجمه‌ی خودکار متن‌های ثابت داخل صفحه (برنامه‌های تمرینی، مسیر پیشرفت، علوم بوکس و...) برای زبان‌های غیرفارسی:
+// هر متن فارسی که تو دیکشنری باشه موقع نمایش جایگزین می‌شه؛ داده‌ها و منطق برنامه دست نمی‌خورن.
+const FA_RE = /[\u0600-\u06EF\u06FA-\u06FF]/; // حروف فارسی/عربی (بدون رقم)
+const FA_DIGIT_RE = /[\u06F0-\u06F9\u0660-\u0669]/;
+const domLatinDigits = (x) => x.replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0)).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+function domTr(str) {
+  if (!str) return str;
+  if (!FA_RE.test(str)) return FA_DIGIT_RE.test(str) ? domLatinDigits(str) : str;
+  const t = str.trim();
+  let out = Object.prototype.hasOwnProperty.call(I18N_TABLE, t) ? I18N_TABLE[t] : Object.prototype.hasOwnProperty.call(DYN_TABLE, t) ? DYN_TABLE[t] : null;
+  if (out == null) {
+    // قالب‌های شماره‌دار مثل «{1} از {2} جلسه» (رقم/اسم داخلش تغییر می‌کنه)
+    if (!domTr.tpls) {
+      domTr.tpls = Object.keys(I18N_TABLE).filter((k) => /\{\d\}/.test(k)).map((k) => {
+        const esc = k.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\{\d\}/g, "(.+?)");
+        return { re: new RegExp("^" + esc + "$"), val: I18N_TABLE[k], idx: (k.match(/\{(\d)\}/g) || []).map((x) => Number(x[1])) };
+      });
+    }
+    for (const tp of domTr.tpls) {
+      const mm = t.match(tp.re);
+      if (mm) {
+        const vals = {};
+        tp.idx.forEach((n, i) => { vals[n] = domTr(mm[i + 1]); });
+        out = tp.val.replace(/\{(\d)\}/g, (_, n) => (vals[n] != null ? vals[n] : ""));
+        break;
+      }
+    }
+  }
+  if (out == null) {
+    // متن‌های چندبخشی که با « • » یا « | » یا « — » به هم وصل شدن: تک‌تک بخش‌ها ترجمه می‌شن
+    const m = t.match(/\s+([•|—·\/])\s+/);
+    if (m) {
+      const parts = t.split(m[0]);
+      const tp = parts.map((x) => (Object.prototype.hasOwnProperty.call(I18N_TABLE, x.trim()) ? I18N_TABLE[x.trim()] : x));
+      if (tp.some((x, i) => x !== parts[i])) out = tp.join(m[0]);
+    }
+  }
+  if (out == null) return domLatinDigits(str);
+  const lead = str.match(/^\s*/)[0];
+  const trail = str.match(/\s*$/)[0];
+  return lead + domLatinDigits(out) + trail;
+}
+function installDomTranslator() {
+  if (APP_LANG === "fa" || !I18N_TABLE || typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+  const ATTRS = ["placeholder", "title", "aria-label", "alt"];
+  const fixText = (n) => {
+    const v = n.nodeValue;
+    if (v && (FA_RE.test(v) || FA_DIGIT_RE.test(v))) {
+      const r = domTr(v);
+      if (r !== v) n.nodeValue = r;
+    }
+  };
+  const fixAttrs = (el) => {
+    for (const a of ATTRS) {
+      const v = el.getAttribute && el.getAttribute(a);
+      if (v && (FA_RE.test(v) || FA_DIGIT_RE.test(v))) {
+        const r = domTr(v);
+        if (r !== v) el.setAttribute(a, r);
+      }
+    }
+  };
+  const walk = (root) => {
+    if (!root) return;
+    if (root.nodeType === 3) { fixText(root); return; }
+    if (root.nodeType !== 1) return;
+    const tag = root.tagName;
+    if (tag === "SCRIPT" || tag === "STYLE") return;
+    fixAttrs(root);
+    const tw = document.createTreeWalker(root, 5 /* SHOW_ELEMENT | SHOW_TEXT */);
+    let n = tw.nextNode();
+    while (n) {
+      if (n.nodeType === 3) fixText(n);
+      else if (n.tagName !== "SCRIPT" && n.tagName !== "STYLE") fixAttrs(n);
+      n = tw.nextNode();
+    }
+  };
+  let queue = new Set();
+  let raf = 0;
+  const flush = () => {
+    raf = 0;
+    const items = queue;
+    queue = new Set();
+    items.forEach((x) => { if (x.isConnected !== false) walk(x); });
+  };
+  const obs = new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === "childList") m.addedNodes.forEach((n) => queue.add(n));
+      else if (m.type === "characterData") queue.add(m.target);
+      else if (m.type === "attributes") queue.add(m.target);
+    }
+    if (!raf && queue.size) raf = requestAnimationFrame(flush);
+  });
+  const start = () => {
+    walk(document.body);
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+  };
+  if (document.body) start(); else document.addEventListener("DOMContentLoaded", start);
+}
+installDomTranslator();
+
 // ترجمه‌ی یک متن. جاهای خالی به شکل {name} نوشته می‌شن: tr("جلسه {n}", { n: 3 })
 function tr(text, params) {
   let out = text;
