@@ -11882,14 +11882,20 @@ function App() {
     if (DEMO_MODE || authUser?.isAdmin) return;
     let cid = "";
     try { cid = localStorage.getItem("presence_cid") || ""; if (!cid) { cid = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/[^A-Za-z0-9_-]/g, ""); localStorage.setItem("presence_cid", cid); } } catch { cid = String(Math.random()).slice(2) + Date.now(); }
+    let active = true; // وقتی اپ اندروید می‌ره پس‌زمینه false می‌شه
     const ping = () => {
-      if (document.visibilityState !== "visible") return;
-      fetch(`${API_BASE_URL}/presence/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: cid, member: Boolean(authToken) }), keepalive: true }).catch(() => {});
+      if (!active || document.visibilityState !== "visible") return;
+      fetch(`${API_BASE_URL}/presence/ping`, { method: "POST", headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) }, body: JSON.stringify({ clientId: cid }), keepalive: true }).catch(() => {});
     };
     ping();
     const iv = setInterval(ping, 30000);
     document.addEventListener("visibilitychange", ping);
-    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", ping); };
+    let stateHandle = null;
+    try {
+      const CapApp = window.Capacitor?.Plugins?.App;
+      if (CapApp?.addListener) Promise.resolve(CapApp.addListener("appStateChange", (st) => { active = Boolean(st?.isActive); if (active) ping(); })).then((h) => { stateHandle = h; }).catch(() => {});
+    } catch {}
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", ping); try { stateHandle?.remove?.(); } catch {} };
   }, [authUser?.isAdmin, authToken]);
 
   // ادمین: عدد آنلاین‌ها هر ۱۵ ثانیه تازه می‌شه

@@ -9970,6 +9970,7 @@ function App() {
     loadPublicData();
   }, []);
   useEffect(() => {
+    var _a2, _b2;
     if (DEMO_MODE || (authUser == null ? void 0 : authUser.isAdmin)) return;
     let cid = "";
     try {
@@ -9981,17 +9982,35 @@ function App() {
     } catch {
       cid = String(Math.random()).slice(2) + Date.now();
     }
+    let active = true;
     const ping = () => {
-      if (document.visibilityState !== "visible") return;
-      fetch(`${API_BASE_URL}/presence/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId: cid, member: Boolean(authToken) }), keepalive: true }).catch(() => {
+      if (!active || document.visibilityState !== "visible") return;
+      fetch(`${API_BASE_URL}/presence/ping`, { method: "POST", headers: { "Content-Type": "application/json", ...authToken ? { Authorization: `Bearer ${authToken}` } : {} }, body: JSON.stringify({ clientId: cid }), keepalive: true }).catch(() => {
       });
     };
     ping();
     const iv = setInterval(ping, 3e4);
     document.addEventListener("visibilitychange", ping);
+    let stateHandle = null;
+    try {
+      const CapApp = (_b2 = (_a2 = window.Capacitor) == null ? void 0 : _a2.Plugins) == null ? void 0 : _b2.App;
+      if (CapApp == null ? void 0 : CapApp.addListener) Promise.resolve(CapApp.addListener("appStateChange", (st) => {
+        active = Boolean(st == null ? void 0 : st.isActive);
+        if (active) ping();
+      })).then((h) => {
+        stateHandle = h;
+      }).catch(() => {
+      });
+    } catch {
+    }
     return () => {
+      var _a3;
       clearInterval(iv);
       document.removeEventListener("visibilitychange", ping);
+      try {
+        (_a3 = stateHandle == null ? void 0 : stateHandle.remove) == null ? void 0 : _a3.call(stateHandle);
+      } catch {
+      }
     };
   }, [authUser == null ? void 0 : authUser.isAdmin, authToken]);
   useEffect(() => {
